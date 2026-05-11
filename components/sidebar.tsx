@@ -373,35 +373,35 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
           title: "GST",
           icon: FileBarChart,
           children: [
-            { title: "GST CATEGORY MASTER", icon: FolderTree, href: "/admin/gst-category" },
-            { title: "GST CONFIGURATION MASTER", icon: Settings, href: "/admin/gst" },
-            { title: "GST EXEMPTION CATEGORY MASTER", icon: FileCheck, href: "/admin/gst-exemption-category" },
+            { title: "GST CATEGORY MASTER", icon: FolderTree, href: "/administrator/master/gst/gst-category" },
+            { title: "GST CONFIGURATION MASTER", icon: Settings, href: "/administrator/master/gst/gst-configuration" },
+            { title: "GST EXEMPTION CATEGORY MASTER", icon: FileCheck, href: "/administrator/master/gst/gst-exemption-category" },
           ]
         },
-        { title: "PRINT COPY TYPE MASTER", icon: Printer, href: "/admin/print-copy-type" },
+        { title: "PRINT COPY TYPE MASTER", icon: Printer, href: "/administrator/master/print-copy-type" },
         {
           title: "SMS/EMAIL",
           icon: Mail,
           children: [
-            { title: "EMAIL TEMPLATE", icon: Mail, href: "/admin/email-template" },
-            { title: "SMS TEMPLATE MASTER", icon: MessageCircle, href: "/admin/sms-template" },
-            { title: "SMS/EMAIL CONFIGURATION", icon: Settings, href: "/admin/sms-email-config" },
-            { title: "SMS/EMAIL MASTER", icon: Mail, href: "/admin/sms-email-master" },
+            { title: "EMAIL TEMPLATE", icon: Mail, href: "/administrator/master/sms-email/email-template" },
+            { title: "SMS TEMPLATE MASTER", icon: MessageCircle, href: "/administrator/master/sms-email/sms-template" },
+            { title: "SMS/EMAIL CONFIGURATION", icon: Settings, href: "/administrator/master/sms-email/sms-email-config" },
+            { title: "SMS/EMAIL MASTER", icon: Mail, href: "/administrator/master/sms-email/sms-email-master" },
           ]
         },
-        { title: "SQL PROCEDURE MASTER", icon: Database, href: "/admin/sql-procedure" },
+        { title: "SQL PROCEDURE MASTER", icon: Database, href: "/administrator/master/sql-procedure" },
         {
           title: "STATIONS",
           icon: Map,
           children: [
-            { title: "HUB OFFICE", icon: Building2, href: "/admin/hub-office" },
-            { title: "UNSCHEDULE DELIVERY POINTS", icon: MapPin, href: "/admin/unschedule-delivery-points" },
-            { title: "AGENCY MASTER", icon: Building2, href: "/operations/agency" },
-            { title: "BRANCH MASTER", icon: Building2, href: "/admin/branch" },
-            { title: "ZONAL MASTER", icon: Map, href: "/admin/zonal-master" },
+            { title: "HUB OFFICE", icon: Building2, href: "/administrator/master/stations/hub-office" },
+            { title: "UNSCHEDULE DELIVERY POINTS", icon: MapPin, href: "/administrator/master/stations/unschedule-delivery-points" },
+            { title: "AGENCY MASTER", icon: Building2, href: "/administrator/master/stations/agency-master" },
+            { title: "BRANCH MASTER", icon: Building2, href: "/administrator/master/stations/branch-master" },
+            { title: "ZONAL MASTER", icon: Map, href: "/administrator/master/stations/zonal-master" },
           ]
         },
-        { title: "TARIFF MASTER", icon: BarChart, href: "/operations/tariff" },
+        { title: "TARIFF MASTER", icon: BarChart, href: "/administrator/master/tariff" },
         {
           title: "USER & RIGHTS",
           icon: ShieldCheck,
