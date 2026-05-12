@@ -406,9 +406,9 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
           title: "USER & RIGHTS",
           icon: ShieldCheck,
           children: [
-            { title: "RIGHT ASSIGNMENT", icon: ShieldCheck, href: "/admin/right-assignment" },
-            { title: "ROLE MASTER", icon: ShieldCheck, href: "/admin/roles" },
-            { title: "USER MASTER", icon: Users, href: "/employees" },
+            { title: "RIGHT ASSIGNMENT", icon: ShieldCheck, href: "/administrator/master/user-rights/right-assignment" },
+            { title: "ROLE MASTER", icon: ShieldCheck, href: "/administrator/master/user-rights/role-master" },
+            { title: "USER MASTER", icon: Users, href: "/administrator/master/user-rights/user-master" },
           ]
         },
       ],
@@ -417,16 +417,16 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       title: "Transaction",
       icon: ClipboardList,
       items: [
-        { title: "MRN TYPE MASTER", icon: FileText, href: "/admin/mrn-type-master" },
-        { title: "QUERY BUILDER (NEW)", icon: Database, href: "/admin/query-builder" },
-        { title: "RESET DATA", icon: RotateCcw, href: "/admin/reset-data" },
+        { title: "MRN TYPE MASTER", icon: FileText, href: "/administrator/transaction/mrn-type-master" },
+        { title: "QUERY BUILDER (NEW)", icon: Database, href: "/administrator/transaction/query-builder" },
+        { title: "RESET DATA", icon: RotateCcw, href: "/administrator/transaction/reset-data" },
       ],
     },
     {
       title: "Reports",
       icon: BarChart3,
       items: [
-        { title: "BUILD YOUR OWN REPORT", icon: BarChart3, href: "/admin/build-your-own-report" },
+        { title: "BUILD YOUR OWN REPORT", icon: BarChart3, href: "/administrator/reports/build-your-own-report" },
       ],
     },
     {
