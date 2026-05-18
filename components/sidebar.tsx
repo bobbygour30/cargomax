@@ -331,10 +331,17 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "CASH AND BANK MR REGISTER REPORT", icon: IndianRupee, href: "/accounts/reports/cash-bank-mr-register" },
         { title: "CASH REPORT", icon: IndianRupee, href: "/accounts/reports/cash" },
         { title: "DAY BOOK REPORT", icon: BookOpen, href: "/accounts/reports/day-book" },
-        { title: "FUNDS TRANSFER REPORT", icon: Landmark, href: "/accounts/reports/funds-transfer" },
+        { title: "FINANCIAL MIS", icon: BookOpen, href: "/accounts/reports/financial-mis" },
+        { title: "FUNDS TRANSFER REPORT", icon: Landmark, href: "/accounts/reports/funds-transfer"},
         { title: "GST 1R REPORT", icon: FileBarChart, href: "/accounts/reports/gst-1r" },
         { title: "LEDGER REPORT (NEW)", icon: FileSpreadsheet, href: "/accounts/reports/ledger" },
+        { title: "LHC PENDING PAYMENT REPORTS", icon: FileSpreadsheet, href: "/accounts/reports/lhc-pending-payment-reports" },
         { title: "VENDOR BILL REGISTER", icon: FileOutput, href: "/accounts/reports/vendor-bill-register" },
+        { title: "VENDOR OUTSTANDING AGEING REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-ageing" },
+        { title: "VENDOR OUTSTANDING AGEING REPORT NEW", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-new" },
+        { title: "VENDOR OUTSTANDING PAYMENT REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-payment-reports" },
+
+
       ],
     },
     {
@@ -444,18 +451,19 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       title: "Master",
       icon: FolderTree,
       items: [
-        { title: "ITEM MASTER WEB", icon: BoxesIcon, href: "/inventory/items-web" },
-        { title: "MATERIAL MASTER", icon: PackagePlus, href: "/inventory/materials" },
+        { title: "ITEM MASTER WEB", icon: BoxesIcon, href: "/inventory/master/items-web" },
+        { title: "MATERIAL MASTER", icon: PackagePlus, href: "/inventory/master/materials" },
       ],
     },
     {
       title: "Transaction",
       icon: ClipboardList,
       items: [
-        { title: "ITEM PURCHASE", icon: ShoppingCart, href: "/inventory/purchase" },
-        { title: "HO STATIONERY STOCK REGISTER", icon: Building2, href: "/inventory/ho-stationery-stock" },
-        { title: "ITEM DESPATCH", icon: Truck, href: "/inventory/despatch" },
-        { title: "STOCK ISSUE TO BRANCH", icon: GitBranch, href: "/inventory/stock-issue" },
+        { title: "ITEM PURCHASE", icon: ShoppingCart, href: "/inventory/transaction/purchase" },
+        { title: "HO STATIONERY STOCK REGISTER", icon: Building2, href: "/inventory/transaction/ho-stationery-stock" },
+        { title: "ITEM DESPATCH", icon: Truck, href: "/inventory/transaction/despatch" },
+        { title: "ITEM DESPATCH RECEIVE", icon: Truck, href: "/inventory/transaction/item-despatch-receive" },
+        { title: "STOCK ISSUE TO BRANCH", icon: GitBranch, href: "/inventory/transaction/stock-issue" },
       ],
     },
     {
