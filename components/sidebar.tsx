@@ -198,7 +198,7 @@ const RenderNavItems = ({
 const moduleNavGroups: Record<string, NavGroup[]> = {
   Operations: [
     {
-      title: "Master",
+      title: "Setup",
       icon: FolderTree,
       items: [
         { title: "AGENCY COMMISSION MASTER", icon: Building2, href: "/operations/agency-commission" },
@@ -226,7 +226,7 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       ],
     },
     {
-      title: "Transaction",
+      title: "Workflow",
       icon: ClipboardList,
       items: [
         { title: "BOOKING COMPUTERIZE GRL", icon: PlusSquare, href: "/operations/transaction/booking-computerize" },
@@ -274,7 +274,7 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       ],
     },
     {
-      title: "Utilities",
+      title: "Tools",
       icon: Wrench,
       items: [
         { title: "GRL MANIFEST REPORT", icon: FileText, href: "/utilities/grl-manifest-report" },
@@ -284,86 +284,88 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
   ],
   Accounts: [
     {
-      title: "Master",
+      title: "Setup",
       icon: FolderTree,
       items: [
-        { title: "COST CENTER MASTER", icon: GitBranch, href: "/accounts/master/cost-center" },
-        { title: "CUSTOMER MASTER", icon: Users, href: "/accounts/master/customers" },
-        { title: "MAIN GROUP", icon: FolderTree, href: "/accounts/master/main-group" },
-        { title: "SUB GROUP", icon: GitBranch, href: "/accounts/master/sub-group" },
-        { title: "TDS CATEGORY MASTER", icon: FileText, href: "/accounts/master/tds-category" },
-        { title: "TDS SECTION MASTER", icon: FileText, href: "/accounts/master/tds-section" },
-        { title: "TDS STATUS MASTER", icon: FileCheck, href: "/accounts/master/tds-status" },
-        { title: "VENDOR MASTER", icon: Building2, href: "/accounts/master/vendor" },
+        { title: "CUSTOMER", icon: Users, href: "/accounts/master/customers" },
+        { title: "VENDOR", icon: Building2, href: "/accounts/master/vendor" },
+        { title: "ACCOUNT GROUP", icon: FolderTree, href: "/accounts/master/main-group" },  //MAIN GROUP
+        { title: "ACCOUNT SUB GROUP", icon: GitBranch, href: "/accounts/master/sub-group" },
+        { title: "COST CENTER", icon: GitBranch, href: "/accounts/master/cost-center" },
+        { title: "TDS CATEGORIES", icon: FileText, href: "/accounts/master/tds-category" },
+        { title: "TDS SECTIONS", icon: FileText, href: "/accounts/master/tds-section" },
+        { title: "TDS STATUSES", icon: FileCheck, href: "/accounts/master/tds-status" },
       ],
     },
     {
-      title: "Transaction",
+      title: "Workflow",
       icon: ClipboardList,
       items: [
-        { title: "BANK RECONCILIATION", icon: BarChart, href: "/accounts/transaction/bank-reconciliation" },
-        { title: "BILL ENQUIRY", icon: Search, href: "/accounts/transaction/bill-enquiry" },
-        { title: "FREIGHT MEMO PAYMENT", icon: Receipt, href: "/accounts/transaction/freight-memo-payment" },
-        { title: "FUND TRANSFER", icon: Landmark, href: "/accounts/transaction/fund-transfer" },
-        { title: "FUND TRANSFER APPROVAL", icon: ShieldCheck, href: "/accounts/transaction/fund-transfer-approval" },
-        { title: "LHC ADVANCE PAYMENT", icon: Handshake, href: "/accounts/transaction/lhc-advance-payment" },
-        { title: "LHC BALANCE PAYMENT", icon: PiggyBank, href: "/accounts/transaction/lhc-balance-payment" },
         { title: "MONEY RECEIPT", icon: DollarSign, href: "/accounts/transaction/money-receipt" },
-        { title: "ON A/C ADJUSTMENT", icon: RotateCcw, href: "/accounts/transaction/on-ac-adjustment" },
-        { title: "OPERATIONAL EXPENSE NEW", icon: PiggyBank, href: "/accounts/transaction/operational-expense" },
-        { title: "REVERSE MR", icon: RotateCcw, href: "/accounts/transaction/reverse-mr" },
-        { title: "TDS RATE MASTER", icon: FileText, href: "/accounts/transaction/tds-rate" },
-        { title: "UPDATE LEDGER OP BALANCE", icon: FileText, href: "/accounts/transaction/update-ledger-op-balance" },
-        { title: "VENDOR BILL ENQUIRY", icon: Search, href: "/accounts/transaction/vendor-bill-enquiry" },
+        { title: "REVERSE MONEY RECEIPT", icon: RotateCcw, href: "/accounts/transaction/reverse-mr" },
+        { title: "BANK RECONCILIATION", icon: BarChart, href: "/accounts/transaction/bank-reconciliation" },
+        { title: "FREIGHT MEMO PAYMENT", icon: Receipt, href: "/accounts/transaction/freight-memo-payment" },
+        { title: "VENDOR BILL RECEIPT", icon: DollarSign, href: "/accounts/transaction/vendor-bill-receipt" },
         { title: "VENDOR BILL PASSING", icon: FileCheck, href: "/accounts/transaction/vendor-bill-passing" },
         { title: "VENDOR BILL PAYMENT", icon: Receipt, href: "/accounts/transaction/vendor-bill-payment" },
-        { title: "VENDOR BILL RECEIPT", icon: DollarSign, href: "/accounts/transaction/vendor-bill-receipt" },
-        { title: "VENDOR OPERATIONAL EXPENSE", icon: PiggyBank, href: "/accounts/transaction/vendor-operational-expense" },
+        { title: "VENDOR BILL SEARCH", icon: Search, href: "/accounts/transaction/vendor-bill-enquiry" },
+        { title: "BILL SEARCH", icon: Search, href: "/accounts/transaction/bill-enquiry" },
+        { title: "LHC ADVANCE PAYMENT", icon: Handshake, href: "/accounts/transaction/lhc-advance-payment" },
+        { title: "LHC BALANCE PAYMENT", icon: PiggyBank, href: "/accounts/transaction/lhc-balance-payment" },
+        { title: "FUND TRANSFER", icon: Landmark, href: "/accounts/transaction/fund-transfer" },
+        { title: "FUND TRANSFER APPROVAL", icon: ShieldCheck, href: "/accounts/transaction/fund-transfer-approval" },
+        { title: "ACCOUNT ADJUSTMENT", icon: RotateCcw, href: "/accounts/transaction/on-ac-adjustment" },
+        { title: "OPERATIONAL EXPENSE", icon: PiggyBank, href: "/accounts/transaction/operational-expense" },
+        { title: "VENDOR EXPENSE ENTRY", icon: PiggyBank, href: "/accounts/transaction/vendor-operational-expense" },
+        // { title: "UPDATE LEDGER OP BALANCE", icon: FileText, href: "/accounts/transaction/update-ledger-op-balance" },
+        { title: "BANK RECONCILIATION", icon: FileText, href: "/accounts/transaction/" },
         { title: "VOUCHER ENTRY", icon: ClipboardList, href: "/accounts/transaction/voucher" },
+        { title: "TDS RATE SETUP", icon: FileText, href: "/accounts/transaction/tds-rate" },
       ],
     },
     {
       title: "Reports",
       icon: BarChart3,
       items: [
-        { title: "BILL REGISTER GR WISE", icon: ReceiptText, href: "/accounts/reports/bill-register-gr-wise" },
-        { title: "BILLED UNBILLED COUNTERS", icon: FileCheck, href: "/accounts/reports/billed-unbilled-counters" },
-        { title: "CASH AND BANK MR REGISTER REPORT", icon: IndianRupee, href: "/accounts/reports/cash-bank-mr-register" },
+        { title: "DAY BOOK", icon: BookOpen, href: "/accounts/reports/day-book" },
         { title: "CASH REPORT", icon: IndianRupee, href: "/accounts/reports/cash" },
-        { title: "DAY BOOK REPORT", icon: BookOpen, href: "/accounts/reports/day-book" },
-        { title: "FINANCIAL MIS", icon: BookOpen, href: "/accounts/reports/financial-mis" },
-        { title: "FUNDS TRANSFER REPORT", icon: Landmark, href: "/accounts/reports/funds-transfer"},
+        { title: "LEDGER REPORT", icon: FileSpreadsheet, href: "/accounts/reports/ledger" },
+        { title: "BILL REGISTER", icon: ReceiptText, href: "/accounts/reports/bill-register-gr-wise" },
+        { title: "BILLED VS UNBILLED", icon: ReceiptText, href: "/accounts/reports/" },
+        { title: "BILLED UNBILLED COUNTERS", icon: FileCheck, href: "/accounts/reports/billed-unbilled-counters" },
+        { title: "CASH AND BANK REGISTER", icon: IndianRupee, href: "/accounts/reports/cash-bank-mr-register" },
         { title: "GST 1R REPORT", icon: FileBarChart, href: "/accounts/reports/gst-1r" },
-        { title: "LEDGER REPORT (NEW)", icon: FileSpreadsheet, href: "/accounts/reports/ledger" },
-        { title: "LHC PENDING PAYMENT REPORTS", icon: FileSpreadsheet, href: "/accounts/reports/lhc-pending-payment-reports" },
         { title: "VENDOR BILL REGISTER", icon: FileOutput, href: "/accounts/reports/vendor-bill-register" },
-        { title: "VENDOR OUTSTANDING AGEING REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-ageing" },
-        { title: "VENDOR OUTSTANDING AGEING REPORT NEW", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-new" },
-        { title: "VENDOR OUTSTANDING PAYMENT REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-payment-reports" },
+        { title: "FUNDS TRANSFER REGISTER", icon: Landmark, href: "/accounts/reports/funds-transfer"},
+        // { title: "FINANCIAL MIS", icon: BookOpen, href: "/accounts/reports/financial-mis" },
+        // { title: "LHC PENDING PAYMENT REPORTS", icon: FileSpreadsheet, href: "/accounts/reports/lhc-pending-payment-reports" },
+        // { title: "VENDOR OUTSTANDING AGEING REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-ageing" },
+        // { title: "VENDOR OUTSTANDING AGEING REPORT NEW", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-new" },
+        // { title: "VENDOR OUTSTANDING PAYMENT REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-payment-reports" },
 
 
       ],
     },
     {
-      title: "Utilities",
+      title: "Tools",
       icon: Wrench,
       items: [
-        // Field is empty as per requirements
+        { title: "COMMING SOON", icon: BookOpen, href: "/accounts/reports/" },
       ],
     },
   ],
   Administrator: [
     {
-      title: "Master",
+      title: "Setup",
       icon: FolderTree,
       items: [
         { title: "ACTIVATE DEACTIVATE USER", icon: UserCog, href: "/administrator/master/activate-deactivate-user" },
         {
-          title: "ADMIN OTHER",
+          title: "SYSTEM CONFIG",
           icon: Settings,
           children: [
+            { title: "COMPANY Profile", icon: Building2, href: "/administrator/master/admin-other/company-master" },
             { title: "ACC PARA SETUP MASTER", icon: Settings, href: "/administrator/master/admin-other/acc-para-setup" },
-            { title: "COMPANY MASTER", icon: Building2, href: "/administrator/master/admin-other/company-master" },
             { title: "COPY PASTE MENU", icon: ClipboardList, href: "/administrator/master/admin-other/copy-paste-menu" },
             { title: "DOCUMENT CANCEL/UNCANCEL", icon: FileX, href: "/administrator/master/admin-other/document-cancel-uncancel" },
             { title: "DOCUMENT PRINT SETUP MASTER", icon: Printer, href: "/administrator/master/admin-other/document-print-setup" },
@@ -422,11 +424,11 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       ],
     },
     {
-      title: "Transaction",
+      title: "Workflow",
       icon: ClipboardList,
       items: [
-        { title: "MRN TYPE MASTER", icon: FileText, href: "/administrator/transaction/mrn-type-master" },
-        { title: "QUERY BUILDER (NEW)", icon: Database, href: "/administrator/transaction/query-builder" },
+        { title: "MRN TYPE", icon: FileText, href: "/administrator/transaction/mrn-type-master" },
+        { title: "QUERY BUILDER", icon: Database, href: "/administrator/transaction/query-builder" },
         { title: "RESET DATA", icon: RotateCcw, href: "/administrator/transaction/reset-data" },
       ],
     },
@@ -434,13 +436,16 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       title: "Reports",
       icon: BarChart3,
       items: [
-        { title: "BUILD YOUR OWN REPORT", icon: BarChart3, href: "/administrator/reports/build-your-own-report" },
+        { title: "CUSTOM REPORT BUILDER", icon: BarChart3, href: "/administrator/reports/build-your-own-report" },
       ],
     },
     {
-      title: "Utilities",
+      title: "Tools",
       icon: Wrench,
       items: [
+        { title: "AUDIT LOGS", icon: FileText, href: "/admin/" },
+        { title: "YEAR-END CLOSING", icon: FileText, href: "/admin/" },
+        { title: "DOCUMENT CONTROL", icon: FileText, href: "/admin/" },
         { title: "MANIFEST DETAIL'S", icon: FileText, href: "/admin/manifest-details" },
         { title: "MANIFEST DETAIL'S NEW", icon: FileText, href: "/admin/manifest-details-new" },
       ],
@@ -448,37 +453,40 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
   ],
   Inventory: [
     {
-      title: "Master",
+      title: "Setup",
       icon: FolderTree,
       items: [
-        { title: "ITEM MASTER WEB", icon: BoxesIcon, href: "/inventory/master/items-web" },
-        { title: "MATERIAL MASTER", icon: PackagePlus, href: "/inventory/master/materials" },
+        // { title: "MATERIALS", icon: PackagePlus, href: "/inventory/master/" },
+        { title: "STATIONERY ITEMS", icon: BoxesIcon, href: "/inventory/master/items-web" },
+        { title: "MATERIALS", icon: PackagePlus, href: "/inventory/master/materials" },
       ],
     },
     {
-      title: "Transaction",
+      title: "Workflow",
       icon: ClipboardList,
       items: [
-        { title: "ITEM PURCHASE", icon: ShoppingCart, href: "/inventory/transaction/purchase" },
-        { title: "HO STATIONERY STOCK REGISTER", icon: Building2, href: "/inventory/transaction/ho-stationery-stock" },
-        { title: "ITEM DESPATCH", icon: Truck, href: "/inventory/transaction/despatch" },
-        { title: "ITEM DESPATCH RECEIVE", icon: Truck, href: "/inventory/transaction/item-despatch-receive" },
-        { title: "STOCK ISSUE TO BRANCH", icon: GitBranch, href: "/inventory/transaction/stock-issue" },
+        { title: "STATIONERY PURCHASE", icon: ShoppingCart, href: "/inventory/transaction/purchase" },
+        { title: "HO STOCK REGISTER", icon: Building2, href: "/inventory/transaction/ho-stationery-stock" },
+        { title: "STOCK DESPATCH", icon: Truck, href: "/inventory/transaction/despatch" },
+        { title: "BRANCH STOCK ISSUE", icon: GitBranch, href: "/inventory/transaction/stock-issue" },
+        // { title: "ITEM DESPATCH RECEIVE", icon: Truck, href: "/inventory/transaction/item-despatch-receive" },
       ],
     },
     {
       title: "Reports",
       icon: BarChart3,
       items: [
-        { title: "BRANCH STATIONERY STOCK", icon: BoxesIcon, href: "/inventory/reports/branch-stationery-stock" },
-        { title: "STATIONERY PURCHASE REGISTER REPORT", icon: FileText, href: "/inventory/reports/stationery-purchase-register" },
+        { title: "BRANCH STOCK REPORT", icon: BoxesIcon, href: "/inventory/reports/branch-stationery-stock" },
+        { title: "PURCHASE REGISTER", icon: FileText, href: "/inventory/reports/stationery-purchase-register" },
       ],
     },
     {
-      title: "Utilities",
+      title: "Tools",
       icon: Wrench,
       items: [
         // Field is empty as per requirements
+        { title: "COMMING SOON", icon: BoxesIcon, href: "/inventory/reports/" },
+
       ],
     },
   ],
