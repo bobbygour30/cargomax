@@ -66,6 +66,21 @@ import {
   Database,
   MapPin,
   ShoppingCart,
+
+  // ✅ Newly Added Icons
+  Wallet,
+  CreditCard,
+  Route,
+  Merge,
+  Calculator,
+  Car,
+  Fuel,
+  MessageSquare,
+  MapPinned,
+  Building,
+  BadgeIndianRupee,
+  FileWarning,
+  Shield,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -223,6 +238,23 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "VEHICLE MASTER (NEW)", icon: Bus, href: "/operations/vehicles-new" },
         { title: "VEHICLE SUBGROUP MASTER", icon: GitBranch, href: "/operations/vehicle-subgroup" },
         { title: "VEHICLE TYPE MASTER", icon: Bus, href: "/operations/vehicle-type" },
+        {
+          title: "HUB CONFIGURATION",
+          icon: Building,
+          href: "/operations/hub-confi"
+        },
+
+        {
+          title: "SPOKE CONFIGURATION",
+          icon: Route,
+          href: "/operations/spoke-confi"
+        },
+
+        {
+          title: "PIN CODE MASTER",
+          icon: MapPinned,
+          href: "/operations/pincode-master"
+        },
       ],
     },
     {
@@ -244,6 +276,36 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "PICKUP MANIFEST", icon: Map, href: "/operations/transaction/pickup-manifest" },
         { title: "POD ENTRY", icon: Receipt, href: "/operations/transaction/pod-entry" },
         { title: "POD UPLOAD", icon: Upload, href: "/operations/transaction/pod-upload" },
+        {
+          title: "ROUTE MERGE TOOL",
+          icon: Merge,
+          href: "/operations/transaction/route-merge-tool"
+        },
+
+        {
+          title: "TRIP P&L CALCULATOR (INSIDE MANIFEST)",
+          icon: Calculator,
+          href: "/operations/transaction/trip-calculator"
+        },
+
+        {
+          title: "MARKET VEHICLE PLACEMENT PORTAL",
+          icon: Truck,
+          href: "/operations/transaction/market-vehicle-placement"
+        },
+
+        {
+          title: "RTO ENTRY (REVERSE LOGISTICS)",
+          icon: RotateCcw,
+          href: "/operations/transaction/rto-entry"
+        },
+
+        {
+          title: "DETENTION ENTRY (AUTO-GENERATED BUT VIEWABLE)",
+          icon: AlertTriangle,
+          href: "/operations/transaction/detention-entry"
+        },
+
       ],
     },
     {
@@ -295,6 +357,18 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "TDS CATEGORIES", icon: FileText, href: "/accounts/master/tds-category" },
         { title: "TDS SECTIONS", icon: FileText, href: "/accounts/master/tds-section" },
         { title: "TDS STATUSES", icon: FileCheck, href: "/accounts/master/tds-status" },
+        {
+          title: "CLIENT CREDIT PROFILES (ENHANCED)",
+          icon: BadgeIndianRupee,
+          href: "/accounts/master/client-credit-profiles"
+        },
+
+        {
+          title: "TDS RULE ENGINE (SECTION 194C)",
+          icon: FileSpreadsheet,
+          href: "/accounts/master/tds-rule"
+        },
+
       ],
     },
     {
@@ -321,6 +395,37 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "BANK RECONCILIATION", icon: FileText, href: "/accounts/transaction/" },
         { title: "VOUCHER ENTRY", icon: ClipboardList, href: "/accounts/transaction/voucher" },
         { title: "TDS RATE SETUP", icon: FileText, href: "/accounts/transaction/tds-rate" },
+        {
+          title: "DETENTION DEBIT NOTES",
+          icon: FileWarning,
+          href: "/accounts/transaction/detention-debit-notes"
+        },
+
+        {
+          title: "DRIVER ADVANCE WALLET",
+          icon: Wallet,
+          href: "/accounts/transaction/driver-advance-wallet"
+        },
+
+        {
+          title: "FASTAG RECONCILIATION",
+          icon: CreditCard,
+          href: "/accounts/transaction/fastag-reconciliation"
+        },
+
+        {
+          title: "INTERNAL DAMAGE LEDGER",
+          icon: Shield,
+          href: "/accounts/transaction/internal-damage-ledger"
+        },
+
+        {
+          title: "RTO BILLING",
+          icon: ReceiptText,
+          href: "/accounts/transaction/rto-billing"
+        },
+
+
       ],
     },
     {
@@ -336,7 +441,7 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "CASH AND BANK REGISTER", icon: IndianRupee, href: "/accounts/reports/cash-bank-mr-register" },
         { title: "GST 1R REPORT", icon: FileBarChart, href: "/accounts/reports/gst-1r" },
         { title: "VENDOR BILL REGISTER", icon: FileOutput, href: "/accounts/reports/vendor-bill-register" },
-        { title: "FUNDS TRANSFER REGISTER", icon: Landmark, href: "/accounts/reports/funds-transfer"},
+        { title: "FUNDS TRANSFER REGISTER", icon: Landmark, href: "/accounts/reports/funds-transfer" },
         // { title: "FINANCIAL MIS", icon: BookOpen, href: "/accounts/reports/financial-mis" },
         // { title: "LHC PENDING PAYMENT REPORTS", icon: FileSpreadsheet, href: "/accounts/reports/lhc-pending-payment-reports" },
         // { title: "VENDOR OUTSTANDING AGEING REPORT", icon: FileOutput, href: "/accounts/reports/vendor-outstanding-ageing" },
@@ -364,6 +469,37 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
           title: "SYSTEM CONFIG",
           icon: Settings,
           children: [
+            {
+              title: "API INTERGRATION LAYER",
+              icon: Database,
+              children: [
+                {
+                  title: "GST/NIC E-WAY BILL API CONFIG",
+                  icon: FileBarChart,
+                  href: "/administrator/master/admin-other/api-integration/gst-nic-config"
+                },
+                {
+                  title: "VAHAN/SARATHI API CONFIG",
+                  icon: Car,
+                  href: "/administrator/master/admin-other/api-integration/vahan-sarathi-config"
+                },
+                {
+                  title: "FASTAG API CONFIG",
+                  icon: CreditCard,
+                  href: "/administrator/master/admin-other/api-integration/fastag-api-config"
+                },
+                {
+                  title: "WHATSAPP BUSINESS API CONFIG",
+                  icon: MessageSquare,
+                  href: "/administrator/master/admin-other/api-integration/whatsapp-api-config"
+                },
+                {
+                  title: "FUEL CARD API CONFIG",
+                  icon: Fuel,
+                  href: "/administrator/master/admin-other/api-integration/fuel-api-config"
+                },
+              ]
+            },
             { title: "COMPANY Profile", icon: Building2, href: "/administrator/master/admin-other/company-master" },
             { title: "ACC PARA SETUP MASTER", icon: Settings, href: "/administrator/master/admin-other/acc-para-setup" },
             { title: "COPY PASTE MENU", icon: ClipboardList, href: "/administrator/master/admin-other/copy-paste-menu" },
@@ -377,6 +513,7 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
             { title: "PARAMETER CONFIGURATION", icon: Settings, href: "/administrator/master/admin-other/parameters" },
             { title: "PARAMETER SETUP", icon: Sliders, href: "/administrator/master/admin-other/parameter-setup" },
             { title: "PRODUCT MASTER", icon: BoxesIcon, href: "/administrator/master/admin-other/product-master" },
+
           ]
         },
         {
