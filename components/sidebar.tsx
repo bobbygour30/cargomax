@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart,
+  RefreshCw,
   BoxesIcon,
   Building2,
   Bus,
@@ -81,6 +82,25 @@ import {
   BadgeIndianRupee,
   FileWarning,
   Shield,
+   Network,
+  Zap,
+  Layers,
+  Package,
+  Send,
+  Eye,
+  Radar,
+  GaugeCircle,
+  Wifi,
+  Signal,
+  Globe,
+  Crosshair,
+  Route as RouteIcon,
+  Split,
+  GitMerge,
+  TrendingUp as TrendingUpIcon,
+  AlertOctagon,
+  ActivitySquare,
+  Cpu,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -624,6 +644,211 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         // Field is empty as per requirements
         { title: "COMMING SOON", icon: BoxesIcon, href: "/inventory/reports/" },
 
+      ],
+    },
+  ],
+    Network: [
+    {
+      title: "Setup",
+      icon: FolderTree,
+      items: [
+        { 
+          title: "Hubs", 
+          icon: Building, 
+          href: "/network/setup/hubs" 
+        },
+        { 
+          title: "Spokes", 
+          icon: GitBranch, 
+          href: "/network/setup/spokes" 
+        },
+        { 
+          title: "Pin Code Routing", 
+          icon: MapPinned, 
+          href: "/network/setup/pincode-routing" 
+        },
+        { 
+          title: "Zone Configuration", 
+          icon: Map, 
+          href: "/network/setup/zone-configuration" 
+        },
+        {
+          title: "Route Master",
+          icon: RouteIcon,
+          children: [
+            { title: "Primary Routes", icon: Navigation, href: "/network/setup/routes/primary" },
+            { title: "Alternate Routes", icon: GitMerge, href: "/network/setup/routes/alternate" },
+            { title: "Route Mapping", icon: Map, href: "/network/setup/routes/mapping" },
+          ]
+        },
+        {
+          title: "Geofence Management",
+          icon: Radar,
+          children: [
+            { title: "Hub Geofence", icon: Building, href: "/network/setup/geofence/hub" },
+            { title: "Spoke Geofence", icon: MapPin, href: "/network/setup/geofence/spoke" },
+            { title: "Geofence Rules", icon: Shield, href: "/network/setup/geofence/rules" },
+          ]
+        },
+        {
+          title: "Service Level Agreements (SLA)",
+          icon: Clock,
+          children: [
+            { title: "Transit SLA", icon: Truck, href: "/network/setup/sla/transit" },
+            { title: "Handling SLA", icon: Package, href: "/network/setup/sla/handling" },
+            { title: "Delivery SLA", icon: Navigation, href: "/network/setup/sla/delivery" },
+          ]
+        },
+      ],
+    },
+    {
+      title: "Workflow",
+      icon: ClipboardList,
+      items: [
+        { 
+          title: "Inbound at Hub", 
+          icon: Package, 
+          href: "/network/workflow/inbound-hub" 
+        },
+        { 
+          title: "Floor Allocation", 
+          icon: Layers, 
+          href: "/network/workflow/floor-allocation" 
+        },
+        { 
+          title: "Digital Bagging", 
+          icon: PackagePlus, 
+          href: "/network/workflow/digital-bagging" 
+        },
+        { 
+          title: "Bag Dispatch", 
+          icon: Send, 
+          href: "/network/workflow/bag-dispatch" 
+        },
+        { 
+          title: "Cross Dock Entry", 
+          icon: Split, 
+          href: "/network/workflow/cross-dock" 
+        },
+        {
+          title: "Hub Transfer",
+          icon: Truck,
+          children: [
+            { title: "Initiate Transfer", icon: Send, href: "/network/workflow/transfer/initiate" },
+            { title: "Receive Transfer", icon: Package, href: "/network/workflow/transfer/receive" },
+            { title: "Transfer History", icon: History, href: "/network/workflow/transfer/history" },
+          ]
+        },
+        {
+          title: "Load Planning",
+          icon: ClipboardList,
+          children: [
+            { title: "Vehicle Loading", icon: Truck, href: "/network/workflow/load/vehicle" },
+            { title: "Route Optimization", icon: Navigation, href: "/network/workflow/load/optimization" },
+            { title: "Load Manifest", icon: FileText, href: "/network/workflow/load/manifest" },
+          ]
+        },
+      ],
+    },
+    {
+      title: "Insights",
+      icon: Eye,
+      items: [
+        { 
+          title: "Hub Inventory Report", 
+          icon: BoxesIcon, 
+          href: "/network/insights/hub-inventory" 
+        },
+        { 
+          title: "Network Flow Report", 
+          icon: TrendingUpIcon, 
+          href: "/network/insights/network-flow" 
+        },
+        { 
+          title: "Geofence Alert Log", 
+          icon: AlertOctagon, 
+          href: "/network/insights/geofence-alerts" 
+        },
+        {
+          title: "Performance Metrics",
+          icon: GaugeCircle,
+          children: [
+            { title: "Hub Performance", icon: Building, href: "/network/insights/performance/hub" },
+            { title: "Route Performance", icon: RouteIcon, href: "/network/insights/performance/route" },
+            { title: "SLA Compliance", icon: Clock, href: "/network/insights/performance/sla" },
+          ]
+        },
+        {
+          title: "Traffic Analytics",
+          icon: ActivitySquare,
+          children: [
+            { title: "Volume Analysis", icon: BarChart, href: "/network/insights/traffic/volume" },
+            { title: "Peak Hours", icon: Clock, href: "/network/insights/traffic/peak-hours" },
+            { title: "Bottleneck Detection", icon: AlertTriangle, href: "/network/insights/traffic/bottlenecks" },
+          ]
+        },
+        {
+          title: "Real-time Monitoring",
+          icon: Wifi,
+          children: [
+            { title: "Live Network Status", icon: Signal, href: "/network/insights/monitoring/status" },
+            { title: "Hub Capacity", icon: Warehouse, href: "/network/insights/monitoring/capacity" },
+            { title: "Vehicle Tracking", icon: Car, href: "/network/insights/monitoring/vehicles" },
+          ]
+        },
+      ],
+    },
+    {
+      title: "Tools",
+      icon: Wrench,
+      items: [
+        { 
+          title: "Bag Tracker", 
+          icon: Package, 
+          href: "/network/tools/bag-tracker" 
+        },
+        { 
+          title: "Network Health Dashboard", 
+          icon: Activity, 
+          href: "/network/tools/health-dashboard" 
+        },
+        {
+          title: "Route Simulator",
+          icon: Navigation,
+          href: "/network/tools/route-simulator"
+        },
+        {
+          title: "Capacity Planner",
+          icon: BarChart3,
+          href: "/network/tools/capacity-planner"
+        },
+        {
+          title: "Cost Optimizer",
+          icon: Calculator,
+          children: [
+            { title: "Route Cost Analysis", icon: DollarSign, href: "/network/tools/cost/route" },
+            { title: "Hub Operating Cost", icon: Building, href: "/network/tools/cost/hub" },
+            { title: "Optimization Suggestions", icon: TrendingUpIcon, href: "/network/tools/cost/suggestions" },
+          ]
+        },
+        {
+          title: "Network Simulator",
+          icon: Cpu,
+          children: [
+            { title: "What-If Analysis", icon: GitBranch, href: "/network/tools/simulator/whatif" },
+            { title: "Load Testing", icon: Activity, href: "/network/tools/simulator/load" },
+            { title: "Disaster Recovery", icon: Shield, href: "/network/tools/simulator/disaster" },
+          ]
+        },
+        {
+          title: "Integration Tools",
+          icon: Database,
+          children: [
+            { title: "API Logs", icon: FileText, href: "/network/tools/integration/api-logs" },
+            { title: "Webhook Monitor", icon: Globe, href: "/network/tools/integration/webhooks" },
+            { title: "Data Sync Status", icon: RefreshCw, href: "/network/tools/integration/sync" },
+          ]
+        },
       ],
     },
   ],
