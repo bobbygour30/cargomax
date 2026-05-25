@@ -14,6 +14,7 @@ import {
   User,
   Search,
   ChevronDown,
+  Network, // Added Network icon
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -33,6 +34,7 @@ const modules = [
   { id: "Accounts", name: "Accounts", icon: DollarSign },
   { id: "Administrator", name: "Administrator", icon: ShieldCheck },
   { id: "Inventory", name: "Inventory", icon: BoxesIcon },
+  { id: "Network", name: "Network", icon: Network }, // Added Network module
 ];
 
 export function TopBar({ toggleSidebar, sidebarOpen, selectedModule, onModuleSelect }: TopBarProps) {
