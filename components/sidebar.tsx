@@ -676,9 +676,9 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
           title: "Route Master",
           icon: RouteIcon,
           children: [
-            { title: "Primary Routes", icon: Navigation, href: "/network/setup/routes/primary" },
-            { title: "Alternate Routes", icon: GitMerge, href: "/network/setup/routes/alternate" },
-            { title: "Route Mapping", icon: Map, href: "/network/setup/routes/mapping" },
+            { title: "Primary Routes", icon: Navigation, href: "/network/setup/route-master/primary" },
+            { title: "Alternate Routes", icon: GitMerge, href: "/network/setup/route-master/alternate" },
+            { title: "Route Mapping", icon: Map, href: "/network/setup/route-master/mapping" },
           ]
         },
         {
