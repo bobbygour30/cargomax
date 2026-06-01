@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Trash2, Search, RefreshCw, Plus, Check, X, Edit, Eye, Package } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Save, Trash2, Search, RefreshCw, Plus, Check, X, Edit, Eye, Package, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PackingRecord {
@@ -39,6 +46,8 @@ interface PackingRecord {
   manageEmptyBin: boolean;
   active: boolean;
   isEditing?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const packingTypeOptions = [
@@ -89,15 +98,22 @@ export default function PackingMaster() {
 
   // Sample saved data
   const [savedRecords, setSavedRecords] = useState<PackingRecord[]>([
-    { id: 1, packingName: "Standard Carton", aliasName: "Std Carton", packingType: "Carton", loadType: "FTL", item: "Electronics", length: 50, breadth: 40, height: 30, iataWeight: 5, nonIataWeight: 4.5, unitType: "CM", cft: 0.212, manageEmptyBin: false, active: true, isEditing: false },
-    { id: 2, packingName: "Heavy Duty Box", aliasName: "HD Box", packingType: "Box", loadType: "LTL", item: "Machinery", length: 100, breadth: 80, height: 60, iataWeight: 15, nonIataWeight: 14, unitType: "CM", cft: 1.696, manageEmptyBin: true, active: true, isEditing: false },
-    { id: 3, packingName: "Wooden Pallet", aliasName: "Pallet", packingType: "Pallet", loadType: "Container", item: "Furniture", length: 120, breadth: 100, height: 15, iataWeight: 20, nonIataWeight: 18, unitType: "CM", cft: 0.636, manageEmptyBin: false, active: true, isEditing: false },
-    { id: 4, packingName: "Plastic Crate", aliasName: "Crate", packingType: "Crate", loadType: "Bulk", item: "Food Items", length: 60, breadth: 40, height: 35, iataWeight: 8, nonIataWeight: 7.5, unitType: "CM", cft: 0.297, manageEmptyBin: true, active: false, isEditing: false },
-    { id: 5, packingName: "Jute Bag", aliasName: "Bag", packingType: "Bag", loadType: "Powder", item: "Chemicals", length: 0, breadth: 0, height: 0, iataWeight: 25, nonIataWeight: 23, unitType: "CM", cft: 0, manageEmptyBin: false, active: true, isEditing: false },
+    { id: 1, packingName: "Standard Carton", aliasName: "Std Carton", packingType: "Carton", loadType: "FTL", item: "Electronics", length: 50, breadth: 40, height: 30, iataWeight: 5, nonIataWeight: 4.5, unitType: "CM", cft: 0.212, manageEmptyBin: false, active: true, isEditing: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 2, packingName: "Heavy Duty Box", aliasName: "HD Box", packingType: "Box", loadType: "LTL", item: "Machinery", length: 100, breadth: 80, height: 60, iataWeight: 15, nonIataWeight: 14, unitType: "CM", cft: 1.696, manageEmptyBin: true, active: true, isEditing: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 3, packingName: "Wooden Pallet", aliasName: "Pallet", packingType: "Pallet", loadType: "Container", item: "Furniture", length: 120, breadth: 100, height: 15, iataWeight: 20, nonIataWeight: 18, unitType: "CM", cft: 0.636, manageEmptyBin: false, active: true, isEditing: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 4, packingName: "Plastic Crate", aliasName: "Crate", packingType: "Crate", loadType: "Bulk", item: "Food Items", length: 60, breadth: 40, height: 35, iataWeight: 8, nonIataWeight: 7.5, unitType: "CM", cft: 0.297, manageEmptyBin: true, active: false, isEditing: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 5, packingName: "Jute Bag", aliasName: "Bag", packingType: "Bag", loadType: "Powder", item: "Chemicals", length: 0, breadth: 0, height: 0, iataWeight: 25, nonIataWeight: 23, unitType: "CM", cft: 0, manageEmptyBin: false, active: true, isEditing: false, createdAt: new Date(), updatedAt: new Date() },
   ]);
 
+  const [searchResults, setSearchResults] = useState<PackingRecord[]>(savedRecords);
+
+  // Load search results on mount
+  useEffect(() => {
+    setSearchResults(savedRecords);
+  }, []);
+
   // Get search results
-  const getSearchResults = (): PackingRecord[] => {
+  const handleSearch = (): void => {
     let results = [...savedRecords];
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -108,15 +124,15 @@ export default function PackingMaster() {
         r.item.toLowerCase().includes(term)
       );
     }
-    return results;
+    setSearchResults(results);
+    setCurrentPage(1);
   };
 
-  const searchResults: PackingRecord[] = getSearchResults();
-  const totalPages: number = Math.ceil(searchResults.length / itemsPerPage);
-  const paginatedResults: PackingRecord[] = searchResults.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setSearchResults(savedRecords);
+    setCurrentPage(1);
+  };
 
   // Add new row
   const addNewRow = () => {
@@ -135,17 +151,23 @@ export default function PackingMaster() {
       unitType: "CM",
       cft: 0,
       manageEmptyBin: false,
-      active: false,
-      isEditing: true
+      active: true,
+      isEditing: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-    setSavedRecords([newRecord, ...savedRecords]);
+    const updatedRecords = [newRecord, ...savedRecords];
+    setSavedRecords(updatedRecords);
+    setSearchResults(updatedRecords);
   };
 
   // Update record
   const updateRecord = (id: number, field: keyof PackingRecord, value: any) => {
-    setSavedRecords(savedRecords.map(record => 
-      record.id === id ? { ...record, [field]: value } : record
-    ));
+    const updatedRecords = savedRecords.map(record => 
+      record.id === id ? { ...record, [field]: value, updatedAt: new Date() } : record
+    );
+    setSavedRecords(updatedRecords);
+    setSearchResults(updatedRecords);
   };
 
   // Save record
@@ -160,24 +182,30 @@ export default function PackingMaster() {
         alert("Please select Packing Type");
         return;
       }
-      setSavedRecords(savedRecords.map(r => 
+      const updatedRecords = savedRecords.map(r => 
         r.id === id ? { ...r, isEditing: false } : r
-      ));
+      );
+      setSavedRecords(updatedRecords);
+      setSearchResults(updatedRecords);
       alert("Record saved successfully!");
     }
   };
 
   // Edit record
   const editRecord = (id: number) => {
-    setSavedRecords(savedRecords.map(record => 
+    const updatedRecords = savedRecords.map(record => 
       record.id === id ? { ...record, isEditing: true } : record
-    ));
+    );
+    setSavedRecords(updatedRecords);
+    setSearchResults(updatedRecords);
   };
 
   // Remove record
   const removeRecord = (id: number) => {
     if (confirm("Are you sure you want to remove this packing?")) {
-      setSavedRecords(savedRecords.filter(record => record.id !== id));
+      const updatedRecords = savedRecords.filter(record => record.id !== id);
+      setSavedRecords(updatedRecords);
+      setSearchResults(updatedRecords);
       alert("Record removed successfully!");
     }
   };
@@ -217,395 +245,475 @@ export default function PackingMaster() {
     }
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    setCurrentPage(1);
+  // Stats
+  const stats = {
+    total: searchResults.length,
+    active: searchResults.filter(r => r.active).length,
+    inactive: searchResults.filter(r => !r.active).length,
   };
+
+  // Pagination
+  const totalPages = Math.ceil(searchResults.length / itemsPerPage);
+  const paginatedResults = searchResults.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
+  // Get status badge
+  const getStatusBadge = (active: boolean) => {
+    return active ? (
+      <Badge className="bg-green-500 hover:bg-green-600 text-[10px]">Active</Badge>
+    ) : (
+      <Badge variant="secondary" className="bg-gray-500 text-[10px]">Inactive</Badge>
+    );
+  };
+
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">PACKING MASTER</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">PACKING MASTER</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
+          <Button onClick={addNewRow} size="default" className="bg-green-600 hover:bg-green-700 shadow-md">
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Packing
+          </Button>
         </div>
       </div>
 
-      {/* Search Bar and Add Button */}
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by Packing Name, Alias Name, Type or Item..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-8 h-8 text-xs"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={addNewRow} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
-            <Plus className="mr-1 h-3 w-3" />
-            ADD NEW
-          </Button>
-          <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs">
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-            CLEAR
-          </Button>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Total Packings</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Package className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Active Packings</p>
+                <p className="text-2xl font-bold">{stats.active}</p>
+              </div>
+              <Check className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-gray-500 to-gray-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Inactive Packings</p>
+                <p className="text-2xl font-bold">{stats.inactive}</p>
+              </div>
+              <X className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Search Bar */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+            <Search className="h-3.5 w-3.5" />
+            Search Packings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search by Packing Name, Alias Name, Type or Item..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
+            </div>
+            <Button onClick={handleSearch} className="h-9 bg-blue-600 hover:bg-blue-700 text-xs">
+              <Search className="mr-1 h-3.5 w-3.5" />
+              Search
+            </Button>
+            <Button onClick={handleClearSearch} variant="outline" className="h-9 text-xs">
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              Clear
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Table */}
-      <div className="rounded-md border overflow-x-auto shadow-sm">
-        <div className="min-w-[1400px]">
-          <Table className="text-xs">
-            <TableHeader>
-              <TableRow className="bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900">
-                <TableHead className="font-semibold py-3 px-2 w-12 text-center">S#</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[120px]">Packing Name</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[100px]">Alias Name</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[100px]">Packing Type</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[80px]">Load Type</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[100px]">Item</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[70px] text-center">Length</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[70px] text-center">Breadth</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[70px] text-center">Height</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[90px] text-center">IATA Weight</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[90px] text-center">Non IATA Weight</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[80px]">Unit Type</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[70px] text-center">CFT</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[110px] text-center">Manage Empty Bin</TableHead>
-                <TableHead className="font-semibold py-3 px-2 min-w-[70px] text-center">Active</TableHead>
-                <TableHead className="font-semibold py-3 px-2 w-28 text-center">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedResults.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={16} className="text-center py-12 text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <Package className="h-8 w-8 text-muted-foreground" />
-                      <span>No records found. Click ADD NEW to add packing details.</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedResults.map((record, index) => (
-                  <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="py-2 px-2 text-center font-medium">
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </TableCell>
-                    
-                    {/* Packing Name */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          value={record.packingName}
-                          onChange={(e) => updateRecord(record.id, "packingName", e.target.value)}
-                          placeholder="Enter Packing Name"
-                          className="h-7 text-xs"
-                          autoFocus
-                        />
-                      ) : (
-                        <span className="font-medium">{record.packingName || "-"}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Alias Name */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          value={record.aliasName}
-                          onChange={(e) => updateRecord(record.id, "aliasName", e.target.value)}
-                          placeholder="Enter Alias Name"
-                          className="h-7 text-xs"
-                        />
-                      ) : (
-                        <span>{record.aliasName || "-"}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Packing Type */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Select
-                          value={record.packingType || undefined}
-                          onValueChange={(value) => updateRecord(record.id, "packingType", value)}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Select Packing Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {packingTypeOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-[10px]">
-                          {record.packingType || "-"}
-                        </span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Load Type */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Select
-                          value={record.loadType || undefined}
-                          onValueChange={(value) => updateRecord(record.id, "loadType", value)}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Select Load Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {loadTypeOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px]">
-                          {record.loadType || "-"}
-                        </span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Item */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Select
-                          value={record.item || undefined}
-                          onValueChange={(value) => updateRecord(record.id, "item", value)}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Select Item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {itemOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span>{record.item || "-"}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Length */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          type="number"
-                          value={record.length}
-                          onChange={(e) => handleDimensionChange(record.id, "length", Number(e.target.value))}
-                          className="h-7 text-xs text-center"
-                        />
-                      ) : (
-                        <span className="text-center block">{record.length || 0}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Breadth */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          type="number"
-                          value={record.breadth}
-                          onChange={(e) => handleDimensionChange(record.id, "breadth", Number(e.target.value))}
-                          className="h-7 text-xs text-center"
-                        />
-                      ) : (
-                        <span className="text-center block">{record.breadth || 0}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Height */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          type="number"
-                          value={record.height}
-                          onChange={(e) => handleDimensionChange(record.id, "height", Number(e.target.value))}
-                          className="h-7 text-xs text-center"
-                        />
-                      ) : (
-                        <span className="text-center block">{record.height || 0}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* IATA Weight */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          type="number"
-                          value={record.iataWeight}
-                          onChange={(e) => updateRecord(record.id, "iataWeight", Number(e.target.value))}
-                          className="h-7 text-xs text-center"
-                          step="0.01"
-                        />
-                      ) : (
-                        <span className="text-center block">{record.iataWeight}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Non IATA Weight */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Input
-                          type="number"
-                          value={record.nonIataWeight}
-                          onChange={(e) => updateRecord(record.id, "nonIataWeight", Number(e.target.value))}
-                          className="h-7 text-xs text-center"
-                          step="0.01"
-                        />
-                      ) : (
-                        <span className="text-center block">{record.nonIataWeight}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* Unit Type */}
-                    <TableCell className="py-2 px-2">
-                      {record.isEditing ? (
-                        <Select
-                          value={record.unitType}
-                          onValueChange={(value) => handleUnitTypeChange(record.id, value)}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Select Unit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {unitTypeOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="text-center block">{record.unitType}</span>
-                      )}
-                    </TableCell>
-                    
-                    {/* CFT */}
-                    <TableCell className="py-2 px-2 text-center font-mono font-medium text-blue-600">
-                      {record.cft.toFixed(4)}
-                    </TableCell>
-                    
-                    {/* Manage Empty Bin - Always enabled */}
-                    <TableCell className="py-2 px-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={record.manageEmptyBin}
-                        onChange={(e) => updateRecord(record.id, "manageEmptyBin", e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                      />
-                    </TableCell>
-                    
-                    {/* Active - Always enabled */}
-                    <TableCell className="py-2 px-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={record.active}
-                        onChange={(e) => updateRecord(record.id, "active", e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                      />
-                    </TableCell>
-                    
-                    {/* Action Buttons */}
-                    <TableCell className="py-2 px-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {record.isEditing ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => saveRecord(record.id)}
-                            className="h-7 w-7 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
-                            title="Save"
-                          >
-                            <Save className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => editRecord(record.id)}
-                            className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                            title="Edit"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeRecord(record.id)}
-                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Table className="h-3.5 w-3.5 text-gray-500" />
+              <h3 className="text-[11px] font-semibold text-gray-800">
+                Packing List
+              </h3>
+            </div>
+            <div className="text-[10px] text-gray-500">
+              Total: {searchResults.length} records
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-x-auto">
+            <div className="min-w-[1400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Packing Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Alias Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Type</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Load Type</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Item</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[60px] text-center">L</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[60px] text-center">B</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[60px] text-center">H</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px] text-center">IATA Wt</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px] text-center">Non IATA</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[70px] text-center">Unit</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[60px] text-center">CFT</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Actions</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {paginatedResults.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={15} className="text-center py-8 text-gray-500">
+                        <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        No records found. Click "Add New Packing" to create one.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedResults.map((record, index) => (
+                      <TableRow key={record.id} className="hover:bg-gray-50">
+                        <TableCell className="py-2 px-2 text-center text-xs">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
+                        
+                        {/* Packing Name */}
+                        <TableCell className="py-2 px-2">
+                          {record.isEditing ? (
+                            <Input
+                              value={record.packingName}
+                              onChange={(e) => updateRecord(record.id, "packingName", e.target.value)}
+                              placeholder="Enter Name"
+                              className="h-7 text-xs"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="font-medium text-xs">{record.packingName || "-"}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Alias Name */}
+                        <TableCell className="py-2 px-2">
+                          {record.isEditing ? (
+                            <Input
+                              value={record.aliasName}
+                              onChange={(e) => updateRecord(record.id, "aliasName", e.target.value)}
+                              placeholder="Alias Name"
+                              className="h-7 text-xs"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.aliasName || "-"}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Packing Type */}
+                        <TableCell className="py-2 px-2">
+                          {record.isEditing ? (
+                            <Select
+                              value={record.packingType || undefined}
+                              onValueChange={(value) => updateRecord(record.id, "packingType", value)}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {packingTypeOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[10px]">
+                              {record.packingType || "-"}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        
+                        {/* Load Type */}
+                        <TableCell className="py-2 px-2">
+                          {record.isEditing ? (
+                            <Select
+                              value={record.loadType || undefined}
+                              onValueChange={(value) => updateRecord(record.id, "loadType", value)}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {loadTypeOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 text-[10px]">
+                              {record.loadType || "-"}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        
+                        {/* Item */}
+                        <TableCell className="py-2 px-2">
+                          {record.isEditing ? (
+                            <Select
+                              value={record.item || undefined}
+                              onValueChange={(value) => updateRecord(record.id, "item", value)}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {itemOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs">{record.item || "-"}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Length */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Input
+                              type="number"
+                              value={record.length}
+                              onChange={(e) => handleDimensionChange(record.id, "length", Number(e.target.value))}
+                              className="h-7 w-20 text-xs text-center"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.length || 0}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Breadth */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Input
+                              type="number"
+                              value={record.breadth}
+                              onChange={(e) => handleDimensionChange(record.id, "breadth", Number(e.target.value))}
+                              className="h-7 w-20 text-xs text-center"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.breadth || 0}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Height */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Input
+                              type="number"
+                              value={record.height}
+                              onChange={(e) => handleDimensionChange(record.id, "height", Number(e.target.value))}
+                              className="h-7 w-20 text-xs text-center"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.height || 0}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* IATA Weight */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Input
+                              type="number"
+                              value={record.iataWeight}
+                              onChange={(e) => updateRecord(record.id, "iataWeight", Number(e.target.value))}
+                              className="h-7 w-20 text-xs text-center"
+                              step="0.01"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.iataWeight}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Non IATA Weight */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Input
+                              type="number"
+                              value={record.nonIataWeight}
+                              onChange={(e) => updateRecord(record.id, "nonIataWeight", Number(e.target.value))}
+                              className="h-7 w-20 text-xs text-center"
+                              step="0.01"
+                            />
+                          ) : (
+                            <span className="text-xs">{record.nonIataWeight}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* Unit Type */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <Select
+                              value={record.unitType}
+                              onValueChange={(value) => handleUnitTypeChange(record.id, value)}
+                            >
+                              <SelectTrigger className="h-7 w-20 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {unitTypeOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs">{record.unitType}</span>
+                          )}
+                        </TableCell>
+                        
+                        {/* CFT */}
+                        <TableCell className="py-2 px-2 text-center font-mono text-blue-600 text-xs">
+                          {record.cft.toFixed(4)}
+                        </TableCell>
+                        
+                        {/* Status */}
+                        <TableCell className="py-2 px-2 text-center">
+                          {record.isEditing ? (
+                            <input
+                              type="checkbox"
+                              checked={record.active}
+                              onChange={(e) => updateRecord(record.id, "active", e.target.checked)}
+                              className="h-3.5 w-3.5 rounded border-gray-300"
+                            />
+                          ) : (
+                            getStatusBadge(record.active)
+                          )}
+                        </TableCell>
+                        
+                        {/* Actions */}
+                        <TableCell className="py-2 px-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {record.isEditing ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => saveRecord(record.id)}
+                                className="h-7 w-7 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
+                                title="Save"
+                              >
+                                <Save className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => editRecord(record.id)}
+                                className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                title="Edit"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeRecord(record.id)}
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs text-muted-foreground">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
-          </div>
-          <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="h-7 text-xs"
-            >
-              Previous
-            </Button>
-            <span className="px-3 py-1 text-xs bg-muted rounded-md">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="h-7 text-xs"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-[10px] text-gray-500">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="h-7 text-[10px]"
+                >
+                  <ChevronLeft className="h-3 w-3 mr-1" />
+                  Previous
+                </Button>
+                <span className="px-3 py-1 text-[10px]">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-7 text-[10px]"
+                >
+                  Next
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Bottom Note */}
-      <div className="text-[10px] text-muted-foreground text-center pt-2 border-t">
+      <div className="text-[10px] text-gray-500 text-center pt-2">
         <span className="bg-yellow-50 px-2 py-1 rounded">💡 Note: CFT is automatically calculated based on Length × Breadth × Height</span>
       </div>
     </div>
