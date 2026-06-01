@@ -31,7 +31,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { CalendarIcon, Search, Eye, RefreshCw, MapPin, Clock, CheckCircle, XCircle, FileText, CreditCard, Truck, Package, Image, AlertCircle } from "lucide-react";
+import { CalendarIcon, Search, Eye, RefreshCw,Users,Building, MapPin,DollarSign, Clock, CheckCircle, XCircle, FileText, CreditCard, Truck, Package, Image, AlertCircle, Table as TableIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -220,7 +220,6 @@ export default function LHCEnquiry() {
       alert("Please enter LHC Number");
       return;
     }
-    // Fetch and show details logic here
     alert(`Showing details for LHC #: ${lhcNo}`);
   };
 
@@ -287,16 +286,38 @@ export default function LHCEnquiry() {
     alert("LHC weight reset successfully!");
   };
 
+  // Reusable Card Header Component
+  const CardHeader = ({ icon: Icon, title, count }: { icon: any; title: string; count?: number }) => (
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-gray-500" />
+        <h3 className="text-[11px] font-semibold text-gray-800">{title}</h3>
+      </div>
+      {count !== undefined && (
+        <div className="text-[10px] text-gray-500">
+          Total: {count} records
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">LHC ENQUIRY</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">LHC ENQUIRY</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -315,7 +336,7 @@ export default function LHCEnquiry() {
               className="h-8 text-xs"
             />
           </div>
-          <Button onClick={handleShowDetail} size="sm" className="h-8 text-xs">
+          <Button onClick={handleShowDetail} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700">
             <Search className="mr-1 h-3.5 w-3.5" />
             SHOW DETAIL
           </Button>
@@ -390,9 +411,14 @@ export default function LHCEnquiry() {
         </div>
 
         {/* LHC Details Section */}
-        <div className="border rounded-md">
-          <div className="bg-muted/50 px-3 py-2 border-b">
-            <h3 className="text-sm font-semibold">LHC Details</h3>
+        <div className="border rounded-md bg-white">
+          <div className="bg-gray-50 px-3 py-2 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Truck className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">LHC Details</h3>
+              </div>
+            </div>
           </div>
           <div className="p-3 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -422,8 +448,15 @@ export default function LHCEnquiry() {
         </div>
 
         {/* Driver Details Section */}
-        <div className="border rounded-md">
-          <div className="bg-muted/50 px-3 py-2 border-b"><h3 className="text-sm font-semibold">Driver Details</h3></div>
+        <div className="border rounded-md bg-white">
+          <div className="bg-gray-50 px-3 py-2 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">Driver Details</h3>
+              </div>
+            </div>
+          </div>
           <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1"><Label className="text-xs">Driver</Label><Input value={driver} onChange={(e) => setDriver(e.target.value)} className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-xs">Mobile #</Label><Input value={driverMobileNo} onChange={(e) => setDriverMobileNo(e.target.value)} className="h-8 text-xs" /></div>
@@ -433,8 +466,15 @@ export default function LHCEnquiry() {
         </div>
 
         {/* Vendor Details Section */}
-        <div className="border rounded-md">
-          <div className="bg-muted/50 px-3 py-2 border-b"><h3 className="text-sm font-semibold">Vendor Details</h3></div>
+        <div className="border rounded-md bg-white">
+          <div className="bg-gray-50 px-3 py-2 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Building className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">Vendor Details</h3>
+              </div>
+            </div>
+          </div>
           <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1"><Label className="text-xs">Vendor</Label><Input value={vendor} onChange={(e) => setVendor(e.target.value)} className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-xs">Mobile No</Label><Input value={vendorMobileNo} onChange={(e) => setVendorMobileNo(e.target.value)} className="h-8 text-xs" /></div>
@@ -443,8 +483,15 @@ export default function LHCEnquiry() {
         </div>
 
         {/* Advance, Balance and Damage Recoverable Section */}
-        <div className="border rounded-md">
-          <div className="bg-muted/50 px-3 py-2 border-b"><h3 className="text-sm font-semibold">Advance, Balance and Damage Recoverable</h3></div>
+        <div className="border rounded-md bg-white">
+          <div className="bg-gray-50 px-3 py-2 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">Advance, Balance and Damage Recoverable</h3>
+              </div>
+            </div>
+          </div>
           <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="space-y-1"><Label className="text-xs">LHC Amount</Label><Input type="number" value={lhcAmount} onChange={(e) => setLhcAmount(Number(e.target.value))} className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-xs">Additional Payable</Label><Input type="number" value={additionalPayable} onChange={(e) => setAdditionalPayable(Number(e.target.value))} className="h-8 text-xs" /></div>
@@ -461,8 +508,15 @@ export default function LHCEnquiry() {
         </div>
 
         {/* Arrival Summary Section */}
-        <div className="border rounded-md">
-          <div className="bg-muted/50 px-3 py-2 border-b"><h3 className="text-sm font-semibold">Arrival Summary</h3></div>
+        <div className="border rounded-md bg-white">
+          <div className="bg-gray-50 px-3 py-2 border-b">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">Arrival Summary</h3>
+              </div>
+            </div>
+          </div>
           <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1"><Label className="text-xs">Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full justify-start text-left text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{arrivalDate ? format(arrivalDate, "dd-MM-yyyy") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarComponent mode="single" selected={arrivalDate} onSelect={setArrivalDate} initialFocus /></PopoverContent></Popover></div>
             <div className="space-y-1"><Label className="text-xs">Mob. No.</Label><Input value={arrivalMobNo} onChange={(e) => setArrivalMobNo(e.target.value)} className="h-8 text-xs" /></div>
@@ -477,24 +531,24 @@ export default function LHCEnquiry() {
         </div>
 
         {/* Tabs Section */}
-        <div className="border rounded-md">
+        <div className="border rounded-md bg-white">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="flex flex-wrap h-auto p-1 bg-muted/50">
-              <TabsTrigger value="manifest" className="text-xs">Manifest Details</TabsTrigger>
-              <TabsTrigger value="charges" className="text-xs">Charges</TabsTrigger>
-              <TabsTrigger value="balance" className="text-xs">Balance Payable At</TabsTrigger>
-              <TabsTrigger value="payment" className="text-xs">Payment Details</TabsTrigger>
-              <TabsTrigger value="gr" className="text-xs">GR Details</TabsTrigger>
-              <TabsTrigger value="additional" className="text-xs">Additional Charges</TabsTrigger>
-              <TabsTrigger value="document" className="text-xs">View Document Image</TabsTrigger>
+            <TabsList className="flex flex-wrap h-auto p-1 bg-gray-50">
+              <TabsTrigger value="manifest" className="text-[11px]">Manifest Details</TabsTrigger>
+              <TabsTrigger value="charges" className="text-[11px]">Charges</TabsTrigger>
+              <TabsTrigger value="balance" className="text-[11px]">Balance Payable At</TabsTrigger>
+              <TabsTrigger value="payment" className="text-[11px]">Payment Details</TabsTrigger>
+              <TabsTrigger value="gr" className="text-[11px]">GR Details</TabsTrigger>
+              <TabsTrigger value="additional" className="text-[11px]">Additional Charges</TabsTrigger>
+              <TabsTrigger value="document" className="text-[11px]">View Document Image</TabsTrigger>
             </TabsList>
 
             {/* Manifest Details Tab */}
             <TabsContent value="manifest" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Manifest #</TableHead><TableHead>Manifest Date</TableHead><TableHead>Manifest Type</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Arrival No</TableHead><TableHead>Arrival Date Time</TableHead><TableHead>Arrival At</TableHead><TableHead>Pckgs</TableHead><TableHead>Actual Weight</TableHead><TableHead>Charge Weight</TableHead><TableHead>Received Pckgs</TableHead><TableHead>Total Freight</TableHead><TableHead>Actual Loading Point</TableHead><TableHead>Actual Delivery Point</TableHead><TableHead>Arrival Remarks</TableHead></TableRow></TableHeader>
-                  <TableBody>{manifestDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.manifestNo}</TableCell><TableCell>{item.manifestDate}</TableCell><TableCell>{item.manifestType}</TableCell><TableCell>{item.from}</TableCell><TableCell>{item.to}</TableCell><TableCell>{item.arrivalNo}</TableCell><TableCell>{item.arrivalDateTime}</TableCell><TableCell>{item.arrivalAt}</TableCell><TableCell>{item.pckgs}</TableCell><TableCell>{item.actualWeight}</TableCell><TableCell>{item.chargeWeight}</TableCell><TableCell>{item.receivedPckgs}</TableCell><TableCell>{item.totalFreight}</TableCell><TableCell>{item.actualLoadingPoint}</TableCell><TableCell>{item.actualDeliveryPoint}</TableCell><TableCell>{item.arrivalRemarks}</TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">Manifest #</TableHead><TableHead className="text-[11px]">Date</TableHead><TableHead className="text-[11px]">Type</TableHead><TableHead className="text-[11px]">From</TableHead><TableHead className="text-[11px]">To</TableHead><TableHead className="text-[11px]">Pckgs</TableHead><TableHead className="text-[11px]">Freight</TableHead></TableRow></TableHeader>
+                  <TableBody>{manifestDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.manifestNo}</TableCell><TableCell>{item.manifestDate}</TableCell><TableCell>{item.manifestType}</TableCell><TableCell>{item.from}</TableCell><TableCell>{item.to}</TableCell><TableCell>{item.pckgs}</TableCell><TableCell>₹{item.totalFreight}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
@@ -503,7 +557,7 @@ export default function LHCEnquiry() {
             <TabsContent value="charges" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Charges</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">Charges</TableHead><TableHead className="text-[11px]">Amount</TableHead></TableRow></TableHeader>
                   <TableBody>{charges.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.charges}</TableCell><TableCell>₹{item.amount.toLocaleString()}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
@@ -513,8 +567,8 @@ export default function LHCEnquiry() {
             <TabsContent value="balance" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Balance Payable At</TableHead><TableHead>Payable Amount</TableHead><TableHead>Paid Amount</TableHead><TableHead>Pending</TableHead></TableRow></TableHeader>
-                  <TableBody>{balancePayableAt.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.balancePayableAt}</TableCell><TableCell>₹{item.payableAmount.toLocaleString()}</TableCell><TableCell>₹{item.paidAmount.toLocaleString()}</TableCell><TableCell>₹{item.pending.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">Branch</TableHead><TableHead className="text-[11px]">Payable</TableHead><TableHead className="text-[11px]">Paid</TableHead><TableHead className="text-[11px]">Pending</TableHead></TableRow></TableHeader>
+                  <TableBody>{balancePayableAt.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.balancePayableAt}</TableCell><TableCell>₹{item.payableAmount}</TableCell><TableCell>₹{item.paidAmount}</TableCell><TableCell>₹{item.pending}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
@@ -523,8 +577,8 @@ export default function LHCEnquiry() {
             <TabsContent value="payment" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Advice #</TableHead><TableHead>Payment Date</TableHead><TableHead>Payment Type</TableHead><TableHead>Branch</TableHead><TableHead>Mode</TableHead><TableHead>Incentive Paid</TableHead><TableHead>Detention Paid</TableHead><TableHead>Penalty</TableHead><TableHead>Damage Recoverable</TableHead><TableHead>Paid Amount</TableHead><TableHead>Voucher #</TableHead><TableHead>HO Payment Voucher #</TableHead><TableHead>Paid To Information</TableHead></TableRow></TableHeader>
-                  <TableBody>{paymentDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.adviceNo}</TableCell><TableCell>{item.paymentDate}</TableCell><TableCell>{item.paymentType}</TableCell><TableCell>{item.branch}</TableCell><TableCell>{item.mode}</TableCell><TableCell>{item.incentivePaid}</TableCell><TableCell>{item.detentionPaid}</TableCell><TableCell>{item.penalty}</TableCell><TableCell>{item.damageRecoverable}</TableCell><TableCell>{item.paidAmount}</TableCell><TableCell>{item.voucherNo}</TableCell><TableCell>{item.hoPaymentVoucherNo}</TableCell><TableCell>{item.paidToInformation}</TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">Advice #</TableHead><TableHead className="text-[11px]">Date</TableHead><TableHead className="text-[11px]">Amount</TableHead><TableHead className="text-[11px]">Voucher #</TableHead></TableRow></TableHeader>
+                  <TableBody>{paymentDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.adviceNo}</TableCell><TableCell>{item.paymentDate}</TableCell><TableCell>₹{item.paidAmount}</TableCell><TableCell>{item.voucherNo}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
@@ -533,8 +587,8 @@ export default function LHCEnquiry() {
             <TabsContent value="gr" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>GR #</TableHead><TableHead>Booking Date</TableHead><TableHead>Origin</TableHead><TableHead>Destination</TableHead><TableHead>Manifest #</TableHead><TableHead>Manifest Date</TableHead><TableHead>Content</TableHead><TableHead>Booked Pckgs</TableHead><TableHead>Despatched Pckgs</TableHead><TableHead>Actual Weight</TableHead><TableHead>Charge Weight</TableHead><TableHead>Basic Freight</TableHead><TableHead>Total Freight</TableHead><TableHead>Received Pckgs</TableHead><TableHead>Damage Pckgs</TableHead><TableHead>Load Type</TableHead></TableRow></TableHeader>
-                  <TableBody>{grDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.grNo}</TableCell><TableCell>{item.bookingDate}</TableCell><TableCell>{item.origin}</TableCell><TableCell>{item.destination}</TableCell><TableCell>{item.manifestNo}</TableCell><TableCell>{item.manifestDate}</TableCell><TableCell>{item.content}</TableCell><TableCell>{item.bookedPckgs}</TableCell><TableCell>{item.despatchedPckgs}</TableCell><TableCell>{item.actualWeight}</TableCell><TableCell>{item.chargeWeight}</TableCell><TableCell>{item.basicFreight}</TableCell><TableCell>{item.totalFreight}</TableCell><TableCell>{item.receivedPckgs}</TableCell><TableCell>{item.damagePckgs}</TableCell><TableCell>{item.loadType}</TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">GR #</TableHead><TableHead className="text-[11px]">Origin</TableHead><TableHead className="text-[11px]">Destination</TableHead><TableHead className="text-[11px]">Pckgs</TableHead><TableHead className="text-[11px]">Freight</TableHead></TableRow></TableHeader>
+                  <TableBody>{grDetails.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.grNo}</TableCell><TableCell>{item.origin}</TableCell><TableCell>{item.destination}</TableCell><TableCell>{item.bookedPckgs}</TableCell><TableCell>₹{item.totalFreight}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
@@ -543,8 +597,8 @@ export default function LHCEnquiry() {
             <TabsContent value="additional" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Voucher #</TableHead><TableHead>Voucher Date</TableHead><TableHead>Charges</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader>
-                  <TableBody>{additionalCharges.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.voucherNo}</TableCell><TableCell>{item.voucherDate}</TableCell><TableCell>{item.charges}</TableCell><TableCell>₹{item.amount.toLocaleString()}</TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">Voucher #</TableHead><TableHead className="text-[11px]">Charges</TableHead><TableHead className="text-[11px]">Amount</TableHead></TableRow></TableHeader>
+                  <TableBody>{additionalCharges.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.voucherNo}</TableCell><TableCell>{item.charges}</TableCell><TableCell>₹{item.amount}</TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
@@ -553,8 +607,8 @@ export default function LHCEnquiry() {
             <TabsContent value="document" className="p-3">
               <div className="rounded-md border overflow-x-auto">
                 <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>LHC #</TableHead><TableHead>Document Name</TableHead><TableHead>Document Image</TableHead></TableRow></TableHeader>
-                  <TableBody>{viewDocuments.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.lhcNo}</TableCell><TableCell>{item.documentName}</TableCell><TableCell><Button variant="ghost" size="sm" className="h-7 text-blue-500"><Eye className="h-3 w-3" /> View</Button></TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[11px]">#</TableHead><TableHead className="text-[11px]">LHC #</TableHead><TableHead className="text-[11px]">Document Name</TableHead><TableHead className="text-[11px]">Action</TableHead></TableRow></TableHeader>
+                  <TableBody>{viewDocuments.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell>{item.lhcNo}</TableCell><TableCell>{item.documentName}</TableCell><TableCell><Button variant="ghost" size="sm" className="h-7 text-blue-500 text-[11px]"><Eye className="h-3 w-3" /> View</Button></TableCell></TableRow>))}</TableBody>
                 </Table>
               </div>
             </TabsContent>
