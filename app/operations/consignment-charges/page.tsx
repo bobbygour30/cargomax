@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,12 +27,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { CalendarIcon, Plus, Trash2, X, Save, RefreshCw, Search, Edit, Pencil, Users, Package, Calendar } from "lucide-react";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarIcon, Plus, Trash2, X, Save, RefreshCw, Search, Edit, Pencil, Users, Package, Calendar, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
@@ -68,6 +77,8 @@ interface ConsignmentCharge {
   applicableOnMarketLoad: boolean;
   applicableOnSurfaceBooking: boolean;
   allowToUpdateFromAdditionalCharges: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface GoodsWiseCharge {
@@ -75,6 +86,8 @@ interface GoodsWiseCharge {
   goodsGroup: string;
   rate: string;
   amount: string;
+  wefDate: Date;
+  uptoDate?: Date;
 }
 
 interface BranchSelection {
@@ -107,9 +120,10 @@ const chargeTypeOptions = ["Amount", "Percentage", "Slab"];
 const amountTypeOptions = ["Fixed", "Variable"];
 
 export default function ConsignmentChargesMaster() {
-  // Tab state
-  const [activeTab, setActiveTab] = useState<"search" | "entry">("entry");
-  const [editId, setEditId] = useState<number | null>(null);
+  // Sheet state
+  const [isEntrySheetOpen, setIsEntrySheetOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState<number | null>(null);
   
   // Form state
   const [chargeCode, setChargeCode] = useState<string>("");
@@ -171,7 +185,7 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996511", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
     {
       id: 2, chargeCode: "A0102", active: true, chargeName: "GREEN TAX CHARGE", displayName: "GREEN TAX CHARGE",
@@ -179,7 +193,7 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996511", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
     {
       id: 3, chargeCode: "A0103", active: true, chargeName: "HAMALI CHARGE", displayName: "HAMALI CHARGE",
@@ -187,7 +201,7 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996511", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
     {
       id: 4, chargeCode: "A0107", active: true, chargeName: "FOV CHARGES", displayName: "FOV CHARGES",
@@ -195,7 +209,7 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996761", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
     {
       id: 5, chargeCode: "A0108", active: true, chargeName: "DOOR DELIVERY", displayName: "DOOR DELIVERY",
@@ -203,7 +217,7 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996511", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
     {
       id: 6, chargeCode: "A0120", active: true, chargeName: "DOCKET CHARGE", displayName: "DOCKET CHARGE",
@@ -211,12 +225,17 @@ export default function ConsignmentChargesMaster() {
       applicableOn: "Docket", sacCode: "996511", bookingOnFreightLedger: false, printSequenceNo: "", ledger: "Freight Ledger",
       chargeAmountOnBankBuilty: "0", applicableOnBooking: false, applicableOnAirBooking: false, gstApplicable: false,
       applicableOnDelivery: false, applicableOnTrainBooking: false, allowAtBillUpdation: false, applicableOnMarketLoad: false,
-      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false
+      applicableOnSurfaceBooking: false, allowToUpdateFromAdditionalCharges: false, createdAt: new Date(), updatedAt: new Date()
     },
   ]);
 
   // Sample goods wise charges data
   const [savedGoodsWiseCharges, setSavedGoodsWiseCharges] = useState<Record<number, GoodsWiseCharge[]>>({});
+
+  // Load search results on mount
+  useEffect(() => {
+    setSearchResults(savedRecords);
+  }, []);
 
   const generateChargeCode = () => {
     const lastCode = savedRecords[savedRecords.length - 1]?.chargeCode;
@@ -253,16 +272,34 @@ export default function ConsignmentChargesMaster() {
     setApplicableOnMarketLoad(false);
     setApplicableOnSurfaceBooking(false);
     setAllowToUpdateFromAdditionalCharges(false);
-    setEditId(null);
+    setEditMode(false);
+    setCurrentEditId(null);
   };
 
   const handleSave = () => {
+    if (!chargeName) {
+      alert("Please enter Charge Name");
+      return;
+    }
+    if (!chargeType) {
+      alert("Please select Charge Type");
+      return;
+    }
+    if (!amountType) {
+      alert("Please select Amount Type");
+      return;
+    }
+    if (!ledger) {
+      alert("Please select Ledger");
+      return;
+    }
+
     const newRecord: ConsignmentCharge = {
-      id: editId || Date.now(),
+      id: currentEditId || Date.now(),
       chargeCode: chargeCode,
       active: active,
       chargeName: chargeName,
-      displayName: displayName,
+      displayName: displayName || chargeName,
       aliasName: aliasName,
       chargeType: chargeType,
       amountType: amountType,
@@ -283,10 +320,14 @@ export default function ConsignmentChargesMaster() {
       applicableOnMarketLoad: applicableOnMarketLoad,
       applicableOnSurfaceBooking: applicableOnSurfaceBooking,
       allowToUpdateFromAdditionalCharges: allowToUpdateFromAdditionalCharges,
+      createdAt: editMode && currentEditId ? 
+        savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : 
+        new Date(),
+      updatedAt: new Date(),
     };
 
-    if (editId) {
-      setSavedRecords(savedRecords.map(record => record.id === editId ? newRecord : record));
+    if (editMode && currentEditId) {
+      setSavedRecords(savedRecords.map(record => record.id === currentEditId ? newRecord : record));
       alert("Record updated successfully!");
     } else {
       setSavedRecords([...savedRecords, newRecord]);
@@ -294,7 +335,7 @@ export default function ConsignmentChargesMaster() {
     }
     
     resetForm();
-    setActiveTab("search");
+    setIsEntrySheetOpen(false);
     handleSearch();
   };
 
@@ -312,7 +353,8 @@ export default function ConsignmentChargesMaster() {
   };
 
   const handleEdit = (record: ConsignmentCharge) => {
-    setEditId(record.id);
+    setEditMode(true);
+    setCurrentEditId(record.id);
     setChargeCode(record.chargeCode);
     setActive(record.active);
     setChargeName(record.chargeName);
@@ -337,7 +379,7 @@ export default function ConsignmentChargesMaster() {
     setApplicableOnMarketLoad(record.applicableOnMarketLoad);
     setApplicableOnSurfaceBooking(record.applicableOnSurfaceBooking);
     setAllowToUpdateFromAdditionalCharges(record.allowToUpdateFromAdditionalCharges);
-    setActiveTab("entry");
+    setIsEntrySheetOpen(true);
   };
 
   const handleDelete = (id: number) => {
@@ -350,7 +392,15 @@ export default function ConsignmentChargesMaster() {
 
   const clearSearch = () => {
     setSearchTerm("");
-    setSearchResults([]);
+    setSearchResults(savedRecords);
+  };
+
+  const openAddSheet = () => {
+    resetForm();
+    setEditMode(false);
+    setCurrentEditId(null);
+    setChargeCode(generateChargeCode());
+    setIsEntrySheetOpen(true);
   };
 
   // Goods Wise Charges functions
@@ -372,11 +422,18 @@ export default function ConsignmentChargesMaster() {
   };
 
   const handleSaveGoodsWise = () => {
+    if (!goodsGroup) {
+      alert("Please enter Goods Group");
+      return;
+    }
+
     const newGoodsWise: GoodsWiseCharge = {
       id: editGoodsWiseId || Date.now(),
       goodsGroup: goodsGroup,
       rate: rate,
       amount: amount,
+      wefDate: wefDate,
+      uptoDate: uptoDate,
     };
 
     let updatedCharges: GoodsWiseCharge[];
@@ -412,18 +469,9 @@ export default function ConsignmentChargesMaster() {
     }
   };
 
-  const handleEditGoodsWise = (charge: GoodsWiseCharge) => {
-    setEditGoodsWiseId(charge.id);
-    setGoodsGroup(charge.goodsGroup);
-    setRate(charge.rate);
-    setAmount(charge.amount);
-    setGoodsWiseActiveTab("entry");
-  };
-
   // Add Branch functions
   const handleAddBranch = (record: ConsignmentCharge) => {
     setSelectedChargeForBranch(record);
-    // Initialize branches from branchList
     const branchListData: BranchSelection[] = branchList.map((name, index) => ({
       id: index + 1,
       name: name,
@@ -458,6 +506,22 @@ export default function ConsignmentChargesMaster() {
     branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
   );
 
+  // Get status badge
+  const getStatusBadge = (active: boolean) => {
+    return active ? (
+      <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>
+    ) : (
+      <Badge variant="secondary" className="bg-gray-500">Inactive</Badge>
+    );
+  };
+
+  // Stats
+  const stats = {
+    total: searchResults.length,
+    active: searchResults.filter(r => r.active).length,
+    inactive: searchResults.filter(r => !r.active).length,
+  };
+
   // Pagination
   const totalPages = Math.ceil(searchResults.length / itemsPerPage);
   const paginatedResults = searchResults.slice(
@@ -466,137 +530,185 @@ export default function ConsignmentChargesMaster() {
   );
 
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">CONSIGNMENT CHARGES MASTER</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">CONSIGNMENT CHARGES MASTER</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
+          <Button onClick={openAddSheet} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Consignment Charges
+          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b">
-        <button
-          onClick={() => {
-            setActiveTab("search");
-            handleSearch();
-          }}
-          className={cn(
-            "px-4 py-2 text-sm font-medium transition-all",
-            activeTab === "search"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Search
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab("entry");
-            resetForm();
-          }}
-          className={cn(
-            "px-4 py-2 text-sm font-medium transition-all",
-            activeTab === "entry"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Entry
-        </button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Total Charges</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Package className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Active Charges</p>
+                <p className="text-2xl font-bold">{stats.active}</p>
+              </div>
+              <Badge className="bg-white/20 text-white">Active</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-gray-500 to-gray-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Inactive Charges</p>
+                <p className="text-2xl font-bold">{stats.inactive}</p>
+              </div>
+              <Badge className="bg-white/20 text-white">Inactive</Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Search Tab */}
-      {activeTab === "search" && (
-        <div className="space-y-4">
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      {/* Search Bar */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Search className="h-4 w-4" />
+            Search Charges
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by Charge Code, Charge Name or Alias Name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-8 text-xs"
+                className="pl-9 h-9"
               />
             </div>
-            <Button onClick={handleSearch} size="sm" className="h-8 text-xs">
-              <Search className="mr-1 h-3.5 w-3.5" />
-              SEARCH
+            <Button onClick={handleSearch} className="h-9 bg-blue-600 hover:bg-blue-700">
+              <Search className="mr-2 h-4 w-4" />
+              Search
             </Button>
-            <Button onClick={clearSearch} variant="outline" size="sm" className="h-8 text-xs">
-              <RefreshCw className="mr-1 h-3.5 w-3.5" />
-              CLEAR
+            <Button onClick={clearSearch} variant="outline" className="h-9">
+              <RefreshCw className="h-4 w-4" />
+              Clear
             </Button>
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Results Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Table className="h-4 w-4" />
+              Consignment Charges List
+            </CardTitle>
+            <div className="text-sm text-gray-500">
+              Total: {searchResults.length} records
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <div className="min-w-[1000px]">
-              <Table className="text-xs">
+              <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold py-2 px-2 w-12">S#</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[80px]">Charge Code</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[120px]">Charge Name</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[100px]">Alias Name</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[80px]">Charge Type</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[80px]">Applicable On</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[120px]">Ledger Name</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[100px]">Amount / Rate</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[80px]">SAC Code</TableHead>
-                    <TableHead className="font-semibold py-2 px-2 min-w-[100px] text-center">Action</TableHead>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold py-3 w-12">#</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[80px]">Charge Code</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[150px]">Charge Name</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[100px]">Alias Name</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[80px]">Charge Type</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[100px]">Applicable On</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[120px]">Ledger Name</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[100px]">Amount / Min</TableHead>
+                    <TableHead className="font-semibold py-3 min-w-[80px]">Status</TableHead>
+                    <TableHead className="font-semibold py-3 w-32 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedResults.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                        No records found. Click SEARCH to display results or add new entry.
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                        <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        No records found. Click "Add New Charge" to create one.
                       </TableCell>
                     </TableRow>
                   ) : (
                     paginatedResults.map((record, index) => (
-                      <TableRow key={record.id} className="hover:bg-muted/30">
-                        <TableCell className="py-2 px-2 text-center">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                        <TableCell className="py-2 px-2 font-mono">{record.chargeCode}</TableCell>
-                        <TableCell className="py-2 px-2 font-medium">{record.chargeName}</TableCell>
-                        <TableCell className="py-2 px-2">{record.aliasName || "-"}</TableCell>
-                        <TableCell className="py-2 px-2">{record.chargeType}</TableCell>
-                        <TableCell className="py-2 px-2">{record.applicableOn}</TableCell>
-                        <TableCell className="py-2 px-2">{record.ledger}</TableCell>
-                        <TableCell className="py-2 px-2">{record.chargeAmount} / {record.minimumAmount}</TableCell>
-                        <TableCell className="py-2 px-2">{record.sacCode}</TableCell>
-                        <TableCell className="py-2 px-2 text-center">
+                      <TableRow key={record.id} className="hover:bg-gray-50">
+                        <TableCell className="py-3 text-center">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
+                        <TableCell className="py-3 font-mono font-semibold">{record.chargeCode}</TableCell>
+                        <TableCell className="py-3 font-medium">{record.chargeName}</TableCell>
+                        <TableCell className="py-3">{record.aliasName || "-"}</TableCell>
+                        <TableCell className="py-3">
+                          <Badge variant="outline" className="bg-blue-50">
+                            {record.chargeType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3">{record.applicableOn}</TableCell>
+                        <TableCell className="py-3">{record.ledger}</TableCell>
+                        <TableCell className="py-3">
+                          <div className="text-sm">Amount: ₹{record.chargeAmount}</div>
+                          <div className="text-xs text-gray-500">Min: ₹{record.minimumAmount}</div>
+                        </TableCell>
+                        <TableCell className="py-3">{getStatusBadge(record.active)}</TableCell>
+                        <TableCell className="py-3">
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(record)}
-                              className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700"
-                              title="Edit"
+                              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              title="Edit Charge"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleGoodsWiseCharges(record)}
-                              className="h-7 w-7 p-0 text-purple-500 hover:text-purple-700"
+                              className="h-8 w-8 p-0 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                               title="Goods Wise Charges"
                             >
-                              <Package className="h-3.5 w-3.5" />
+                              <Package className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleAddBranch(record)}
-                              className="h-7 w-7 p-0 text-green-500 hover:text-green-700"
+                              className="h-8 w-8 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
                               title="Add Branch"
                             >
-                              <Users className="h-3.5 w-3.5" />
+                              <Users className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -608,223 +720,384 @@ export default function ConsignmentChargesMaster() {
             </div>
           </div>
 
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
               </div>
               <div className="flex gap-1">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-7 text-xs">Previous</Button>
-                <span className="px-3 py-1 text-xs">Page {currentPage} of {totalPages}</span>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-7 text-xs">Next</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <span className="px-3 py-1 text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           )}
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* Entry Tab */}
-      {activeTab === "entry" && (
-        <div className="space-y-4">
-          {/* Row 1 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Charge Code</Label>
-              <Input value={chargeCode} readOnly className="h-7 md:h-8 text-xs bg-muted" />
-            </div>
-            <div className="space-y-1 flex items-end">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-3.5 w-3.5" />
-                <Label className="text-[11px] md:text-xs font-medium cursor-pointer">Active</Label>
+      {/* Entry Sheet */}
+      <Sheet open={isEntrySheetOpen} onOpenChange={setIsEntrySheetOpen}>
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2">
+              {editMode ? (
+                <>
+                  <Edit className="h-5 w-5 text-blue-600" />
+                  Edit Consignment Charge
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5 text-blue-600" />
+                  Add New Consignment Charge                </>
+              )}
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-4">
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Charge Code</Label>
+                <Input value={chargeCode} readOnly className="h-10 bg-gray-50" />
+              </div>
+              <div className="space-y-2 flex items-end">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-gray-300" id="active" />
+                  <Label htmlFor="active" className="text-sm font-medium cursor-pointer">Active</Label>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Charge Name <span className="text-red-500">*</span></Label>
-              <Input value={chargeName} onChange={(e) => setChargeName(e.target.value)} placeholder="Enter Charge Name" className="h-7 md:h-8 text-xs" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Display Name <span className="text-red-500">*</span></Label>
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter Display Name" className="h-7 md:h-8 text-xs" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Alias Name</Label>
-              <Input value={aliasName} onChange={(e) => setAliasName(e.target.value)} placeholder="Enter Alias Name" className="h-7 md:h-8 text-xs" />
-            </div>
-          </div>
-
-          {/* Row 3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Charge Type <span className="text-red-500">*</span></Label>
-              <Select value={chargeType} onValueChange={setChargeType}>
-                <SelectTrigger className="h-7 md:h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                <SelectContent>{chargeTypeOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Amount Type <span className="text-red-500">*</span></Label>
-              <Select value={amountType} onValueChange={setAmountType}>
-                <SelectTrigger className="h-7 md:h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                <SelectContent>{amountTypeOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Charge Amount</Label>
-              <Input type="number" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} className="h-7 md:h-8 text-xs" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Minimum Amount</Label>
-              <Input type="number" value={minimumAmount} onChange={(e) => setMinimumAmount(e.target.value)} className="h-7 md:h-8 text-xs" />
-            </div>
-          </div>
-
-          {/* Row 4 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Applicable On</Label>
-              <Select value={applicableOn} onValueChange={setApplicableOn}>
-                <SelectTrigger className="h-7 md:h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                <SelectContent>{applicableOnOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">SAC #</Label>
-              <Input value={sacCode} onChange={(e) => setSacCode(e.target.value)} placeholder="Enter SAC Code" className="h-7 md:h-8 text-xs" />
-            </div>
-            <div className="space-y-1 flex items-end">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={bookingOnFreightLedger} onChange={(e) => setBookingOnFreightLedger(e.target.checked)} className="h-3.5 w-3.5" />
-                <Label className="text-[11px] md:text-xs font-medium cursor-pointer">Booking On Freight Ledger</Label>
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Charge Name <span className="text-red-500">*</span></Label>
+                <Input value={chargeName} onChange={(e) => setChargeName(e.target.value)} placeholder="Enter Charge Name" className="h-10" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Alias Name</Label>
+                <Input value={aliasName} onChange={(e) => setAliasName(e.target.value)} placeholder="Enter Alias Name" className="h-10" />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Print Sequence No</Label>
-              <Input value={printSequenceNo} onChange={(e) => setPrintSequenceNo(e.target.value)} className="h-7 md:h-8 text-xs" />
+
+            {/* Row 3 */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Charge Type <span className="text-red-500">*</span></Label>
+                <Select value={chargeType} onValueChange={setChargeType}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>{chargeTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Amount Type <span className="text-red-500">*</span></Label>
+                <Select value={amountType} onValueChange={setAmountType}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>{amountTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Charge Amount</Label>
+                <Input type="number" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} className="h-10" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Minimum Amount</Label>
+                <Input type="number" value={minimumAmount} onChange={(e) => setMinimumAmount(e.target.value)} className="h-10" />
+              </div>
+            </div>
+
+            {/* Row 4 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Applicable On</Label>
+                <Select value={applicableOn} onValueChange={setApplicableOn}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>{applicableOnOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">SAC Code</Label>
+                <Input value={sacCode} onChange={(e) => setSacCode(e.target.value)} placeholder="Enter SAC Code" className="h-10" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Print Sequence No</Label>
+                <Input value={printSequenceNo} onChange={(e) => setPrintSequenceNo(e.target.value)} className="h-10" />
+              </div>
+            </div>
+
+            {/* Row 5 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Ledger <span className="text-red-500">*</span></Label>
+                <Select value={ledger} onValueChange={setLedger}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>{ledgerOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Charge Amount On Bank Builty</Label>
+                <Input type="number" value={chargeAmountOnBankBuilty} onChange={(e) => setChargeAmountOnBankBuilty(e.target.value)} className="h-10" />
+              </div>
+            </div>
+
+            {/* Checkboxes Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-4 border rounded-md bg-gray-50">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnBooking} onChange={(e) => setApplicableOnBooking(e.target.checked)} className="h-4 w-4 rounded" id="appBooking" />
+                <Label htmlFor="appBooking" className="text-sm cursor-pointer">Applicable On Booking</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnAirBooking} onChange={(e) => setApplicableOnAirBooking(e.target.checked)} className="h-4 w-4 rounded" id="appAir" />
+                <Label htmlFor="appAir" className="text-sm cursor-pointer">Applicable On Air Booking</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={gstApplicable} onChange={(e) => setGstApplicable(e.target.checked)} className="h-4 w-4 rounded" id="gstApp" />
+                <Label htmlFor="gstApp" className="text-sm cursor-pointer">GST Applicable</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnDelivery} onChange={(e) => setApplicableOnDelivery(e.target.checked)} className="h-4 w-4 rounded" id="appDelivery" />
+                <Label htmlFor="appDelivery" className="text-sm cursor-pointer">Applicable On Delivery</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnTrainBooking} onChange={(e) => setApplicableOnTrainBooking(e.target.checked)} className="h-4 w-4 rounded" id="appTrain" />
+                <Label htmlFor="appTrain" className="text-sm cursor-pointer">Applicable On Train Booking</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={allowAtBillUpdation} onChange={(e) => setAllowAtBillUpdation(e.target.checked)} className="h-4 w-4 rounded" id="allowBill" />
+                <Label htmlFor="allowBill" className="text-sm cursor-pointer">Allow At Bill Updation</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnMarketLoad} onChange={(e) => setApplicableOnMarketLoad(e.target.checked)} className="h-4 w-4 rounded" id="appMarket" />
+                <Label htmlFor="appMarket" className="text-sm cursor-pointer">Applicable On Market Load</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={applicableOnSurfaceBooking} onChange={(e) => setApplicableOnSurfaceBooking(e.target.checked)} className="h-4 w-4 rounded" id="appSurface" />
+                <Label htmlFor="appSurface" className="text-sm cursor-pointer">Applicable On Surface Booking</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={bookingOnFreightLedger} onChange={(e) => setBookingOnFreightLedger(e.target.checked)} className="h-4 w-4 rounded" id="bookingFreight" />
+                <Label htmlFor="bookingFreight" className="text-sm cursor-pointer">Booking On Freight Ledger</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={allowToUpdateFromAdditionalCharges} onChange={(e) => setAllowToUpdateFromAdditionalCharges(e.target.checked)} className="h-4 w-4 rounded" id="allowUpdate" />
+                <Label htmlFor="allowUpdate" className="text-sm cursor-pointer">Allow Update From Addl Charges</Label>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-500">*Marked fields are mandatory</div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                <Save className="mr-2 h-4 w-4" />
+                {editMode ? "Update Charge" : "Save Charge"}
+              </Button>
             </div>
           </div>
-
-          {/* Row 5 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Ledger <span className="text-red-500">*</span></Label>
-              <Select value={ledger} onValueChange={setLedger}>
-                <SelectTrigger className="h-7 md:h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                <SelectContent>{ledgerOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] md:text-xs font-medium">Charge Amount On Bank Builty</Label>
-              <Input type="number" value={chargeAmountOnBankBuilty} onChange={(e) => setChargeAmountOnBankBuilty(e.target.value)} className="h-7 md:h-8 text-xs" />
-            </div>
-          </div>
-
-          {/* Checkboxes Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 border rounded-md bg-muted/20">
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnBooking} onChange={(e) => setApplicableOnBooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Booking</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnAirBooking} onChange={(e) => setApplicableOnAirBooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Air Booking</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={gstApplicable} onChange={(e) => setGstApplicable(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">GST Applicable</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnDelivery} onChange={(e) => setApplicableOnDelivery(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Delivery</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnTrainBooking} onChange={(e) => setApplicableOnTrainBooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Train Booking</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={allowAtBillUpdation} onChange={(e) => setAllowAtBillUpdation(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Allow At Bill Updation</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnMarketLoad} onChange={(e) => setApplicableOnMarketLoad(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Market Load</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={applicableOnSurfaceBooking} onChange={(e) => setApplicableOnSurfaceBooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Applicable On Surface Booking</Label></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={allowToUpdateFromAdditionalCharges} onChange={(e) => setAllowToUpdateFromAdditionalCharges(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-[11px] md:text-xs cursor-pointer">Allow To Update From Additional Charges</Label></div>
-          </div>
-
-          <div className="text-[10px] text-muted-foreground">*Marked Input Are Mandatory</div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button onClick={handleSave} size="sm" className="h-7 md:h-8 text-xs"><Save className="mr-1 h-3 w-3" />{editId ? "UPDATE" : "SAVE"}</Button>
-            <Button onClick={resetForm} variant="outline" size="sm" className="h-7 md:h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
-          </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Goods Wise Charges Modal */}
       <Dialog open={isGoodsWiseModalOpen} onOpenChange={setIsGoodsWiseModalOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-4 pt-4 pb-2 border-b">
-            <DialogTitle className="text-base md:text-lg">Goods Wise Charges - {selectedChargeForGoods?.chargeName}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-purple-600" />
+              Goods Wise Charges - {selectedChargeForGoods?.chargeName}
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col px-4">
-            <Tabs value={goodsWiseActiveTab} onValueChange={(v) => setGoodsWiseActiveTab(v as "entry" | "search")} className="w-full">
-              <TabsList className="grid w-full max-w-[200px] grid-cols-2">
-                <TabsTrigger value="entry" className="text-xs">Entry</TabsTrigger>
-                <TabsTrigger value="search" className="text-xs">Search</TabsTrigger>
-              </TabsList>
+          <Tabs value={goodsWiseActiveTab} onValueChange={(v) => setGoodsWiseActiveTab(v as "entry" | "search")} className="w-full">
+            <TabsList className="grid w-full max-w-[200px] grid-cols-2">
+              <TabsTrigger value="entry">Add Goods</TabsTrigger>
+              <TabsTrigger value="search">Goods List</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="entry" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-xs">Charge Code</Label><Input value={selectedChargeForGoods?.chargeCode} readOnly className="h-7 text-xs bg-muted" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Charge Name</Label><Input value={selectedChargeForGoods?.chargeName} readOnly className="h-7 text-xs bg-muted" /></div>
+            <TabsContent value="entry" className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">W.E.F Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-10 w-full justify-start text-left">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {wefDate ? format(wefDate, "dd-MM-yyyy") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent mode="single" selected={wefDate} onSelect={(date) => date && setWefDate(date)} />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-xs">W.E.D</Label>
-                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-full justify-start text-left text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{wefDate ? format(wefDate, "dd-MM-yyyy") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarComponent mode="single" selected={wefDate} onSelect={(date) => date && setWefDate(date)} initialFocus /></PopoverContent></Popover>
-                  </div>
-                  <div className="space-y-1"><Label className="text-xs">UpTo</Label>
-                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-full justify-start text-left text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{uptoDate ? format(uptoDate, "dd-MM-yyyy") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarComponent mode="single" selected={uptoDate} onSelect={setUptoDate} initialFocus /></PopoverContent></Popover>
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Up To Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-10 w-full justify-start text-left">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {uptoDate ? format(uptoDate, "dd-MM-yyyy") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent mode="single" selected={uptoDate} onSelect={setUptoDate} />
+                    </PopoverContent>
+                  </Popover>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1"><Label className="text-xs">Goods Group</Label><Input value={goodsGroup} onChange={(e) => setGoodsGroup(e.target.value)} placeholder="Enter Goods Group" className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Rate</Label><Input type="number" value={rate} onChange={(e) => setRate(e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 text-xs" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Goods Group <span className="text-red-500">*</span></Label>
+                  <Input value={goodsGroup} onChange={(e) => setGoodsGroup(e.target.value)} placeholder="Enter Goods Group" className="h-10" />
                 </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button onClick={handleSaveGoodsWise} size="sm" className="h-7 text-xs"><Save className="mr-1 h-3 w-3" />SAVE</Button>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Rate (%)</Label>
+                  <Input type="number" value={rate} onChange={(e) => setRate(e.target.value)} className="h-10" step="0.01" />
                 </div>
-              </TabsContent>
-
-              <TabsContent value="search" className="mt-4">
-                <div className="rounded-md border overflow-x-auto">
-                  <Table className="text-xs">
-                    <TableHeader><TableRow className="bg-muted/50"><TableHead className="w-12">S#</TableHead><TableHead>Charge Name</TableHead><TableHead>W.E.D Date</TableHead><TableHead>To Date</TableHead><TableHead>Goods Group Name</TableHead><TableHead className="w-20">Action</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {goodsWiseCharges.length === 0 ? (<TableRow><TableCell colSpan={6} className="text-center py-8">No goods wise charges found</TableCell></TableRow>) : (
-                        goodsWiseCharges.map((charge, idx) => (<TableRow key={charge.id}><TableCell>{idx + 1}</TableCell><TableCell>{selectedChargeForGoods?.chargeName}</TableCell><TableCell>{format(wefDate, "dd-MM-yyyy")}</TableCell><TableCell>{uptoDate ? format(uptoDate, "dd-MM-yyyy") : "-"}</TableCell><TableCell>{charge.goodsGroup}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => handleDeleteGoodsWise(charge.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))
-                      )}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Amount (₹)</Label>
+                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10" step="0.01" />
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+              </div>
 
-          <DialogFooter className="px-4 py-3 border-t gap-2 mt-2">
-            <Button variant="outline" size="sm" onClick={() => setIsGoodsWiseModalOpen(false)}>CLOSE</Button>
+              <div className="flex justify-end">
+                <Button onClick={handleSaveGoodsWise} className="bg-purple-600 hover:bg-purple-700">
+                  <Save className="mr-2 h-4 w-4" />
+                  Add Goods Charge
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="search" className="mt-4">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Goods Group</TableHead>
+                      <TableHead>Rate (%)</TableHead>
+                      <TableHead>Amount (₹)</TableHead>
+                      <TableHead>W.E.F Date</TableHead>
+                      <TableHead>Up To Date</TableHead>
+                      <TableHead className="w-20">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {goodsWiseCharges.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                          No goods wise charges found. Click "Add Goods" to add.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      goodsWiseCharges.map((charge, idx) => (
+                        <TableRow key={charge.id}>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell>{charge.goodsGroup}</TableCell>
+                          <TableCell>{charge.rate}%</TableCell>
+                          <TableCell>₹{charge.amount}</TableCell>
+                          <TableCell>{format(charge.wefDate, "dd-MM-yyyy")}</TableCell>
+                          <TableCell>{charge.uptoDate ? format(charge.uptoDate, "dd-MM-yyyy") : "-"}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteGoodsWise(charge.id)} className="h-8 w-8 p-0 text-red-500">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsGoodsWiseModalOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Add Branch Modal */}
       <Dialog open={isAddBranchModalOpen} onOpenChange={setIsAddBranchModalOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-2xl max-h-[80vh] flex flex-col p-0">
-          <DialogHeader className="px-4 pt-4 pb-2 border-b"><DialogTitle className="text-base md:text-lg">Add Branch - {selectedChargeForBranch?.chargeName}</DialogTitle></DialogHeader>
-          
-          <div className="flex-1 overflow-hidden flex flex-col px-4">
-            <div className="flex items-center gap-2 py-3">
-              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" /><Input placeholder="Search branch..." value={branchSearchTerm} onChange={(e) => setBranchSearchTerm(e.target.value)} className="pl-8 h-8 text-xs" /></div>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-600" />
+              Allocate Branches - {selectedChargeForBranch?.chargeName}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search branch..."
+                value={branchSearchTerm}
+                onChange={(e) => setBranchSearchTerm(e.target.value)}
+                className="pl-9"
+              />
             </div>
 
-            <div className="border rounded-md flex-1 overflow-auto max-h-[50vh]">
-              <Table><TableHeader className="sticky top-0 bg-background"><TableRow className="bg-muted/50"><TableHead className="w-12 text-center"><input type="checkbox" checked={selectAllBranches} onChange={handleSelectAllBranches} className="h-3.5 w-3.5" /></TableHead><TableHead className="text-xs font-semibold">Branch Name</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredBranches.map((branch) => (<TableRow key={branch.id} className="hover:bg-muted/30 cursor-pointer"><TableCell className="text-center"><input type="checkbox" checked={branch.selected} onChange={() => handleBranchCheck(branch.id)} className="h-3.5 w-3.5" /></TableCell><TableCell className="text-xs cursor-pointer" onClick={() => handleBranchCheck(branch.id)}>{branch.name}</TableCell></TableRow>))}
-              {filteredBranches.length === 0 && (<TableRow><TableCell colSpan={2} className="text-center text-xs py-8">No branches found</TableCell></TableRow>)}</TableBody></Table>
+            <div className="border rounded-md overflow-auto max-h-[50vh]">
+              <Table>
+                <TableHeader className="sticky top-0 bg-white">
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="w-12 text-center">
+                      <input type="checkbox" checked={selectAllBranches} onChange={handleSelectAllBranches} className="h-4 w-4" />
+                    </TableHead>
+                    <TableHead className="font-semibold">Branch Name</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBranches.map((branch) => (
+                    <TableRow key={branch.id} className="hover:bg-gray-50 cursor-pointer">
+                      <TableCell className="text-center">
+                        <input type="checkbox" checked={branch.selected} onChange={() => handleBranchCheck(branch.id)} className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell onClick={() => handleBranchCheck(branch.id)}>{branch.name}</TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredBranches.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                        No branches found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
-          <DialogFooter className="px-4 py-3 border-t gap-2 mt-2">
-            <Button variant="outline" size="sm" onClick={() => setIsAddBranchModalOpen(false)}>CLOSE</Button>
-            <Button size="sm" onClick={handleSaveBranches}>SAVE</Button>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsAddBranchModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveBranches} className="bg-green-600 hover:bg-green-700">Save Branches</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
