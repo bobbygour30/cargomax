@@ -32,6 +32,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -48,6 +55,12 @@ import {
   Users,
   Building2,
   Mail,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  FileText,
+  RefreshCw ,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -255,7 +268,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {zoneOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -268,7 +281,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {stateOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -281,7 +294,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {regionOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -294,7 +307,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {hubOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -307,7 +320,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {branchOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -320,7 +333,7 @@ export default function ArrivalRegisterPage() {
             </SelectTrigger>
             <SelectContent>
               {agencyOptions.map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -405,163 +418,182 @@ export default function ArrivalRegisterPage() {
   const totalWeight = filteredData.reduce((sum, r) => sum + r.weight, 0);
 
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">ARRIVAL REGISTER REPORT</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">ARRIVAL REGISTER REPORT</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Filter Section */}
-      <div className="p-4 border rounded-md bg-muted/20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Period */}
-          <div className="space-y-1">
-            <Label className="text-xs">Period</Label>
-            <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 flex-1 text-xs">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {format(fromDate, "dd-MM-yyyy")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={fromDate} onSelect={(d) => d && setFromDate(d)} />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 flex-1 text-xs">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {format(toDate, "dd-MM-yyyy")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={toDate} onSelect={(d) => d && setToDate(d)} />
-                </PopoverContent>
-              </Popover>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5 text-gray-500" />
+              <h3 className="text-[11px] font-semibold text-gray-800">Search Filters</h3>
             </div>
           </div>
-
-          {/* Select Branch Type */}
-          <div className="space-y-1">
-            <Label className="text-xs">Select Branch Type</Label>
-            <Select value={branchType} onValueChange={handleBranchTypeChange}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="ALL" />
-              </SelectTrigger>
-              <SelectContent>
-                {branchTypeOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Dynamic Branch Type Dropdown */}
-          {branchType !== "ALL" && (
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Period */}
             <div className="space-y-1">
-              <Label className="text-xs">{branchType}</Label>
-              {renderBranchTypeDropdown()}
-            </div>
-          )}
-
-          {/* Select Branch */}
-          <div className="space-y-1">
-            <Label className="text-xs">Select Branch</Label>
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="h-8 text-xs">
-                <Building2 className="mr-1 h-3 w-3" />
-                <SelectValue placeholder="Select Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ALL</SelectItem>
-                {branchOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Second Row - Select Origin with ALL Checkbox */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Select Origin</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectAllOrigin}
-                  onChange={handleSelectAllOrigin}
-                  className="h-3 w-3"
-                  id="selectAllOrigin"
-                />
-                <Label htmlFor="selectAllOrigin" className="text-xs cursor-pointer">ALL</Label>
+              <Label className="text-[10px] font-medium">Period</Label>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-7 flex-1 text-[10px]">
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {format(fromDate, "dd-MM-yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={fromDate} onSelect={(d) => d && setFromDate(d)} />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-7 flex-1 text-[10px]">
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {format(toDate, "dd-MM-yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={toDate} onSelect={(d) => d && setToDate(d)} />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
-            <Select value={selectedOrigin} onValueChange={setSelectedOrigin}>
-              <SelectTrigger className="h-8 text-xs">
-                <MapPin className="mr-1 h-3 w-3" />
-                <SelectValue placeholder="Select Origin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">ALL</SelectItem>
-                {originOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* Select Vehicle with ALL Checkbox */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Select Vehicle</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectAllVehicle}
-                  onChange={handleSelectAllVehicle}
-                  className="h-3 w-3"
-                  id="selectAllVehicle"
-                />
-                <Label htmlFor="selectAllVehicle" className="text-xs cursor-pointer">ALL</Label>
-              </div>
+            {/* Select Branch Type */}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-medium">Select Branch Type</Label>
+              <Select value={branchType} onValueChange={handleBranchTypeChange}>
+                <SelectTrigger className="h-7 text-[10px]">
+                  <SelectValue placeholder="ALL" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branchTypeOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-              <SelectTrigger className="h-8 text-xs">
-                <Truck className="mr-1 h-3 w-3" />
-                <SelectValue placeholder="Select Vehicle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">ALL</SelectItem>
-                {vehicleOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
-        {/* Search and Clear Buttons */}
-        <div className="flex justify-end gap-2 mt-4">
-          <Button onClick={handleSearch} size="sm" className="h-8 text-xs" disabled={loading}>
-            <Search className="mr-1 h-3.5 w-3.5" />
-            {loading ? "Searching..." : "Search"}
-          </Button>
-          <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs">
-            <X className="mr-1 h-3.5 w-3.5" />
-            Clear
-          </Button>
-        </div>
-      </div>
+            {/* Dynamic Branch Type Dropdown */}
+            {branchType !== "ALL" && (
+              <div className="space-y-1">
+                <Label className="text-[10px] font-medium">{branchType}</Label>
+                {renderBranchTypeDropdown()}
+              </div>
+            )}
+
+            {/* Select Branch */}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-medium">Select Branch</Label>
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="h-7 text-[10px]">
+                  <Building2 className="mr-1 h-3 w-3" />
+                  <SelectValue placeholder="Select Branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ALL</SelectItem>
+                  {branchOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Second Row - Select Origin with ALL Checkbox */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-medium">Select Origin</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectAllOrigin}
+                    onChange={handleSelectAllOrigin}
+                    className="h-3 w-3"
+                    id="selectAllOrigin"
+                  />
+                  <Label htmlFor="selectAllOrigin" className="text-[10px] cursor-pointer">ALL</Label>
+                </div>
+              </div>
+              <Select value={selectedOrigin} onValueChange={setSelectedOrigin}>
+                <SelectTrigger className="h-7 text-[10px]">
+                  <MapPin className="mr-1 h-3 w-3" />
+                  <SelectValue placeholder="Select Origin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">ALL</SelectItem>
+                  {originOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Select Vehicle with ALL Checkbox */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-medium">Select Vehicle</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectAllVehicle}
+                    onChange={handleSelectAllVehicle}
+                    className="h-3 w-3"
+                    id="selectAllVehicle"
+                  />
+                  <Label htmlFor="selectAllVehicle" className="text-[10px] cursor-pointer">ALL</Label>
+                </div>
+              </div>
+              <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
+                <SelectTrigger className="h-7 text-[10px]">
+                  <Truck className="mr-1 h-3 w-3" />
+                  <SelectValue placeholder="Select Vehicle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">ALL</SelectItem>
+                  {vehicleOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Search and Clear Buttons */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button onClick={handleSearch} size="sm" className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Search className="mr-1 h-3 w-3" />
+              {loading ? "Searching..." : "Search"}
+            </Button>
+            <Button onClick={handleClear} variant="outline" size="sm" className="h-7 text-[10px]">
+              <RefreshCw className="mr-1 h-3 w-3" />
+              Clear
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap justify-end gap-2">
@@ -569,144 +601,192 @@ export default function ArrivalRegisterPage() {
           onClick={() => setViewMode("grid")}
           variant={viewMode === "grid" ? "default" : "outline"}
           size="sm"
-          className="h-8 text-xs"
+          className="h-7 text-[10px]"
         >
-          <Grid3x3 className="mr-1 h-3.5 w-3.5" /> Grid View
+          <Grid3x3 className="mr-1 h-3 w-3" /> Grid View
         </Button>
         <Button
           onClick={() => setViewMode("report")}
           variant={viewMode === "report" ? "default" : "outline"}
           size="sm"
-          className="h-8 text-xs"
+          className="h-7 text-[10px]"
         >
-          <TableIcon className="mr-1 h-3.5 w-3.5" /> Report
+          <TableIcon className="mr-1 h-3 w-3" /> Report View
         </Button>
-        <Button onClick={handleSendReport} variant="outline" size="sm" className="h-8 text-xs">
-          <Send className="mr-1 h-3.5 w-3.5" /> Send Report as Attachment on Mail
+        <Button onClick={handleSendReport} variant="outline" size="sm" className="h-7 text-[10px]">
+          <Send className="mr-1 h-3 w-3" /> Send Report
         </Button>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats Cards */}
       {filteredData.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Total Arrivals</p>
-            <p className="text-xl font-bold text-blue-600">{totalArrivals}</p>
-          </div>
-          <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Total Packages</p>
-            <p className="text-xl font-bold text-green-600">{totalPckgs}</p>
-          </div>
-          <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted-foreground">Total Weight (kg)</p>
-            <p className="text-xl font-bold text-orange-600">{totalWeight.toLocaleString()}</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] opacity-90">Total Arrivals</p>
+                  <p className="text-2xl font-bold">{totalArrivals}</p>
+                </div>
+                <Truck className="h-6 w-6 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardContent className="p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] opacity-90">Total Packages</p>
+                  <p className="text-2xl font-bold">{totalPckgs}</p>
+                </div>
+                <Package className="h-6 w-6 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+            <CardContent className="p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] opacity-90">Total Weight (kg)</p>
+                  <p className="text-2xl font-bold">{totalWeight.toLocaleString()}</p>
+                </div>
+                <Clock className="h-6 w-6 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Report View Table */}
       {viewMode === "report" && filteredData.length > 0 && (
-        <div className="rounded-md border overflow-x-auto">
-          <div className="min-w-[1200px]">
-            <Table className="text-xs">
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>S#</TableHead>
-                  <TableHead>GR #</TableHead>
-                  <TableHead>GR Date</TableHead>
-                  <TableHead>Origin</TableHead>
-                  <TableHead>Destination</TableHead>
-                  <TableHead>Consignor</TableHead>
-                  <TableHead>Consignee</TableHead>
-                  <TableHead>Vehicle No</TableHead>
-                  <TableHead>Driver Name</TableHead>
-                  <TableHead className="text-center">Pckgs</TableHead>
-                  <TableHead className="text-right">Weight</TableHead>
-                  <TableHead>Arrival Date</TableHead>
-                  <TableHead>Arrival Time</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((record, idx) => (
-                  <TableRow key={record.id} className="hover:bg-muted/30">
-                    <TableCell>{idx + 1}</TableCell>
-                    <TableCell className="font-mono">{record.grNo}</TableCell>
-                    <TableCell>{format(record.grDate, "dd-MM-yyyy")}</TableCell>
-                    <TableCell>{record.origin}</TableCell>
-                    <TableCell>{record.destination}</TableCell>
-                    <TableCell>{record.consignor}</TableCell>
-                    <TableCell>{record.consignee}</TableCell>
-                    <TableCell className="font-mono">{record.vehicleNo}</TableCell>
-                    <TableCell>{record.driverName}</TableCell>
-                    <TableCell className="text-center">{record.pckgs}</TableCell>
-                    <TableCell className="text-right">{record.weight}</TableCell>
-                    <TableCell>{format(record.arrivalDate, "dd-MM-yyyy")}</TableCell>
-                    <TableCell>{record.arrivalTime}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px]">
-                        {record.status}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <TableIcon className="h-3.5 w-3.5 text-gray-500" />
+                <h3 className="text-[11px] font-semibold text-gray-800">
+                  Arrival Records
+                </h3>
+              </div>
+              <div className="text-[10px] text-gray-500">
+                Total: {filteredData.length} records
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-x-auto">
+              <div className="min-w-[1200px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR #</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR Date</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Origin</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Destination</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Consignor</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Consignee</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Vehicle No</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Driver</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 w-16 text-center">Pckgs</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-right">Weight</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Arrival Date</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Arrival Time</TableHead>
+                      <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.map((record, idx) => (
+                      <TableRow key={record.id} className="hover:bg-gray-50">
+                        <TableCell className="py-2 px-2 text-center text-xs">{idx + 1}</TableCell>
+                        <TableCell className="py-2 px-2 font-mono text-xs">{record.grNo}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.origin}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.destination}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.consignor}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.consignee}</TableCell>
+                        <TableCell className="py-2 px-2 font-mono text-xs">{record.vehicleNo}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.driverName}</TableCell>
+                        <TableCell className="py-2 px-2 text-center text-xs">{record.pckgs}</TableCell>
+                        <TableCell className="py-2 px-2 text-right text-xs">{record.weight}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{format(record.arrivalDate, "dd-MM-yyyy")}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.arrivalTime}</TableCell>
+                        <TableCell className="py-2 px-2 text-center">
+                          <Badge className="bg-green-100 text-green-700 text-[10px] hover:bg-green-100">
+                            {record.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Grid View */}
       {viewMode === "grid" && filteredData.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredData.map((record) => (
-            <div key={record.id} className="border rounded-lg p-4 hover:shadow-md">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold text-sm">{record.grNo}</h3>
-                  <p className="text-[10px] text-muted-foreground">{format(record.grDate, "dd-MM-yyyy")}</p>
+            <Card key={record.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <h3 className="font-semibold text-sm">{record.grNo}</h3>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">{format(record.grDate, "dd-MM-yyyy")}</p>
+                  </div>
+                  <Badge className="bg-green-100 text-green-700 text-[10px]">Arrived</Badge>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px]">Arrived</span>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3 w-3" />
-                  <span>{record.origin} → {record.destination}</span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3 w-3 text-gray-400" />
+                    <span>{record.origin} → {record.destination}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-3 w-3 text-gray-400" />
+                    <span className="font-mono">{record.vehicleNo}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3 w-3 text-gray-400" />
+                    <span>{record.driverName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3 w-3 text-gray-400" />
+                    <span>Pckgs: {record.pckgs} | Weight: {record.weight} kg</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="text-[10px] text-gray-500">
+                      <Clock className="h-3 w-3 inline mr-1" />
+                      {format(record.arrivalDate, "dd-MM-yyyy")}
+                    </span>
+                    <span className="text-[10px] text-gray-500">{record.arrivalTime}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-3 w-3" />
-                  <span>{record.vehicleNo}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-3 w-3" />
-                  <span>{record.driverName}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Package className="h-3 w-3" />
-                  <span>Pckgs: {record.pckgs} | Weight: {record.weight} kg</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t">
-                  <span>Arrival: {format(record.arrivalDate, "dd-MM-yyyy")}</span>
-                  <span>{record.arrivalTime}</span>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
       {/* No Data Message */}
       {filteredData.length === 0 && !loading && (
-        <div className="text-center py-12 border rounded-md">
-          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">No arrival records found</p>
-          <p className="text-xs text-muted-foreground mt-1">Please adjust your search criteria</p>
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p className="text-gray-500 text-sm">No arrival records found</p>
+            <p className="text-xs text-gray-400 mt-1">Please adjust your search criteria</p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Footer */}
       {filteredData.length > 0 && (
-        <div className="flex justify-between items-center pt-2 border-t text-xs text-muted-foreground">
+        <div className="flex justify-between items-center pt-2 border-t text-[10px] text-gray-500">
           <span>Total Records: {filteredData.length}</span>
           <span>Last Updated: {format(new Date(), "dd-MM-yyyy HH:mm:ss")}</span>
         </div>
