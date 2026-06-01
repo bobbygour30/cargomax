@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,12 +27,26 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { CalendarIcon, Save, RefreshCw, Search, Pencil, Trash2, Upload, Download, Eye, X, Plus, FileText, Image as ImageIcon,AlertCircle  } from "lucide-react";
+import { CalendarIcon, Save, RefreshCw, Search, Pencil, Trash2, Upload, Download, Eye, X, Plus, FileText, Image as ImageIcon, AlertCircle, Truck, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -59,6 +73,8 @@ interface MarketVehicle {
   trackingLink: string;
   chequeImage: string;
   lhcNotForPayment: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface DocumentAttachment {
@@ -81,10 +97,11 @@ const vehicleTypeOptions = [
 ];
 
 export default function MarketVehicleMaster() {
-  // Tab state
-  const [activeTab, setActiveTab] = useState<"search" | "entry">("entry");
-  const [editId, setEditId] = useState<number | null>(null);
-  
+  // Sheet state
+  const [isEntrySheetOpen, setIsEntrySheetOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState<number | null>(null);
+
   // Form state
   const [vehicleRegNo, setVehicleRegNo] = useState<string>("");
   const [regDate, setRegDate] = useState<Date>(new Date());
@@ -123,41 +140,21 @@ export default function MarketVehicleMaster() {
 
   // Sample saved data
   const [savedRecords, setSavedRecords] = useState<MarketVehicle[]>([
-    { id: 1, vehicleRegNo: "09102018", regDate: new Date("2018-10-09"), vehicleType: "OPEN BODY TRUCK", capacity: 15000, ownerName: "SURAT SINGH VERMA", ownerBankName: "SBI", ownerAccountNo: "1234567890", ownerIfscCode: "SBIN0012345", vehicleVendor: "TATA MOTORS", pan: "ABFPV3079A", registeredAt: "DELHI RTO", rcBookNo: "RC123456", engineNo: "ENG123456", chasisNo: "CHS123456", registrationValidUpto: new Date("2028-12-31"), noOfTyres: 6, imei: "123456789012345", gpsVendor: "MapMyIndia", trackingLink: "https://track.example.com/1", chequeImage: "", lhcNotForPayment: false },
-    { id: 2, vehicleRegNo: "1111111", regDate: new Date("2020-01-01"), vehicleType: "CONTAINER", capacity: 20000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2025-12-31"), noOfTyres: 8, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 3, vehicleRegNo: "12102025", regDate: new Date("2025-10-12"), vehicleType: "CONTAINER", capacity: 18000, ownerName: "MOHD RAFEEQ", ownerBankName: "HDFC", ownerAccountNo: "9876543210", ownerIfscCode: "HDFC0012345", vehicleVendor: "ASHOK LEYLAND", pan: "DMCPR6782P", registeredAt: "MUMBAI RTO", rcBookNo: "RC789012", engineNo: "ENG789012", chasisNo: "CHS789012", registrationValidUpto: new Date("2030-12-31"), noOfTyres: 6, imei: "987654321098765", gpsVendor: "GPS Unlimited", trackingLink: "https://track.example.com/3", chequeImage: "", lhcNotForPayment: true },
-    { id: 4, vehicleRegNo: "12338", regDate: new Date("2019-03-15"), vehicleType: "CONTAINER", capacity: 12000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2024-12-31"), noOfTyres: 6, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 5, vehicleRegNo: "60186", regDate: new Date("2020-06-18"), vehicleType: "CONTAINER", capacity: 14000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2025-06-17"), noOfTyres: 6, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 6, vehicleRegNo: "61638", regDate: new Date("2021-01-16"), vehicleType: "CONTAINER", capacity: 16000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2026-01-15"), noOfTyres: 8, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 7, vehicleRegNo: "66588", regDate: new Date("2021-06-15"), vehicleType: "CONTAINER", capacity: 15000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2026-06-14"), noOfTyres: 6, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 8, vehicleRegNo: "76203", regDate: new Date("2022-03-20"), vehicleType: "CONTAINER", capacity: 18000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2027-03-19"), noOfTyres: 8, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false },
-    { id: 9, vehicleRegNo: "AS01NC9463", regDate: new Date("2019-08-22"), vehicleType: "OPEN BODY TRUCK", capacity: 13000, ownerName: "MOHAMMAD SHAMEEN AHMAD", ownerBankName: "ICICI", ownerAccountNo: "4567890123", ownerIfscCode: "ICICI0012345", vehicleVendor: "MAHINDRA", pan: "APFPM7298N", registeredAt: "GUWAHATI RTO", rcBookNo: "RC456789", engineNo: "ENG456789", chasisNo: "CHS456789", registrationValidUpto: new Date("2029-12-31"), noOfTyres: 6, imei: "555555555555555", gpsVendor: "Trackon", trackingLink: "https://track.example.com/9", chequeImage: "", lhcNotForPayment: false },
-    { id: 10, vehicleRegNo: "AS01QC4482", regDate: new Date("2020-11-10"), vehicleType: "TRUCK", capacity: 14000, ownerName: "SUSHIL KUMAR", ownerBankName: "AXIS", ownerAccountNo: "7890123456", ownerIfscCode: "AXIS0012345", vehicleVendor: "EICHER", pan: "APJPK9013P", registeredAt: "GUWAHATI RTO", rcBookNo: "RC789123", engineNo: "ENG789123", chasisNo: "CHS789123", registrationValidUpto: new Date("2025-12-31"), noOfTyres: 6, imei: "666666666666666", gpsVendor: "MapMyIndia", trackingLink: "https://track.example.com/10", chequeImage: "", lhcNotForPayment: true },
+    { id: 1, vehicleRegNo: "09102018", regDate: new Date("2018-10-09"), vehicleType: "OPEN BODY TRUCK", capacity: 15000, ownerName: "SURAT SINGH VERMA", ownerBankName: "SBI", ownerAccountNo: "1234567890", ownerIfscCode: "SBIN0012345", vehicleVendor: "TATA MOTORS", pan: "ABFPV3079A", registeredAt: "DELHI RTO", rcBookNo: "RC123456", engineNo: "ENG123456", chasisNo: "CHS123456", registrationValidUpto: new Date("2028-12-31"), noOfTyres: 6, imei: "123456789012345", gpsVendor: "MapMyIndia", trackingLink: "https://track.example.com/1", chequeImage: "", lhcNotForPayment: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 2, vehicleRegNo: "1111111", regDate: new Date("2020-01-01"), vehicleType: "CONTAINER", capacity: 20000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2025-12-31"), noOfTyres: 8, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 3, vehicleRegNo: "12102025", regDate: new Date("2025-10-12"), vehicleType: "CONTAINER", capacity: 18000, ownerName: "MOHD RAFEEQ", ownerBankName: "HDFC", ownerAccountNo: "9876543210", ownerIfscCode: "HDFC0012345", vehicleVendor: "ASHOK LEYLAND", pan: "DMCPR6782P", registeredAt: "MUMBAI RTO", rcBookNo: "RC789012", engineNo: "ENG789012", chasisNo: "CHS789012", registrationValidUpto: new Date("2030-12-31"), noOfTyres: 6, imei: "987654321098765", gpsVendor: "GPS Unlimited", trackingLink: "https://track.example.com/3", chequeImage: "", lhcNotForPayment: true, createdAt: new Date(), updatedAt: new Date() },
+    { id: 4, vehicleRegNo: "12338", regDate: new Date("2019-03-15"), vehicleType: "CONTAINER", capacity: 12000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2024-12-31"), noOfTyres: 6, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false, createdAt: new Date(), updatedAt: new Date() },
+    { id: 5, vehicleRegNo: "60186", regDate: new Date("2020-06-18"), vehicleType: "CONTAINER", capacity: 14000, ownerName: "", ownerBankName: "", ownerAccountNo: "", ownerIfscCode: "", vehicleVendor: "", pan: "", registeredAt: "", rcBookNo: "", engineNo: "", chasisNo: "", registrationValidUpto: new Date("2025-06-17"), noOfTyres: 6, imei: "", gpsVendor: "", trackingLink: "", chequeImage: "", lhcNotForPayment: false, createdAt: new Date(), updatedAt: new Date() },
   ]);
 
-  // Get search results
-  const getSearchResults = (): MarketVehicle[] => {
-    let results = [...savedRecords];
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      results = results.filter(r => 
-        r.vehicleRegNo.toLowerCase().includes(term) ||
-        r.vehicleType.toLowerCase().includes(term) ||
-        r.ownerName.toLowerCase().includes(term) ||
-        r.pan.toLowerCase().includes(term)
-      );
-    }
-    return results;
-  };
+  const [searchResults, setSearchResults] = useState<MarketVehicle[]>(savedRecords);
 
-  const searchResults: MarketVehicle[] = getSearchResults();
-  const totalPages: number = Math.ceil(searchResults.length / itemsPerPage);
-  const paginatedResults: MarketVehicle[] = searchResults.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Load search results on mount
+  useEffect(() => {
+    setSearchResults(savedRecords);
+  }, []);
 
-  // Generate new ID
+  // Get next ID
   const getNextId = (): number => {
     const maxId = savedRecords.length > 0 ? Math.max(...savedRecords.map(r => r.id)) : 0;
     return maxId + 1;
@@ -186,7 +183,8 @@ export default function MarketVehicleMaster() {
     setTrackingLink("");
     setChequeImage("");
     setLhcNotForPayment(false);
-    setEditId(null);
+    setEditMode(false);
+    setCurrentEditId(null);
   };
 
   const handleSave = (): void => {
@@ -203,19 +201,21 @@ export default function MarketVehicleMaster() {
       return;
     }
 
-    if (editId) {
-      const updatedRecords = savedRecords.map(record => 
-        record.id === editId 
-          ? { 
-              ...record, 
-              vehicleRegNo, regDate, vehicleType, capacity, ownerName, ownerBankName,
-              ownerAccountNo, ownerIfscCode, vehicleVendor, pan, registeredAt, rcBookNo,
-              engineNo, chasisNo, registrationValidUpto, noOfTyres, imei, gpsVendor,
-              trackingLink, chequeImage, lhcNotForPayment
-            }
+    if (editMode && currentEditId) {
+      const updatedRecords = savedRecords.map(record =>
+        record.id === currentEditId
+          ? {
+            ...record,
+            vehicleRegNo, regDate, vehicleType, capacity, ownerName, ownerBankName,
+            ownerAccountNo, ownerIfscCode, vehicleVendor, pan, registeredAt, rcBookNo,
+            engineNo, chasisNo, registrationValidUpto, noOfTyres, imei, gpsVendor,
+            trackingLink, chequeImage, lhcNotForPayment,
+            updatedAt: new Date()
+          }
           : record
       );
       setSavedRecords(updatedRecords);
+      setSearchResults(updatedRecords);
       alert("Record updated successfully!");
     } else {
       const newRecord: MarketVehicle = {
@@ -223,18 +223,23 @@ export default function MarketVehicleMaster() {
         vehicleRegNo, regDate, vehicleType, capacity, ownerName, ownerBankName,
         ownerAccountNo, ownerIfscCode, vehicleVendor, pan, registeredAt, rcBookNo,
         engineNo, chasisNo, registrationValidUpto, noOfTyres, imei, gpsVendor,
-        trackingLink, chequeImage, lhcNotForPayment
+        trackingLink, chequeImage, lhcNotForPayment,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
-      setSavedRecords([...savedRecords, newRecord]);
+      const updatedRecords = [...savedRecords, newRecord];
+      setSavedRecords(updatedRecords);
+      setSearchResults(updatedRecords);
       alert("Record saved successfully!");
     }
-    
+
     resetForm();
-    setActiveTab("search");
+    setIsEntrySheetOpen(false);
   };
 
   const handleEdit = (record: MarketVehicle): void => {
-    setEditId(record.id);
+    setEditMode(true);
+    setCurrentEditId(record.id);
     setVehicleRegNo(record.vehicleRegNo);
     setRegDate(record.regDate);
     setVehicleType(record.vehicleType);
@@ -256,24 +261,44 @@ export default function MarketVehicleMaster() {
     setTrackingLink(record.trackingLink);
     setChequeImage(record.chequeImage);
     setLhcNotForPayment(record.lhcNotForPayment);
-    setActiveTab("entry");
+    setIsEntrySheetOpen(true);
   };
 
   const handleDelete = (id: number): void => {
     if (confirm("Are you sure you want to delete this record?")) {
       const updatedRecords = savedRecords.filter(record => record.id !== id);
       setSavedRecords(updatedRecords);
+      setSearchResults(updatedRecords);
       alert("Record deleted successfully!");
     }
   };
 
-  const handleClearSearch = (): void => {
-    setSearchTerm("");
+  const handleSearch = (): void => {
+    let results = [...savedRecords];
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      results = results.filter(r =>
+        r.vehicleRegNo.toLowerCase().includes(term) ||
+        r.vehicleType.toLowerCase().includes(term) ||
+        r.ownerName.toLowerCase().includes(term) ||
+        r.pan.toLowerCase().includes(term)
+      );
+    }
+    setSearchResults(results);
     setCurrentPage(1);
   };
 
-  const goToPage = (page: number): void => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  const handleClearSearch = (): void => {
+    setSearchTerm("");
+    setSearchResults(savedRecords);
+    setCurrentPage(1);
+  };
+
+  const openAddSheet = (): void => {
+    resetForm();
+    setEditMode(false);
+    setCurrentEditId(null);
+    setIsEntrySheetOpen(true);
   };
 
   // Document attachment functions
@@ -329,64 +354,183 @@ export default function MarketVehicleMaster() {
     link.click();
   };
 
+  // Stats
+  const stats = {
+    total: searchResults.length,
+  };
+
+  // Pagination
+  const totalPages = Math.ceil(searchResults.length / itemsPerPage);
+  const paginatedResults = searchResults.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">MARKET VEHICLE MASTER</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">MARKET VEHICLE MASTER</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
+          <Button onClick={openAddSheet} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Vehicle
+          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b">
-        <button onClick={() => { setActiveTab("search"); setCurrentPage(1); }} className={cn("px-4 py-2 text-sm font-medium transition-all", activeTab === "search" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground")}>Search</button>
-        <button onClick={() => { setActiveTab("entry"); resetForm(); }} className={cn("px-4 py-2 text-sm font-medium transition-all", activeTab === "entry" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground")}>Entry</button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Total Vehicles</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Truck className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Active Vehicles</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Badge className="bg-white/20 text-white">Active</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-90">Vehicle Types</p>
+                <p className="text-2xl font-bold">{vehicleTypeOptions.length}</p>
+              </div>
+              <Filter className="h-8 w-8 opacity-80" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Search Tab */}
-      {activeTab === "search" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Search by Reg No, Type, Owner or PAN..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-8 h-8 text-xs" />
+      {/* Search Bar */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+            <Search className="h-3.5 w-3.5" />
+            Search Vehicles
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search by Reg No, Type, Owner or PAN..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
             </div>
-            <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3.5 w-3.5" />CLEAR</Button>
+            <Button onClick={handleSearch} className="h-9 bg-blue-600 hover:bg-blue-700 text-xs">
+              <Search className="mr-1 h-3.5 w-3.5" />
+              Search
+            </Button>
+            <Button onClick={handleClearSearch} variant="outline" className="h-9 text-xs">
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              Clear
+            </Button>
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Results Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <div className="gap-2 w-full">
+              <Table className="text-gray-500" />
+              <h3 className="text-[15px] font-semibold text-gray-800">
+                Vehicles List
+              </h3>
+            </div>
+            <div className="text-[10px] text-gray-500">
+              Total: {searchResults.length} records
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <div className="min-w-[800px]">
-              <Table className="text-xs">
+              <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12 text-center">S#</TableHead>
-                    <TableHead>Vehicle Reg #</TableHead>
-                    <TableHead>Vehicle Type</TableHead>
-                    <TableHead>Vendor Name</TableHead>
-                    <TableHead>Owner Name</TableHead>
-                    <TableHead>PAN NO</TableHead>
-                    <TableHead className="w-32 text-center">Action</TableHead>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Reg No</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[130px]">Vehicle Type</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Owner Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">PAN</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Vendor</TableHead>
+                    <TableHead className="text-[11px] font-semibold py-2 px-2 w-24 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedResults.length === 0 ? (<TableRow><TableCell colSpan={7} className="text-center py-8">No records found.</TableCell></TableRow>) : (
+                  {paginatedResults.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        No records found. Click "Add New Vehicle" to create one.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
                     paginatedResults.map((record, index) => (
-                      <TableRow key={record.id} className="hover:bg-muted/30">
-                        <TableCell className="text-center">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                        <TableCell className="font-medium">{record.vehicleRegNo}</TableCell>
-                        <TableCell>{record.vehicleType}</TableCell>
-                        <TableCell>{record.vehicleVendor || "-"}</TableCell>
-                        <TableCell>{record.ownerName || "-"}</TableCell>
-                        <TableCell>{record.pan || "-"}</TableCell>
-                        <TableCell className="text-center">
+                      <TableRow key={record.id} className="hover:bg-gray-50">
+                        <TableCell className="py-2 px-2 text-center text-xs">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
+                        <TableCell className="py-2 px-2 font-mono font-medium text-xs">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 font-mono text-[11px]">
+                            {record.vehicleRegNo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.vehicleType}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs font-medium">{record.ownerName || "-"}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.pan || "-"}</TableCell>
+                        <TableCell className="py-2 px-2 text-xs">{record.vehicleVendor || "-"}</TableCell>
+                        <TableCell className="py-2 px-2 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(record)} className="h-7 w-7 p-0 text-blue-500" title="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleAttachDocument(record)} className="h-7 w-7 p-0 text-green-500" title="Attach Document"><Upload className="h-3.5 w-3.5" /></Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(record)}
+                              className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAttachDocument(record)}
+                              className="h-7 w-7 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
+                              title="Attach Document"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -397,59 +541,156 @@ export default function MarketVehicleMaster() {
             </div>
           </div>
 
-          {totalPages > 1 && (<div className="flex items-center justify-between flex-wrap gap-2"><div className="text-xs">Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries</div><div className="flex gap-1"><Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-xs">Previous</Button><span className="px-3 py-1 text-xs">Page {currentPage} of {totalPages}</span><Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-xs">Next</Button></div></div>)}
-        </div>
-      )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-[10px] text-gray-500">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 text-[10px]"
+                >
+                  <ChevronLeft className="h-3 w-3 mr-1" />
+                  Previous
+                </Button>
+                <span className="px-3 py-1 text-[10px]">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-7 text-[10px]"
+                >
+                  Next
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Entry Tab */}
-      {activeTab === "entry" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Vehicle Reg # <span className="text-red-500">*</span></Label><Input value={vehicleRegNo} onChange={(e) => setVehicleRegNo(e.target.value)} className="h-8 text-xs uppercase" /></div>
-            <div className="space-y-1"><Label className="text-xs">RegDate <span className="text-red-500">*</span></Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full justify-start text-left text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{regDate ? format(regDate, "dd-MM-yyyy") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarComponent mode="single" selected={regDate} onSelect={(d) => d && setRegDate(d)} initialFocus /></PopoverContent></Popover></div>
-            <div className="space-y-1"><Label className="text-xs">Vehicle Type <span className="text-red-500">*</span></Label><Select value={vehicleType} onValueChange={setVehicleType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{vehicleTypeOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Capacity <span className="text-red-500">*</span></Label><Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="h-8 text-xs" /></div>
-          </div>
+      {/* Entry Sheet */}
+      <Sheet open={isEntrySheetOpen} onOpenChange={setIsEntrySheetOpen}>
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              {editMode ? (
+                <>
+                  <Pencil className="h-4 w-4 text-blue-600" />
+                  Edit Vehicle
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 text-blue-600" />
+                  Add New Vehicle
+                </>
+              )}
+            </SheetTitle>
+          </SheetHeader>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Owner Name <span className="text-red-500">*</span></Label><Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Owner Bank Name</Label><Input value={ownerBankName} onChange={(e) => setOwnerBankName(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Owner Account #</Label><Input value={ownerAccountNo} onChange={(e) => setOwnerAccountNo(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Owner IFSC Code</Label><Input value={ownerIfscCode} onChange={(e) => setOwnerIfscCode(e.target.value)} className="h-8 text-xs uppercase" /></div>
-          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Vehicle Reg # <span className="text-red-500">*</span></Label>
+                <Input value={vehicleRegNo} onChange={(e) => setVehicleRegNo(e.target.value)} className="h-8 text-xs uppercase" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reg Date <span className="text-red-500">*</span></Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-8 w-full justify-start text-left text-xs">
+                      <CalendarIcon className="mr-2 h-3 w-3" />
+                      {regDate ? format(regDate, "dd-MM-yyyy") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent mode="single" selected={regDate} onSelect={(d) => d && setRegDate(d)} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Vehicle Type <span className="text-red-500">*</span></Label>
+                <Select value={vehicleType} onValueChange={setVehicleType}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  <SelectContent>{vehicleTypeOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Capacity <span className="text-red-500">*</span></Label>
+                <Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="h-8 text-xs" />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Vehicle Vendor</Label><Input value={vehicleVendor} onChange={(e) => setVehicleVendor(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">PAN</Label><Input value={pan} onChange={(e) => setPan(e.target.value)} className="h-8 text-xs uppercase" /></div>
-            <div className="space-y-1"><Label className="text-xs">Registered At</Label><Input value={registeredAt} onChange={(e) => setRegisteredAt(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">RC Book #</Label><Input value={rcBookNo} onChange={(e) => setRcBookNo(e.target.value)} className="h-8 text-xs" /></div>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Owner Name <span className="text-red-500">*</span></Label><Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Owner Bank Name</Label><Input value={ownerBankName} onChange={(e) => setOwnerBankName(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Owner Account #</Label><Input value={ownerAccountNo} onChange={(e) => setOwnerAccountNo(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Owner IFSC Code</Label><Input value={ownerIfscCode} onChange={(e) => setOwnerIfscCode(e.target.value)} className="h-8 text-xs uppercase" /></div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1"><Label className="text-xs">Engine No.</Label><Input value={engineNo} onChange={(e) => setEngineNo(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Chasis No.</Label><Input value={chasisNo} onChange={(e) => setChasisNo(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Registration Valid Upto</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full justify-start text-left text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{registrationValidUpto ? format(registrationValidUpto, "dd-MM-yyyy") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarComponent mode="single" selected={registrationValidUpto} onSelect={(d) => d && setRegistrationValidUpto(d)} initialFocus /></PopoverContent></Popover></div>
-            <div className="space-y-1"><Label className="text-xs">No. Of Tyres</Label><Input type="number" value={noOfTyres} onChange={(e) => setNoOfTyres(Number(e.target.value))} className="h-8 text-xs" /></div>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Vehicle Vendor</Label><Input value={vehicleVendor} onChange={(e) => setVehicleVendor(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">PAN</Label><Input value={pan} onChange={(e) => setPan(e.target.value)} className="h-8 text-xs uppercase" /></div>
+              <div className="space-y-1"><Label className="text-xs">Registered At</Label><Input value={registeredAt} onChange={(e) => setRegisteredAt(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">RC Book #</Label><Input value={rcBookNo} onChange={(e) => setRcBookNo(e.target.value)} className="h-8 text-xs" /></div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1"><Label className="text-xs">IMEI</Label><Input value={imei} onChange={(e) => setImei(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">GPS Vendor</Label><Input value={gpsVendor} onChange={(e) => setGpsVendor(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Tracking Link</Label><Input value={trackingLink} onChange={(e) => setTrackingLink(e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1"><Label className="text-xs">Select Cheque Image</Label><Input type="file" accept="image/*" onChange={(e) => { if(e.target.files?.[0]) setChequeImage(e.target.files[0].name); }} className="h-8 text-xs file:h-7 file:text-xs" /></div>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Engine No.</Label><Input value={engineNo} onChange={(e) => setEngineNo(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Chasis No.</Label><Input value={chasisNo} onChange={(e) => setChasisNo(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Registration Valid Upto</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-8 w-full justify-start text-left text-xs">
+                      <CalendarIcon className="mr-2 h-3 w-3" />
+                      {registrationValidUpto ? format(registrationValidUpto, "dd-MM-yyyy") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent mode="single" selected={registrationValidUpto} onSelect={(d) => d && setRegistrationValidUpto(d)} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">No. Of Tyres</Label><Input type="number" value={noOfTyres} onChange={(e) => setNoOfTyres(Number(e.target.value))} className="h-8 text-xs" /></div>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={lhcNotForPayment} onChange={(e) => setLhcNotForPayment(e.target.checked)} className="h-3.5 w-3.5" />
-            <Label className="text-xs cursor-pointer">LHC Not For Payment</Label>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="space-y-1"><Label className="text-xs">IMEI</Label><Input value={imei} onChange={(e) => setImei(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">GPS Vendor</Label><Input value={gpsVendor} onChange={(e) => setGpsVendor(e.target.value)} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Tracking Link</Label><Input value={trackingLink} onChange={(e) => setTrackingLink(e.target.value)} className="h-8 text-xs" /></div>
+            </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button onClick={handleSave} size="sm" className="h-8 text-xs"><Save className="mr-1 h-3 w-3" />{editId ? "UPDATE" : "SAVE"}</Button>
-            <Button onClick={resetForm} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
+            <div className="space-y-1">
+              <Label className="text-xs">Select Cheque Image</Label>
+              <Input type="file" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) setChequeImage(e.target.files[0].name); }} className="h-8 text-xs file:h-7 file:text-xs" />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={lhcNotForPayment} onChange={(e) => setLhcNotForPayment(e.target.checked)} className="h-3.5 w-3.5" />
+              <Label className="text-xs cursor-pointer">LHC Not For Payment</Label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+              <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs">
+                <X className="mr-1 h-3 w-3" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 h-8 text-xs">
+                <Save className="mr-1 h-3 w-3" />
+                {editMode ? "Update" : "Save"}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Attach Document Modal */}
       <Dialog open={isDocModalOpen} onOpenChange={setIsDocModalOpen}>
@@ -457,7 +698,7 @@ export default function MarketVehicleMaster() {
           <DialogHeader className="px-4 pt-4 pb-2 border-b">
             <DialogTitle className="text-base md:text-lg">Attach Document - Vehicle Reg #: {selectedVehicleForDoc?.vehicleRegNo}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-hidden flex flex-col px-4">
             <div className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded-md mb-3">
               <AlertCircle className="h-3 w-3 inline mr-1" /> File size should not be greater than 5 mb.
@@ -477,23 +718,21 @@ export default function MarketVehicleMaster() {
             <div className="rounded-md border overflow-x-auto flex-1">
               <Table className="text-xs">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12">S#</TableHead>
-                    <TableHead>Caption</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Select File</TableHead>
-                    <TableHead>File Name</TableHead>
-                    <TableHead className="w-32 text-center">Action</TableHead>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-[11px] w-12">#</TableHead>
+                    <TableHead className="text-[11px]">Caption</TableHead>
+                    <TableHead className="text-[11px]">Description</TableHead>
+                    <TableHead className="text-[11px]">File Name</TableHead>
+                    <TableHead className="text-[11px] w-20 text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {documents.length === 0 ? (<TableRow><TableCell colSpan={6} className="text-center py-8">No documents attached</TableCell></TableRow>) : (
+                  {documents.length === 0 ? (<TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-500">No documents attached</TableCell></TableRow>) : (
                     documents.map((doc, idx) => (
                       <TableRow key={doc.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>{doc.caption}</TableCell>
                         <TableCell>{doc.description || "-"}</TableCell>
-                        <TableCell>-</TableCell>
                         <TableCell>{doc.fileName}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
