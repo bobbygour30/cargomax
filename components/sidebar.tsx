@@ -258,9 +258,9 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
         { title: "Vehicle Master (New)", icon: Bus, href: "/operations/vehicles-new" },
         { title: "Vehicle Subgroup Master", icon: GitBranch, href: "/operations/vehicle-subgroup" },
         { title: "Vehicle Type Master", icon: Bus, href: "/operations/vehicle-type" },
-        { title: "Hub Configuration", icon: Building, href: "/operations/hub-confi" },
-        { title: "Spoke Configuration", icon: Route, href: "/operations/spoke-confi" },
-        { title: "Pin Code Master", icon: MapPinned, href: "/operations/pincode-master" },
+        { title: "Hub Configuration", icon: Building, href: "/operations/hub-config" },
+        { title: "Spoke Configuration", icon: Route, href: "/operations/spoke-config" },
+        { title: "Pincode Master", icon: MapPinned, href: "/operations/pincode-master" },
       ],
     },
     {
