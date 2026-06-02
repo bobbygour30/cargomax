@@ -47,57 +47,49 @@ import {
   Save,
   RefreshCw,
   Search,
-  Printer,
   FileText,
-  Eye,
   X,
-  Check,
-  Truck,
-  Package,
   MapPin,
   Building,
-  Phone,
-  Mail,
-  CreditCard,
-  FileSpreadsheet,
-  PlusCircle,
-  Trash2,
-  Send,
-  Mail as MailIcon,
-  FileImage,
-  FolderOpen,
-  AlertCircle,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
   DollarSign,
   Users,
-  Clock,
-  History,
   Plus,
   Edit,
   Grid3x3,
-  User,
-  PhoneCall,
   MessageSquare,
   Calculator,
   Shield,
   Settings,
-  IndianRupee,
   TrendingUp,
-  Pencil, 
+  Pencil,
+  PlusCircle,
+  Trash2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+
+// Types
+interface PackageItem {
+  id: number;
+  noOfPackages: number;
+  content: string;
+  packing: string;
+  actualWeight: number;
+  chargeWeight: number;
+}
 
 interface InvoiceItem {
   id: number;
   invoiceNo: string;
   date: Date;
-  value: string;
-  awayBillNo: string;
-  awayBillDate: Date;
-  valueUpTo: string;
+  value: number;
+  ewayBillNo: string;
+  ewayBillDate: Date;
+  validUpto: Date;
+  isNcv: boolean;
 }
 
 interface BookingRecord {
@@ -106,40 +98,40 @@ interface BookingRecord {
   grDate: Date;
   bookingFrom: string;
   destination: string;
+  pickupFrom: string;
   deliveryPoint: string;
+  bookingType: string;
   collectionAt: string;
   consignorName: string;
-  consignorCode: string;
+  consignorGst: string;
+  consignorDealerCode: string;
   consignorAddress: string;
   consignorCity: string;
   consignorState: string;
-  consignorPincode: string;
   consignorMobile: string;
   consignorEmail: string;
-  consignorGst: string;
+  consignorIecCode: string;
+  consignorBankAdNo: string;
   consigneeName: string;
-  consigneeCode: string;
+  consigneeGst: string;
+  consigneeDealerCode: string;
   consigneeAddress: string;
   consigneeCity: string;
   consigneeState: string;
-  consigneePincode: string;
   consigneeMobile: string;
   consigneeEmail: string;
-  consigneeGst: string;
+  consigneeIecCode: string;
+  consigneeEximCode: string;
+  pvtMarkaSealNo: string;
+  serviceProduct: string;
   deliveryType: string;
+  loadType: string;
   mkExecutive: string;
-  toPay: boolean;
-  gst: boolean;
-  surface: boolean;
-  partLoad: boolean;
   freightOn: string;
-  chargeWeight: number;
   manualRates: boolean;
-  basicFreight: number;
-  loadingCharges: number;
-  unloadingCharges: number;
-  doorDeliveryCharges: number;
-  otherCharges: number;
+  totalPackages: number;
+  totalActualWeight: number;
+  totalChargeWeight: number;
   totalFreight: number;
   remarks: string;
   roRemarks: string;
@@ -148,7 +140,11 @@ interface BookingRecord {
   insuranceNo: string;
   insuranceDate: Date;
   insuranceCompany: string;
-  insuranceAmount: number;
+  billNo: string;
+  supplementaryBillNo: string;
+  ccAttached: boolean;
+  printAfterSave: boolean;
+  packages: PackageItem[];
   invoices: InvoiceItem[];
   status: "active" | "cancelled";
   cancelledDate?: Date;
@@ -157,38 +153,53 @@ interface BookingRecord {
   updatedAt: Date;
 }
 
+// Options
+const bookingTypeOptions = [
+  { value: "topay", label: "TOPAY" },
+  { value: "prepaid", label: "PREPAID" },
+  { value: "tobill", label: "TO BILL" },
+];
+
+const serviceProductOptions = [
+  { value: "surface", label: "SURFACE" },
+  { value: "express", label: "EXPRESS" },
+  { value: "air", label: "AIR" },
+];
+
 const deliveryTypeOptions = [
-  { value: "door_delivery", label: "Door Delivery" },
-  { value: "pickup", label: "Pickup" },
-  { value: "self_collection", label: "Self Collection" },
-];
-
-const insuranceCoveredByOptions = [
-  { value: "carrier", label: "Carrier" },
-  { value: "consignor", label: "Consignor" },
-  { value: "consignee", label: "Consignee" },
-];
-
-const freightOnOptions = [
-  { value: "to_pay", label: "To Pay" },
-  { value: "prepaid", label: "Prepaid" },
-  { value: "collect", label: "Collect" },
+  { value: "godown", label: "GODOWN" },
+  { value: "door_delivery", label: "DOOR DELIVERY" },
+  { value: "pickup", label: "PICKUP" },
 ];
 
 const loadTypeOptions = [
-  { value: "ftl", label: "FTL" },
-  { value: "ltl", label: "LTL" },
-  { value: "container", label: "Container" },
+  { value: "part_load", label: "PART LOAD" },
+  { value: "full_load", label: "FULL LOAD" },
+  { value: "container", label: "CONTAINER" },
+];
+
+const freightOnOptions = [
+  { value: "charge_weight", label: "CHARGE WEIGHT" },
+  { value: "actual_weight", label: "ACTUAL WEIGHT" },
+  { value: "per_package", label: "PER PACKAGE" },
+];
+
+const insuranceCoveredByOptions = [
+  { value: "self", label: "Self" },
+  { value: "customer", label: "Customer" },
+  { value: "third_party", label: "Third Party" },
+];
+
+const packingOptions = ["BOX", "BAG", "PALLET", "DRUM", "LOOSE", "ROLL", "CARTON", "STRAPPED"];
+
+const executiveOptions = [
+  "Rajesh Kumar", "Suresh Singh", "Amit Sharma", "Priya Verma", 
+  "Vikash Gupta", "Neha Singh", "Rahul Mehta", "Pooja Yadav"
 ];
 
 const branchOptions = [
   "DELHI", "MUMBAI", "BANGALORE", "CHENNAI", "KOLKATA", 
   "AHMEDABAD", "PUNE", "HYDERABAD", "LUCKNOW", "JAIPUR"
-];
-
-const executiveOptions = [
-  "Rajesh Kumar", "Suresh Singh", "Amit Sharma", "Priya Verma", 
-  "Vikash Gupta", "Neha Singh", "Rahul Mehta", "Pooja Yadav"
 ];
 
 const cancelledReasonOptions = [
@@ -197,90 +208,91 @@ const cancelledReasonOptions = [
 ];
 
 export default function BookingComputerizeGRL() {
-  // Main Tab state
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
-  
-  // Modal state
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<number | null>(null);
-  const [activeFormTab, setActiveFormTab] = useState<string>("basic");
+  // IMPORTANT: Default tab set to "consignor"
+  const [activeFormTab, setActiveFormTab] = useState<string>("consignor");
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "report">("report");
-
-  // Cancelled Dialog state
   const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState<BookingRecord | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
 
-  // Basic Info state
+  // Basic Info State
   const [grNo, setGrNo] = useState<string>("");
   const [grDate, setGrDate] = useState<Date>(new Date());
   const [bookingFrom, setBookingFrom] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
+  const [pickupFrom, setPickupFrom] = useState<string>("");
   const [deliveryPoint, setDeliveryPoint] = useState<string>("");
+  const [bookingType, setBookingType] = useState<string>("topay");
   const [collectionAt, setCollectionAt] = useState<string>("");
-  const [deliveryType, setDeliveryType] = useState<string>("");
+  const [serviceProduct, setServiceProduct] = useState<string>("surface");
+  const [deliveryType, setDeliveryType] = useState<string>("godown");
+  const [loadType, setLoadType] = useState<string>("part_load");
   const [mkExecutive, setMkExecutive] = useState<string>("");
-  const [loadType, setLoadType] = useState<string>("");
+  const [freightOn, setFreightOn] = useState<string>("charge_weight");
+  const [manualRates, setManualRates] = useState<boolean>(false);
+  const [pvtMarkaSealNo, setPvtMarkaSealNo] = useState<string>("");
+  const [ccAttached, setCcAttached] = useState<boolean>(false);
+  const [printAfterSave, setPrintAfterSave] = useState<boolean>(false);
 
-  // Consignor state
+  // Consignor State
   const [consignorName, setConsignorName] = useState<string>("");
-  const [consignorCode, setConsignorCode] = useState<string>("");
+  const [consignorGst, setConsignorGst] = useState<string>("");
+  const [consignorDealerCode, setConsignorDealerCode] = useState<string>("");
   const [consignorAddress, setConsignorAddress] = useState<string>("");
   const [consignorCity, setConsignorCity] = useState<string>("");
   const [consignorState, setConsignorState] = useState<string>("");
-  const [consignorPincode, setConsignorPincode] = useState<string>("");
   const [consignorMobile, setConsignorMobile] = useState<string>("");
   const [consignorEmail, setConsignorEmail] = useState<string>("");
-  const [consignorGst, setConsignorGst] = useState<string>("");
+  const [consignorIecCode, setConsignorIecCode] = useState<string>("");
+  const [consignorBankAdNo, setConsignorBankAdNo] = useState<string>("");
 
-  // Consignee state
+  // Consignee State
   const [consigneeName, setConsigneeName] = useState<string>("");
-  const [consigneeCode, setConsigneeCode] = useState<string>("");
+  const [consigneeGst, setConsigneeGst] = useState<string>("");
+  const [consigneeDealerCode, setConsigneeDealerCode] = useState<string>("");
   const [consigneeAddress, setConsigneeAddress] = useState<string>("");
   const [consigneeCity, setConsigneeCity] = useState<string>("");
   const [consigneeState, setConsigneeState] = useState<string>("");
-  const [consigneePincode, setConsigneePincode] = useState<string>("");
   const [consigneeMobile, setConsigneeMobile] = useState<string>("");
   const [consigneeEmail, setConsigneeEmail] = useState<string>("");
-  const [consigneeGst, setConsigneeGst] = useState<string>("");
+  const [consigneeIecCode, setConsigneeIecCode] = useState<string>("");
+  const [consigneeEximCode, setConsigneeEximCode] = useState<string>("");
 
-  // Freight state
-  const [freightOn, setFreightOn] = useState<string>("");
-  const [chargeWeight, setChargeWeight] = useState<number>(0);
-  const [basicFreight, setBasicFreight] = useState<number>(0);
-  const [loadingCharges, setLoadingCharges] = useState<number>(0);
-  const [unloadingCharges, setUnloadingCharges] = useState<number>(0);
-  const [doorDeliveryCharges, setDoorDeliveryCharges] = useState<number>(0);
-  const [otherCharges, setOtherCharges] = useState<number>(0);
-  const [totalFreight, setTotalFreight] = useState<number>(0);
+  // Packages State
+  const [packages, setPackages] = useState<PackageItem[]>([
+    { id: 1, noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 },
+  ]);
 
-  // Status
-  const [toPay, setToPay] = useState<boolean>(false);
-  const [gst, setGst] = useState<boolean>(false);
-  const [surface, setSurface] = useState<boolean>(false);
-  const [partLoad, setPartLoad] = useState<boolean>(false);
-  const [manualRates, setManualRates] = useState<boolean>(false);
+  // Invoices State
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([
+    { id: 1, invoiceNo: "", date: new Date(), value: 0, ewayBillNo: "", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false },
+  ]);
 
-  // Remarks state
+  // Remarks State
   const [remarks, setRemarks] = useState<string>("");
   const [roRemarks, setRoRemarks] = useState<string>("");
   const [gpRemarks, setGpRemarks] = useState<string>("");
 
-  // Insurance state
+  // Insurance State
   const [insuranceCoveredBy, setInsuranceCoveredBy] = useState<string>("");
   const [insuranceNo, setInsuranceNo] = useState<string>("");
   const [insuranceDate, setInsuranceDate] = useState<Date>(new Date());
   const [insuranceCompany, setInsuranceCompany] = useState<string>("");
-  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [billNo, setBillNo] = useState<string>("");
+  const [supplementaryBillNo, setSupplementaryBillNo] = useState<string>("");
 
-  // Invoices
-  const [invoices, setInvoices] = useState<InvoiceItem[]>([
-    { id: 1, invoiceNo: "", date: new Date(), value: "", awayBillNo: "", awayBillDate: new Date(), valueUpTo: "" },
-  ]);
+  // Totals
+  const [totalPackages, setTotalPackages] = useState<number>(0);
+  const [totalActualWeight, setTotalActualWeight] = useState<number>(0);
+  const [totalChargeWeight, setTotalChargeWeight] = useState<number>(0);
+  const [totalFreight, setTotalFreight] = useState<number>(0);
 
-  // Search state
+  // Search State
   const [searchFromDate, setSearchFromDate] = useState<Date>(new Date());
   const [searchToDate, setSearchToDate] = useState<Date>(new Date());
   const [searchGrNo, setSearchGrNo] = useState<string>("");
@@ -291,52 +303,47 @@ export default function BookingComputerizeGRL() {
   const [cancelledCurrentPage, setCancelledCurrentPage] = useState<number>(1);
   const itemsPerPage: number = 10;
 
-  // Sample saved data
+  // Sample Data
   const [savedRecords, setSavedRecords] = useState<BookingRecord[]>([
     {
-      id: 1, grNo: "GR000001", grDate: new Date("2026-05-20"), bookingFrom: "DELHI", destination: "MUMBAI",
-      deliveryPoint: "Andheri", collectionAt: "Delhi Hub", consignorName: "ABC Traders", consignorCode: "C001",
-      consignorAddress: "123, Transport Nagar", consignorCity: "Delhi", consignorState: "Delhi", consignorPincode: "110001",
-      consignorMobile: "9876543210", consignorEmail: "abc@traders.com", consignorGst: "07ABCDE1234F1Z5",
-      consigneeName: "XYZ Enterprises", consigneeCode: "C002", consigneeAddress: "456, MIDC Area", consigneeCity: "Mumbai",
-      consigneeState: "Maharashtra", consigneePincode: "400001", consigneeMobile: "9876543220", consigneeEmail: "xyz@enterprises.com",
-      consigneeGst: "27FGHIJ5678K1Z6", deliveryType: "door_delivery", mkExecutive: "Rajesh Kumar", toPay: true,
-      gst: true, surface: false, partLoad: false, freightOn: "to_pay", chargeWeight: 500, manualRates: false,
-      basicFreight: 15000, loadingCharges: 500, unloadingCharges: 500, doorDeliveryCharges: 1000, otherCharges: 0,
-      totalFreight: 17000, remarks: "Handle with care", roRemarks: "", gpRemarks: "", insuranceCoveredBy: "carrier",
-      insuranceNo: "INS001", insuranceDate: new Date(), insuranceCompany: "New India", insuranceAmount: 50000,
-      invoices: [], status: "active", createdAt: new Date(), updatedAt: new Date()
-    },
-    {
-      id: 2, grNo: "GR000002", grDate: new Date("2026-05-18"), bookingFrom: "MUMBAI", destination: "BANGALORE",
-      deliveryPoint: "Electronic City", collectionAt: "Mumbai Hub", consignorName: "PQR Ltd", consignorCode: "C003",
-      consignorAddress: "789, Business Park", consignorCity: "Mumbai", consignorState: "Maharashtra", consignorPincode: "400002",
-      consignorMobile: "9876543230", consignorEmail: "pqr@ltd.com", consignorGst: "27PQRST3456U1Z7",
-      consigneeName: "LMN Corp", consigneeCode: "C004", consigneeAddress: "321, IT Park", consigneeCity: "Bangalore",
-      consigneeState: "Karnataka", consigneePincode: "560001", consigneeMobile: "9876543240", consigneeEmail: "lmn@corp.com",
-      consigneeGst: "29LMNOP9012Q1Z8", deliveryType: "pickup", mkExecutive: "Suresh Singh", toPay: false,
-      gst: true, surface: false, partLoad: true, freightOn: "prepaid", chargeWeight: 300, manualRates: false,
-      basicFreight: 12000, loadingCharges: 400, unloadingCharges: 400, doorDeliveryCharges: 0, otherCharges: 200,
-      totalFreight: 13000, remarks: "", roRemarks: "", gpRemarks: "", insuranceCoveredBy: "consignor",
-      insuranceNo: "", insuranceDate: new Date(), insuranceCompany: "", insuranceAmount: 0,
-      invoices: [], status: "cancelled", cancelledDate: new Date("2026-05-19"), cancelledReason: "Customer Request",
-      createdAt: new Date(), updatedAt: new Date()
+      id: 1, grNo: "GR000001", grDate: new Date(), bookingFrom: "DELHI", destination: "MUMBAI",
+      pickupFrom: "Delhi Transport Nagar", deliveryPoint: "Andheri West", bookingType: "topay",
+      collectionAt: "Delhi Hub", consignorName: "ABC Traders", consignorGst: "07ABCDE1234F1Z5",
+      consignorDealerCode: "D001", consignorAddress: "123, Transport Nagar", consignorCity: "Delhi",
+      consignorState: "Delhi", consignorMobile: "9876543210", consignorEmail: "abc@traders.com",
+      consignorIecCode: "IEC001", consignorBankAdNo: "BANK001", consigneeName: "XYZ Enterprises",
+      consigneeGst: "27FGHIJ5678K1Z6", consigneeDealerCode: "D002", consigneeAddress: "456, MIDC Area",
+      consigneeCity: "Mumbai", consigneeState: "Maharashtra", consigneeMobile: "9876543220",
+      consigneeEmail: "xyz@enterprises.com", consigneeIecCode: "IEC002", consigneeEximCode: "EXIM001",
+      pvtMarkaSealNo: "MARKA001", serviceProduct: "surface", deliveryType: "godown", loadType: "part_load",
+      mkExecutive: "Rajesh Kumar", freightOn: "charge_weight", manualRates: false,
+      totalPackages: 5, totalActualWeight: 500, totalChargeWeight: 550, totalFreight: 15000,
+      remarks: "Handle with care", roRemarks: "", gpRemarks: "", insuranceCoveredBy: "self",
+      insuranceNo: "INS001", insuranceDate: new Date(), insuranceCompany: "New India",
+      billNo: "BILL001", supplementaryBillNo: "SUPP001", ccAttached: false, printAfterSave: false,
+      packages: [{ id: 1, noOfPackages: 5, content: "GENERAL CARGO", packing: "BOX", actualWeight: 500, chargeWeight: 550 }],
+      invoices: [{ id: 1, invoiceNo: "INV001", date: new Date(), value: 50000, ewayBillNo: "EWB001", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false }],
+      status: "active", createdAt: new Date(), updatedAt: new Date()
     },
   ]);
 
   useEffect(() => {
     filterActiveRecords();
     filterCancelledRecords();
+    if (!grNo) setGrNo(generateGrNo());
   }, []);
 
-  const filterActiveRecords = () => {
-    const activeRecords = savedRecords.filter(r => r.status === "active");
-    setSearchResults(activeRecords);
-  };
+  useEffect(() => {
+    calculateTotals();
+  }, [packages]);
 
-  const filterCancelledRecords = () => {
-    const cancelledRecords = savedRecords.filter(r => r.status === "cancelled");
-    setCancelledSearchResults(cancelledRecords);
+  const calculateTotals = () => {
+    const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.noOfPackages || 0), 0);
+    const actualWt = packages.reduce((sum, pkg) => sum + (pkg.actualWeight || 0), 0);
+    const chargeWt = packages.reduce((sum, pkg) => sum + (pkg.chargeWeight || 0), 0);
+    setTotalPackages(pkgCount);
+    setTotalActualWeight(actualWt);
+    setTotalChargeWeight(chargeWt);
   };
 
   const generateGrNo = (): string => {
@@ -344,53 +351,78 @@ export default function BookingComputerizeGRL() {
     return `GR${String(count).padStart(6, "0")}`;
   };
 
-  const calculateTotalFreight = () => {
-    const total = basicFreight + loadingCharges + unloadingCharges + doorDeliveryCharges + otherCharges;
-    setTotalFreight(total);
-    return total;
+  const addPackageRow = () => {
+    setPackages([...packages, { id: Date.now(), noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 }]);
   };
 
-  const resetForm = (): void => {
+  const updatePackage = (id: number, field: keyof PackageItem, value: any) => {
+    setPackages(packages.map(pkg => pkg.id === id ? { ...pkg, [field]: value } : pkg));
+  };
+
+  const removePackage = (id: number) => {
+    if (packages.length > 1) setPackages(packages.filter(pkg => pkg.id !== id));
+  };
+
+  const addInvoiceRow = () => {
+    setInvoices([...invoices, { id: Date.now(), invoiceNo: "", date: new Date(), value: 0, ewayBillNo: "", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false }]);
+  };
+
+  const updateInvoice = (id: number, field: keyof InvoiceItem, value: any) => {
+    setInvoices(invoices.map(inv => inv.id === id ? { ...inv, [field]: value } : inv));
+  };
+
+  const removeInvoice = (id: number) => {
+    if (invoices.length > 1) setInvoices(invoices.filter(inv => inv.id !== id));
+  };
+
+  const filterActiveRecords = () => setSearchResults(savedRecords.filter(r => r.status === "active"));
+  const filterCancelledRecords = () => setCancelledSearchResults(savedRecords.filter(r => r.status === "cancelled"));
+
+  const calculateTotalFreight = () => {
+    const calculatedFreight = totalChargeWeight * 30;
+    setTotalFreight(calculatedFreight);
+  };
+
+  const resetForm = () => {
     setGrNo(generateGrNo());
     setGrDate(new Date());
     setBookingFrom("");
     setDestination("");
+    setPickupFrom("");
     setDeliveryPoint("");
+    setBookingType("topay");
     setCollectionAt("");
-    setDeliveryType("");
+    setServiceProduct("surface");
+    setDeliveryType("godown");
+    setLoadType("part_load");
     setMkExecutive("");
-    setLoadType("");
+    setFreightOn("charge_weight");
+    setManualRates(false);
+    setPvtMarkaSealNo("");
+    setCcAttached(false);
+    setPrintAfterSave(false);
     setConsignorName("");
-    setConsignorCode("");
+    setConsignorGst("");
+    setConsignorDealerCode("");
     setConsignorAddress("");
     setConsignorCity("");
     setConsignorState("");
-    setConsignorPincode("");
     setConsignorMobile("");
     setConsignorEmail("");
-    setConsignorGst("");
+    setConsignorIecCode("");
+    setConsignorBankAdNo("");
     setConsigneeName("");
-    setConsigneeCode("");
+    setConsigneeGst("");
+    setConsigneeDealerCode("");
     setConsigneeAddress("");
     setConsigneeCity("");
     setConsigneeState("");
-    setConsigneePincode("");
     setConsigneeMobile("");
     setConsigneeEmail("");
-    setConsigneeGst("");
-    setFreightOn("");
-    setChargeWeight(0);
-    setBasicFreight(0);
-    setLoadingCharges(0);
-    setUnloadingCharges(0);
-    setDoorDeliveryCharges(0);
-    setOtherCharges(0);
-    setTotalFreight(0);
-    setToPay(false);
-    setGst(false);
-    setSurface(false);
-    setPartLoad(false);
-    setManualRates(false);
+    setConsigneeIecCode("");
+    setConsigneeEximCode("");
+    setPackages([{ id: 1, noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 }]);
+    setInvoices([{ id: 1, invoiceNo: "", date: new Date(), value: 0, ewayBillNo: "", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false }]);
     setRemarks("");
     setRoRemarks("");
     setGpRemarks("");
@@ -398,115 +430,38 @@ export default function BookingComputerizeGRL() {
     setInsuranceNo("");
     setInsuranceDate(new Date());
     setInsuranceCompany("");
-    setInsuranceAmount(0);
-    setInvoices([{ id: 1, invoiceNo: "", date: new Date(), value: "", awayBillNo: "", awayBillDate: new Date(), valueUpTo: "" }]);
+    setBillNo("");
+    setSupplementaryBillNo("");
+    setTotalFreight(0);
     setEditMode(false);
     setCurrentEditId(null);
-    setActiveFormTab("basic");
-  };
-
-  const addInvoiceRow = () => {
-    const newInvoice: InvoiceItem = {
-      id: Date.now(),
-      invoiceNo: "",
-      date: new Date(),
-      value: "",
-      awayBillNo: "",
-      awayBillDate: new Date(),
-      valueUpTo: "",
-    };
-    setInvoices([...invoices, newInvoice]);
-  };
-
-  const updateInvoice = (id: number, field: keyof InvoiceItem, value: any) => {
-    setInvoices(invoices.map((inv) => (inv.id === id ? { ...inv, [field]: value } : inv)));
-  };
-
-  const removeInvoice = (id: number) => {
-    if (invoices.length > 1) {
-      setInvoices(invoices.filter((inv) => inv.id !== id));
-    }
+    // Reset tab to consignor when opening new form
+    setActiveFormTab("consignor");
   };
 
   const handleSave = () => {
-    if (!consignorName) {
-      alert("Please enter Consignor Name");
-      return;
-    }
-    if (!consigneeName) {
-      alert("Please enter Consignee Name");
-      return;
-    }
-
+    if (!consignorName) { alert("Please enter Consignor Name"); return; }
+    if (!consigneeName) { alert("Please enter Consignee Name"); return; }
+    
     setLoading(true);
     setTimeout(() => {
       const newRecord: BookingRecord = {
-        id: currentEditId || Date.now(),
-        grNo,
-        grDate,
-        bookingFrom,
-        destination,
-        deliveryPoint,
-        collectionAt,
-        consignorName,
-        consignorCode,
-        consignorAddress,
-        consignorCity,
-        consignorState,
-        consignorPincode,
-        consignorMobile,
-        consignorEmail,
-        consignorGst,
-        consigneeName,
-        consigneeCode,
-        consigneeAddress,
-        consigneeCity,
-        consigneeState,
-        consigneePincode,
-        consigneeMobile,
-        consigneeEmail,
-        consigneeGst,
-        deliveryType,
-        mkExecutive,
-        toPay,
-        gst,
-        surface,
-        partLoad,
-        freightOn,
-        chargeWeight,
-        manualRates,
-        basicFreight,
-        loadingCharges,
-        unloadingCharges,
-        doorDeliveryCharges,
-        otherCharges,
-        totalFreight,
-        remarks,
-        roRemarks,
-        gpRemarks,
-        insuranceCoveredBy,
-        insuranceNo,
-        insuranceDate,
-        insuranceCompany,
-        insuranceAmount,
-        invoices,
-        status: "active",
-        createdAt: editMode && currentEditId ? 
-          savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : 
-          new Date(),
-        updatedAt: new Date(),
+        id: currentEditId || Date.now(), grNo, grDate, bookingFrom, destination, pickupFrom, deliveryPoint,
+        bookingType, collectionAt, consignorName, consignorGst, consignorDealerCode, consignorAddress, consignorCity,
+        consignorState, consignorMobile, consignorEmail, consignorIecCode, consignorBankAdNo, consigneeName,
+        consigneeGst, consigneeDealerCode, consigneeAddress, consigneeCity, consigneeState, consigneeMobile,
+        consigneeEmail, consigneeIecCode, consigneeEximCode, pvtMarkaSealNo, serviceProduct, deliveryType, loadType,
+        mkExecutive, freightOn, manualRates, totalPackages, totalActualWeight, totalChargeWeight, totalFreight,
+        remarks, roRemarks, gpRemarks, insuranceCoveredBy, insuranceNo, insuranceDate, insuranceCompany,
+        billNo, supplementaryBillNo, ccAttached, printAfterSave, packages, invoices, status: "active",
+        createdAt: editMode && currentEditId ? savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : new Date(),
+        updatedAt: new Date()
       };
-
-      let updatedRecords;
-      if (editMode && currentEditId) {
-        updatedRecords = savedRecords.map((record) => (record.id === currentEditId ? newRecord : record));
-      } else {
-        updatedRecords = [...savedRecords, newRecord];
-      }
+      const updatedRecords = editMode && currentEditId ? savedRecords.map(r => r.id === currentEditId ? newRecord : r) : [...savedRecords, newRecord];
       setSavedRecords(updatedRecords);
       filterActiveRecords();
       filterCancelledRecords();
-      alert(editMode ? "Record updated successfully!" : "Record saved successfully!");
+      alert(editMode ? "Record updated!" : "Record saved!");
       resetForm();
       setIsBookingModalOpen(false);
       setLoading(false);
@@ -514,27 +469,13 @@ export default function BookingComputerizeGRL() {
   };
 
   const handleCancelBooking = () => {
-    if (!cancelledReason) {
-      alert("Please select cancellation reason");
-      return;
-    }
-    
+    if (!cancelledReason) { alert("Please select cancellation reason"); return; }
     if (cancellingBooking) {
-      const updatedRecords = savedRecords.map(record => 
-        record.id === cancellingBooking.id 
-          ? { 
-              ...record, 
-              status: "cancelled" as const, 
-              cancelledDate: new Date(), 
-              cancelledReason: cancelledReason,
-              updatedAt: new Date()
-            }
-          : record
-      );
+      const updatedRecords = savedRecords.map(record => record.id === cancellingBooking.id ? { ...record, status: "cancelled" as const, cancelledDate: new Date(), cancelledReason, updatedAt: new Date() } : record);
       setSavedRecords(updatedRecords);
       filterActiveRecords();
       filterCancelledRecords();
-      alert(`Booking ${cancellingBooking.grNo} has been cancelled successfully!`);
+      alert(`Booking ${cancellingBooking.grNo} cancelled!`);
       setIsCancelledDialogOpen(false);
       setCancellingBooking(null);
       setCancelledReason("");
@@ -542,51 +483,31 @@ export default function BookingComputerizeGRL() {
   };
 
   const handleRestoreBooking = (record: BookingRecord) => {
-    if (confirm(`Are you sure you want to restore booking ${record.grNo}?`)) {
-      const updatedRecords = savedRecords.map(r => 
-        r.id === record.id 
-          ? { ...r, status: "active" as const, cancelledDate: undefined, cancelledReason: undefined, updatedAt: new Date() }
-          : r
-      );
+    if (confirm(`Restore booking ${record.grNo}?`)) {
+      const updatedRecords = savedRecords.map(r => r.id === record.id ? { ...r, status: "active" as const, cancelledDate: undefined, cancelledReason: undefined, updatedAt: new Date() } : r);
       setSavedRecords(updatedRecords);
       filterActiveRecords();
       filterCancelledRecords();
-      alert(`Booking ${record.grNo} has been restored successfully!`);
+      alert(`Booking ${record.grNo} restored!`);
     }
   };
 
   const handleSearch = () => {
     let results = savedRecords.filter(r => r.status === "active");
-    if (searchGrNo) {
-      results = results.filter((r) => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
-    }
-    if (searchFromDate) {
-      results = results.filter((r) => r.grDate >= searchFromDate);
-    }
-    if (searchToDate) {
-      results = results.filter((r) => r.grDate <= searchToDate);
-    }
-    if (searchBranch !== "all") {
-      results = results.filter((r) => r.bookingFrom === searchBranch);
-    }
+    if (searchGrNo) results = results.filter(r => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
+    if (searchFromDate) results = results.filter(r => r.grDate >= searchFromDate);
+    if (searchToDate) results = results.filter(r => r.grDate <= searchToDate);
+    if (searchBranch !== "all") results = results.filter(r => r.bookingFrom === searchBranch);
     setSearchResults(results);
     setCurrentPage(1);
   };
 
   const handleCancelledSearch = () => {
     let results = savedRecords.filter(r => r.status === "cancelled");
-    if (searchGrNo) {
-      results = results.filter((r) => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
-    }
-    if (searchFromDate) {
-      results = results.filter((r) => r.grDate >= searchFromDate);
-    }
-    if (searchToDate) {
-      results = results.filter((r) => r.grDate <= searchToDate);
-    }
-    if (searchBranch !== "all") {
-      results = results.filter((r) => r.bookingFrom === searchBranch);
-    }
+    if (searchGrNo) results = results.filter(r => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
+    if (searchFromDate) results = results.filter(r => r.grDate >= searchFromDate);
+    if (searchToDate) results = results.filter(r => r.grDate <= searchToDate);
+    if (searchBranch !== "all") results = results.filter(r => r.bookingFrom === searchBranch);
     setCancelledSearchResults(results);
     setCancelledCurrentPage(1);
   };
@@ -598,8 +519,6 @@ export default function BookingComputerizeGRL() {
     setSearchBranch("all");
     filterActiveRecords();
     filterCancelledRecords();
-    setCurrentPage(1);
-    setCancelledCurrentPage(1);
   };
 
   const handleEdit = (record: BookingRecord) => {
@@ -609,41 +528,41 @@ export default function BookingComputerizeGRL() {
     setGrDate(record.grDate);
     setBookingFrom(record.bookingFrom);
     setDestination(record.destination);
+    setPickupFrom(record.pickupFrom);
     setDeliveryPoint(record.deliveryPoint);
+    setBookingType(record.bookingType);
     setCollectionAt(record.collectionAt);
+    setServiceProduct(record.serviceProduct);
+    setDeliveryType(record.deliveryType);
+    setLoadType(record.loadType);
+    setMkExecutive(record.mkExecutive);
+    setFreightOn(record.freightOn);
+    setManualRates(record.manualRates);
+    setPvtMarkaSealNo(record.pvtMarkaSealNo);
+    setCcAttached(record.ccAttached);
+    setPrintAfterSave(record.printAfterSave);
     setConsignorName(record.consignorName);
-    setConsignorCode(record.consignorCode);
+    setConsignorGst(record.consignorGst);
+    setConsignorDealerCode(record.consignorDealerCode);
     setConsignorAddress(record.consignorAddress);
     setConsignorCity(record.consignorCity);
     setConsignorState(record.consignorState);
-    setConsignorPincode(record.consignorPincode);
     setConsignorMobile(record.consignorMobile);
     setConsignorEmail(record.consignorEmail);
-    setConsignorGst(record.consignorGst);
+    setConsignorIecCode(record.consignorIecCode);
+    setConsignorBankAdNo(record.consignorBankAdNo);
     setConsigneeName(record.consigneeName);
-    setConsigneeCode(record.consigneeCode);
+    setConsigneeGst(record.consigneeGst);
+    setConsigneeDealerCode(record.consigneeDealerCode);
     setConsigneeAddress(record.consigneeAddress);
     setConsigneeCity(record.consigneeCity);
     setConsigneeState(record.consigneeState);
-    setConsigneePincode(record.consigneePincode);
     setConsigneeMobile(record.consigneeMobile);
     setConsigneeEmail(record.consigneeEmail);
-    setConsigneeGst(record.consigneeGst);
-    setDeliveryType(record.deliveryType);
-    setMkExecutive(record.mkExecutive);
-    setToPay(record.toPay);
-    setGst(record.gst);
-    setSurface(record.surface);
-    setPartLoad(record.partLoad);
-    setFreightOn(record.freightOn);
-    setChargeWeight(record.chargeWeight);
-    setManualRates(record.manualRates);
-    setBasicFreight(record.basicFreight);
-    setLoadingCharges(record.loadingCharges);
-    setUnloadingCharges(record.unloadingCharges);
-    setDoorDeliveryCharges(record.doorDeliveryCharges);
-    setOtherCharges(record.otherCharges);
-    setTotalFreight(record.totalFreight);
+    setConsigneeIecCode(record.consigneeIecCode);
+    setConsigneeEximCode(record.consigneeEximCode);
+    setPackages(record.packages);
+    setInvoices(record.invoices);
     setRemarks(record.remarks);
     setRoRemarks(record.roRemarks);
     setGpRemarks(record.gpRemarks);
@@ -651,19 +570,18 @@ export default function BookingComputerizeGRL() {
     setInsuranceNo(record.insuranceNo);
     setInsuranceDate(record.insuranceDate);
     setInsuranceCompany(record.insuranceCompany);
-    setInsuranceAmount(record.insuranceAmount);
-    setInvoices(record.invoices);
+    setBillNo(record.billNo);
+    setSupplementaryBillNo(record.supplementaryBillNo);
+    setTotalFreight(record.totalFreight);
     setIsBookingModalOpen(true);
-    setActiveFormTab("basic");
+    setActiveFormTab("consignor");
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to permanently delete this record?")) {
-      const updatedRecords = savedRecords.filter((record) => record.id !== id);
-      setSavedRecords(updatedRecords);
+    if (confirm("Permanently delete?")) {
+      setSavedRecords(savedRecords.filter(r => r.id !== id));
       filterActiveRecords();
       filterCancelledRecords();
-      alert("Record deleted successfully!");
     }
   };
 
@@ -681,18 +599,9 @@ export default function BookingComputerizeGRL() {
     setIsCancelledDialogOpen(true);
   };
 
-  // Stats
-  const activeStats = {
-    total: searchResults.length,
-    totalFreight: searchResults.reduce((sum, r) => sum + r.totalFreight, 0),
-  };
+  const activeStats = { total: searchResults.length, totalFreight: searchResults.reduce((sum, r) => sum + r.totalFreight, 0) };
+  const cancelledStats = { total: cancelledSearchResults.length, totalFreight: cancelledSearchResults.reduce((sum, r) => sum + r.totalFreight, 0) };
 
-  const cancelledStats = {
-    total: cancelledSearchResults.length,
-    totalFreight: cancelledSearchResults.reduce((sum, r) => sum + r.totalFreight, 0),
-  };
-
-  // Pagination
   const totalPages = Math.ceil(searchResults.length / itemsPerPage);
   const paginatedResults = searchResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -718,1113 +627,213 @@ export default function BookingComputerizeGRL() {
               <span>📅 Financial Year: 2026-2027</span>
             </div>
           </div>
-          <Button onClick={openAddModal} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
-            <Plus className="mr-2 h-4 w-4" />
-            New Booking
-          </Button>
+          <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700"><Plus className="mr-2 h-4 w-4" />New Booking</Button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <div className="flex border-b bg-white rounded-t-lg">
-        <button
-          onClick={() => {
-            setMainTab("active");
-            filterActiveRecords();
-          }}
-          className={cn(
-            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
-            mainTab === "active"
-              ? "bg-blue-600 text-white shadow-md"
-              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-          )}
-        >
-          Active Bookings
-        </button>
-        <button
-          onClick={() => {
-            setMainTab("cancelled");
-            filterCancelledRecords();
-          }}
-          className={cn(
-            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
-            mainTab === "cancelled"
-              ? "bg-red-600 text-white shadow-md"
-              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-          )}
-        >
-          Cancelled Bookings
-        </button>
+        <button onClick={() => { setMainTab("active"); filterActiveRecords(); }} className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg", mainTab === "active" ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100")}>Active Bookings</button>
+        <button onClick={() => { setMainTab("cancelled"); filterCancelledRecords(); }} className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg", mainTab === "cancelled" ? "bg-red-600 text-white" : "text-gray-600 hover:bg-gray-100")}>Cancelled Bookings</button>
       </div>
 
       {/* Active Bookings Tab */}
       {mainTab === "active" && (
         <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm opacity-90">Total Active Bookings</p>
-                    <p className="text-2xl font-bold">{activeStats.total}</p>
-                  </div>
-                  <FileText className="h-8 w-8 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm opacity-90">Total Freight Amount</p>
-                    <p className="text-2xl font-bold">₹{activeStats.totalFreight.toLocaleString()}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Active</p><p className="text-2xl font-bold">{activeStats.total}</p></div><FileText className="h-8 w-8 opacity-80" /></div></CardContent></Card>
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Freight</p><p className="text-2xl font-bold">₹{activeStats.totalFreight.toLocaleString()}</p></div><DollarSign className="h-8 w-8 opacity-80" /></div></CardContent></Card>
           </div>
 
-          {/* Search Filters */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
-                <Search className="h-3.5 w-3.5" />
-                Search Active Bookings
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-xs flex items-center gap-2"><Search className="h-3 w-3" />Search Active Bookings</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">From Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
-                        <CalendarIcon className="mr-2 h-3 w-3" />
-                        {format(searchFromDate, "dd-MM-yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={searchFromDate} onSelect={(date) => date && setSearchFromDate(date)} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">To Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
-                        <CalendarIcon className="mr-2 h-3 w-3" />
-                        {format(searchToDate, "dd-MM-yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={searchToDate} onSelect={(date) => date && setSearchToDate(date)} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">GR Number</Label>
-                  <Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} placeholder="Enter GR Number" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">Branch</Label>
-                  <Select value={searchBranch} onValueChange={setSearchBranch}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="All Branches" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button onClick={handleSearch} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700">
-                    <Search className="mr-1 h-3 w-3" />
-                    Search
-                  </Button>
-                  <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs">
-                    <RefreshCw className="mr-1 h-3 w-3" />
-                    Clear
-                  </Button>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div><Label className="text-[10px]">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchFromDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div>
+                <div><Label className="text-[10px]">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchToDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div>
+                <div><Label className="text-[10px]">GR No.</Label><Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} className="h-8 text-xs" /></div>
+                <div><Label className="text-[10px]">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+                <div className="flex gap-1 items-end"><Button onClick={handleSearch} size="sm" className="h-8 text-xs bg-blue-600"><Search className="h-3 w-3 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="h-3 w-3" /></Button></div>
               </div>
             </CardContent>
           </Card>
 
-          {/* View Mode Toggle */}
           <div className="flex justify-end gap-2">
-            <Button
-              onClick={() => setViewMode("report")}
-              variant={viewMode === "report" ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-            >
-              <Table className="h-3.5 w-3.5 mr-1" /> Report View
-            </Button>
-            <Button
-              onClick={() => setViewMode("grid")}
-              variant={viewMode === "grid" ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-            >
-              <Grid3x3 className="h-3.5 w-3.5 mr-1" /> Grid View
-            </Button>
+            <Button onClick={() => setViewMode("report")} variant={viewMode === "report" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Table className="h-3 w-3 mr-1" />Report</Button>
+            <Button onClick={() => setViewMode("grid")} variant={viewMode === "grid" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Grid3x3 className="h-3 w-3 mr-1" />Grid</Button>
           </div>
 
-          {/* Report View Table - Active */}
           {viewMode === "report" && searchResults.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Table className="h-3.5 w-3.5 text-gray-500" />
-                    <h3 className="text-[11px] font-semibold text-gray-800">Active Bookings List</h3>
-                  </div>
-                  <div className="text-[10px] text-gray-500">Total: {searchResults.length} records</div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <div className="min-w-[1100px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR #</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR Date</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Origin</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Destination</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignor</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignee</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px] text-right">Freight (₹)</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-32 text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedResults.map((record, idx) => (
-                          <TableRow key={record.id} className="hover:bg-gray-50">
-                            <TableCell className="py-2 px-2 text-center text-xs">
-                              {(currentPage - 1) * itemsPerPage + idx + 1}
-                            </TableCell>
-                            <TableCell className="py-2 px-2 font-mono font-semibold text-xs">
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[11px]">
-                                {record.grNo}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.bookingFrom || "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.destination || "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consignorName}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consigneeName}</TableCell>
-                            <TableCell className="py-2 px-2 text-right text-xs">₹{record.totalFreight.toLocaleString()}</TableCell>
-                            <TableCell className="py-2 px-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(record)}
-                                  className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                                  title="Edit"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openCancelDialog(record)}
-                                  className="h-7 w-7 p-0 text-orange-500 hover:text-orange-700 hover:bg-orange-50"
-                                  title="Cancel Booking"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(record.id)}
-                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-[10px] text-gray-500">
-                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-[10px]">
-                        <ChevronLeft className="h-3 w-3 mr-1" /> Previous
-                      </Button>
-                      <span className="px-3 py-1 text-[10px]">Page {currentPage} of {totalPages}</span>
-                      <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-[10px]">
-                        Next <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2 text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((r, idx) => (<TableRow key={r.id}><TableCell className="text-xs p-2">{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2 font-mono font-bold"><Badge variant="outline" className="bg-blue-50">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2 text-center"><div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => handleEdit(r)} className="h-6 w-6 p-0 text-blue-500"><Pencil className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => openCancelDialog(r)} className="h-6 w-6 p-0 text-orange-500"><X className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></div></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
           )}
 
-          {/* Grid View - Active */}
-          {viewMode === "grid" && searchResults.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {searchResults.map((record) => (
-                <Card key={record.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-500" />
-                          <h3 className="font-semibold text-sm">{record.grNo}</h3>
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-1">{format(record.grDate, "dd-MM-yyyy")}</p>
-                      </div>
-                      <Badge className="bg-green-100 text-green-700 text-[10px]">Active</Badge>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-gray-400" />
-                        <span>{record.bookingFrom} → {record.destination}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-3 w-3 text-gray-400" />
-                        <span className="truncate">Cnr: {record.consignorName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        <span className="truncate">Cnee: {record.consigneeName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-3 w-3 text-gray-400" />
-                        <span>Freight: ₹{record.totalFreight.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(record)} className="h-7 w-7 p-0 text-blue-500">
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openCancelDialog(record)} className="h-7 w-7 p-0 text-orange-500">
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* No Data Message */}
-          {searchResults.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-500 text-sm">No active booking records found</p>
-                <p className="text-xs text-gray-400 mt-1">Click "New Booking" to create one</p>
-              </CardContent>
-            </Card>
-          )}
+          {searchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><FileText className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No active bookings</p></CardContent></Card>)}
         </>
       )}
 
       {/* Cancelled Bookings Tab */}
       {mainTab === "cancelled" && (
         <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm opacity-90">Total Cancelled Bookings</p>
-                    <p className="text-2xl font-bold">{cancelledStats.total}</p>
-                  </div>
-                  <X className="h-8 w-8 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm opacity-90">Total Freight Lost</p>
-                    <p className="text-2xl font-bold">₹{cancelledStats.totalFreight.toLocaleString()}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Cancelled</p><p className="text-2xl font-bold">{cancelledStats.total}</p></div><X className="h-8 w-8 opacity-80" /></div></CardContent></Card>
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Freight Lost</p><p className="text-2xl font-bold">₹{cancelledStats.totalFreight.toLocaleString()}</p></div><DollarSign className="h-8 w-8 opacity-80" /></div></CardContent></Card>
           </div>
 
-          {/* Search Filters for Cancelled */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
-                <Search className="h-3.5 w-3.5" />
-                Search Cancelled Bookings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">From Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
-                        <CalendarIcon className="mr-2 h-3 w-3" />
-                        {format(searchFromDate, "dd-MM-yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={searchFromDate} onSelect={(date) => date && setSearchFromDate(date)} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">To Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
-                        <CalendarIcon className="mr-2 h-3 w-3" />
-                        {format(searchToDate, "dd-MM-yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={searchToDate} onSelect={(date) => date && setSearchToDate(date)} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">GR Number</Label>
-                  <Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} placeholder="Enter GR Number" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">Branch</Label>
-                  <Select value={searchBranch} onValueChange={setSearchBranch}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="All Branches" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button onClick={handleCancelledSearch} size="sm" className="h-8 text-xs bg-red-600 hover:bg-red-700">
-                    <Search className="mr-1 h-3 w-3" />
-                    Search
-                  </Button>
-                  <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs">
-                    <RefreshCw className="mr-1 h-3 w-3" />
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Card><CardHeader><CardTitle className="text-xs"><Search className="h-3 w-3 inline mr-1" />Search Cancelled</CardTitle></CardHeader><CardContent><div className="grid grid-cols-2 md:grid-cols-5 gap-2"><div><Label className="text-[10px]">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchFromDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label className="text-[10px]">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchToDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label className="text-[10px]">GR No.</Label><Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} className="h-8 text-xs" /></div><div><Label className="text-[10px]">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div className="flex gap-1 items-end"><Button onClick={handleCancelledSearch} size="sm" className="h-8 text-xs bg-red-600"><Search className="h-3 w-3 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="h-3 w-3" /></Button></div></div></CardContent></Card>
 
-          {/* View Mode Toggle */}
-          <div className="flex justify-end gap-2">
-            <Button
-              onClick={() => setViewMode("report")}
-              variant={viewMode === "report" ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-            >
-              <Table className="h-3.5 w-3.5 mr-1" /> Report View
-            </Button>
-            <Button
-              onClick={() => setViewMode("grid")}
-              variant={viewMode === "grid" ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-            >
-              <Grid3x3 className="h-3.5 w-3.5 mr-1" /> Grid View
-            </Button>
-          </div>
+          {viewMode === "report" && cancelledSearchResults.length > 0 && (<Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2">Cancel Date</TableHead><TableHead className="text-[10px] p-2">Reason</TableHead><TableHead className="text-[10px] p-2">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedCancelledResults.map((r, idx) => (<TableRow key={r.id} className="bg-red-50/30"><TableCell className="text-xs p-2">{(cancelledCurrentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2"><Badge variant="outline" className="bg-red-50 text-red-700">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2">{r.cancelledDate ? format(r.cancelledDate, "dd-MM-yy") : "-"}</TableCell><TableCell className="text-xs p-2 truncate max-w-[100px]">{r.cancelledReason}</TableCell><TableCell className="text-xs p-2"><Button variant="ghost" size="sm" onClick={() => handleRestoreBooking(r)} className="h-6 w-6 p-0 text-green-500"><RefreshCw className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>)}
 
-          {/* Report View Table - Cancelled */}
-          {viewMode === "report" && cancelledSearchResults.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Table className="h-3.5 w-3.5 text-gray-500" />
-                    <h3 className="text-[11px] font-semibold text-gray-800">Cancelled Bookings List</h3>
-                  </div>
-                  <div className="text-[10px] text-gray-500">Total: {cancelledSearchResults.length} records</div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-x-auto">
-                  <div className="min-w-[1200px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR #</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR Date</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Origin</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Destination</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignor</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignee</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px] text-right">Freight (₹)</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Cancelled Date</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Cancelled Reason</TableHead>
-                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-32 text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedCancelledResults.map((record, idx) => (
-                          <TableRow key={record.id} className="hover:bg-gray-50 bg-red-50/30">
-                            <TableCell className="py-2 px-2 text-center text-xs">
-                              {(cancelledCurrentPage - 1) * itemsPerPage + idx + 1}
-                            </TableCell>
-                            <TableCell className="py-2 px-2 font-mono font-semibold text-xs">
-                              <Badge variant="outline" className="bg-red-50 text-red-700 text-[11px]">
-                                {record.grNo}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.bookingFrom || "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.destination || "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consignorName}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consigneeName}</TableCell>
-                            <TableCell className="py-2 px-2 text-right text-xs">₹{record.totalFreight.toLocaleString()}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.cancelledDate ? format(record.cancelledDate, "dd-MM-yyyy") : "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-xs">{record.cancelledReason || "-"}</TableCell>
-                            <TableCell className="py-2 px-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRestoreBooking(record)}
-                                  className="h-7 w-7 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
-                                  title="Restore Booking"
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(record.id)}
-                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                {/* Pagination for Cancelled */}
-                {cancelledTotalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-[10px] text-gray-500">
-                      Showing {((cancelledCurrentPage - 1) * itemsPerPage) + 1} to {Math.min(cancelledCurrentPage * itemsPerPage, cancelledSearchResults.length)} of {cancelledSearchResults.length} entries
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledCurrentPage - 1)} disabled={cancelledCurrentPage === 1} className="h-7 text-[10px]">
-                        <ChevronLeft className="h-3 w-3 mr-1" /> Previous
-                      </Button>
-                      <span className="px-3 py-1 text-[10px]">Page {cancelledCurrentPage} of {cancelledTotalPages}</span>
-                      <Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledCurrentPage + 1)} disabled={cancelledCurrentPage === cancelledTotalPages} className="h-7 text-[10px]">
-                        Next <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Grid View - Cancelled */}
-          {viewMode === "grid" && cancelledSearchResults.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cancelledSearchResults.map((record) => (
-                <Card key={record.id} className="hover:shadow-md transition-shadow border-red-200 bg-red-50/30">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <X className="h-4 w-4 text-red-500" />
-                          <h3 className="font-semibold text-sm">{record.grNo}</h3>
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-1">{format(record.grDate, "dd-MM-yyyy")}</p>
-                      </div>
-                      <Badge className="bg-red-100 text-red-700 text-[10px]">Cancelled</Badge>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-gray-400" />
-                        <span>{record.bookingFrom} → {record.destination}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-3 w-3 text-gray-400" />
-                        <span className="truncate">Cnr: {record.consignorName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        <span className="truncate">Cnee: {record.consigneeName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-3 w-3 text-gray-400" />
-                        <span>Freight: ₹{record.totalFreight.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-3 w-3 text-red-400" />
-                        <span>Reason: {record.cancelledReason}</span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleRestoreBooking(record)} className="h-7 w-7 p-0 text-green-500" title="Restore">
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* No Data Message for Cancelled */}
-          {cancelledSearchResults.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <X className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-500 text-sm">No cancelled booking records found</p>
-              </CardContent>
-            </Card>
-          )}
+          {cancelledSearchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><X className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No cancelled bookings</p></CardContent></Card>)}
         </>
       )}
 
-      {/* Cancel Booking Dialog */}
+      {/* Cancel Dialog */}
       <Dialog open={isCancelledDialogOpen} onOpenChange={setIsCancelledDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <X className="h-5 w-5" />
-              Cancel Booking
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel booking <strong>{cancellingBooking?.grNo}</strong>?
-              This action cannot be undone immediately.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Cancellation Reason <span className="text-red-500">*</span>
-              </Label>
-              <Select value={cancelledReason} onValueChange={setCancelledReason}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select cancellation reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cancelledReasonOptions.map(opt => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="bg-yellow-50 p-3 rounded-md">
-              <p className="text-xs text-yellow-800 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                Note: Cancelled bookings will be moved to Cancelled List and can be restored later.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>
-              No, Keep Booking
-            </Button>
-            <Button variant="destructive" onClick={handleCancelBooking}>
-              Yes, Cancel Booking
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent><DialogHeader><DialogTitle className="text-red-600 flex items-center gap-2"><X className="h-5 w-5" />Cancel Booking</DialogTitle><DialogDescription>Cancel {cancellingBooking?.grNo}?</DialogDescription></DialogHeader><div><Label>Cancellation Reason *</Label><Select value={cancelledReason} onValueChange={setCancelledReason}><SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger><SelectContent>{cancelledReasonOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><DialogFooter><Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>No, Keep</Button><Button variant="destructive" onClick={handleCancelBooking}>Yes, Cancel</Button></DialogFooter></DialogContent>
       </Dialog>
 
-      {/* New Booking Modal - Full Size Dialog */}
+      {/* Main Booking Modal - CONSignor TAB OPEN BY DEFAULT */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              {editMode ? (
-                <>
-                  <Edit className="h-5 w-5 text-blue-600" />
-                  Edit Booking - {currentEditId ? `GR #${savedRecords.find(r => r.id === currentEditId)?.grNo}` : ""}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-5 w-5 text-blue-600" />
-                  Create New Booking
-                </>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              Fill in the booking details below. All fields marked with * are mandatory.
-            </DialogDescription>
+            <DialogTitle>{editMode ? "Edit Booking" : "Create New Booking"}</DialogTitle>
+            <DialogDescription>Fill in all booking details below. Consignor tab is open by default.</DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 py-4 space-y-5">
-            {/* Action Buttons Row */}
-            <div className="flex flex-wrap gap-2 justify-end sticky top-[73px] bg-white py-2 z-10 border-b">
-              <Button variant="outline" size="sm" className="h-8 text-xs">
-                <PlusCircle className="mr-1 h-3 w-3" /> Add More...
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-xs">
-                <TrendingUp className="mr-1 h-3 w-3" /> Free Freight On
-              </Button>
-              <Button 
-                onClick={calculateTotalFreight} 
-                variant="default" 
-                size="sm" 
-                className="h-8 text-xs bg-green-600 hover:bg-green-700"
-              >
-                <Calculator className="mr-1 h-3 w-3" /> Calculate Freight
-              </Button>
+          <div className="px-6 py-4 space-y-4">
+            {/* Basic Info Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div><Label className="text-xs">GR # *</Label><Input value={grNo} readOnly className="h-8 text-sm bg-gray-50" /></div>
+              <div><Label className="text-xs">Booking From *</Label><Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Booking Date *</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-sm"><CalendarIcon className="mr-1 h-3 w-3" />{format(grDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={grDate} onSelect={(d) => d && setGrDate(d)} /></PopoverContent></Popover></div>
+              <div><Label className="text-xs">Destination *</Label><Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Pickup From</Label><Input value={pickupFrom} onChange={(e) => setPickupFrom(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Delivery Point</Label><Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-8 text-sm" /></div>
             </div>
 
-            {/* Basic Information Section */}
-            <div className="border rounded-lg p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-600">
-                <FileText className="h-4 w-4" />
-                Basic Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">GR #</Label>
-                  <Input value={grNo} readOnly className="h-9 text-sm bg-gray-50" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">GR Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-9 w-full justify-start text-left text-sm">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(grDate, "dd-MM-yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={grDate} onSelect={(date) => date && setGrDate(date)} />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Booking From</Label>
-                  <Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Destination</Label>
-                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Delivery Point</Label>
-                  <Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Collection At</Label>
-                  <Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Delivery Type</Label>
-                  <Select value={deliveryType} onValueChange={setDeliveryType}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{deliveryTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">MKT. Executive</Label>
-                  <Select value={mkExecutive} onValueChange={setMkExecutive}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{executiveOptions.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Load Type</Label>
-                  <Select value={loadType} onValueChange={setLoadType}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{loadTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div><Label className="text-xs">Booking Type *</Label><Select value={bookingType} onValueChange={setBookingType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{bookingTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Collection At *</Label><Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Consignor *</Label><Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-8 text-sm" placeholder="Consignor Name" /></div>
+              <div><Label className="text-xs">Consignor GST</Label><Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Consignee *</Label><Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-8 text-sm" placeholder="Consignee Name" /></div>
+              <div><Label className="text-xs">Consignee GST</Label><Input value={consigneeGst} onChange={(e) => setConsigneeGst(e.target.value)} className="h-8 text-sm" /></div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div><Label className="text-xs">Pvt Marka/Seal No</Label><Input value={pvtMarkaSealNo} onChange={(e) => setPvtMarkaSealNo(e.target.value)} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Service/Product *</Label><Select value={serviceProduct} onValueChange={setServiceProduct}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{serviceProductOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Delivery Type *</Label><Select value={deliveryType} onValueChange={setDeliveryType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{deliveryTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Load Type *</Label><Select value={loadType} onValueChange={setLoadType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{loadTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">MKT Executive</Label><Select value={mkExecutive} onValueChange={setMkExecutive}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{executiveOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label className="text-xs">Freight On</Label><Select value={freightOn} onValueChange={setFreightOn}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+
+            {/* Packages Table */}
+            <div className="border rounded-lg p-3">
+              <div className="flex justify-between mb-2"><Label className="text-sm font-semibold">Package Details</Label><Button variant="outline" size="sm" onClick={addPackageRow}><PlusCircle className="h-3 w-3 mr-1" />Add Package</Button></div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead className="text-[10px] p-1">No of Pckgs</TableHead><TableHead className="text-[10px] p-1">Content</TableHead><TableHead className="text-[10px] p-1">Packing</TableHead><TableHead className="text-[10px] p-1">Actual Wt</TableHead><TableHead className="text-[10px] p-1">Charge Wt</TableHead><TableHead className="w-8"></TableHead></TableRow></TableHeader>
+                  <TableBody>{packages.map(pkg => (<TableRow key={pkg.id}><TableCell><Input type="number" value={pkg.noOfPackages} onChange={(e) => updatePackage(pkg.id, "noOfPackages", Number(e.target.value))} className="h-8 w-20 text-xs" /></TableCell><TableCell><Input value={pkg.content} onChange={(e) => updatePackage(pkg.id, "content", e.target.value)} className="h-8 w-28 text-xs" /></TableCell><TableCell><Select value={pkg.packing} onValueChange={(val) => updatePackage(pkg.id, "packing", val)}><SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger><SelectContent>{packingOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><Input type="number" value={pkg.actualWeight} onChange={(e) => updatePackage(pkg.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-xs" /></TableCell><TableCell><Input type="number" value={pkg.chargeWeight} onChange={(e) => updatePackage(pkg.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-xs" /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removePackage(pkg.id)} disabled={packages.length === 1} className="h-7 w-7 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody>
+                </Table>
+              </div>
+              <div className="mt-2 text-xs bg-gray-50 p-2 rounded">Total: Pckgs: {totalPackages} | Actual Wt: {totalActualWeight} kg | Charge Wt: {totalChargeWeight} kg | Freight: ₹{totalFreight}</div>
+            </div>
+
+            {/* Invoices Table */}
+            <div className="border rounded-lg p-3">
+              <div className="flex justify-between mb-2"><Label className="text-sm font-semibold">Invoice Details</Label><div className="flex gap-2"><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} />Print After Save</label><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={ccAttached} onChange={(e) => setCcAttached(e.target.checked)} />CC Attached</label><Button variant="outline" size="sm" onClick={addInvoiceRow}><PlusCircle className="h-3 w-3 mr-1" />Add Invoice</Button></div></div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead className="text-[10px] p-1">S#</TableHead><TableHead className="text-[10px] p-1">Invoice #</TableHead><TableHead className="text-[10px] p-1">Date</TableHead><TableHead className="text-[10px] p-1">Value</TableHead><TableHead className="text-[10px] p-1">Eway Bill #</TableHead><TableHead className="text-[10px] p-1">Eway Date</TableHead><TableHead className="text-[10px] p-1">Valid Upto</TableHead><TableHead className="text-[10px] p-1">NCV</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>{invoices.map((inv, idx) => (<TableRow key={inv.id}><TableCell className="text-xs">{idx+1}</TableCell><TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-24 text-xs" /></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(inv.date, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} /></PopoverContent></Popover></TableCell><TableCell><Input type="number" value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", Number(e.target.value))} className="h-8 w-24 text-xs" /></TableCell><TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-24 text-xs" /></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(inv.ewayBillDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} /></PopoverContent></Popover></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(inv.validUpto, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.validUpto} onSelect={(d) => d && updateInvoice(inv.id, "validUpto", d)} /></PopoverContent></Popover></TableCell><TableCell className="text-center"><input type="checkbox" checked={inv.isNcv} onChange={(e) => updateInvoice(inv.id, "isNcv", e.target.checked)} /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody>
+                </Table>
               </div>
             </div>
 
-            {/* Form Tabs */}
+            {/* Form Tabs - DEFAULT TAB IS "consignor" */}
             <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-gray-100 rounded-lg">
-                <TabsTrigger value="basic" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Settings className="h-3 w-3 mr-1" /> Basic
-                </TabsTrigger>
-                <TabsTrigger value="consignor" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Building className="h-3 w-3 mr-1" /> Consignor
-                </TabsTrigger>
-                <TabsTrigger value="consignee" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Users className="h-3 w-3 mr-1" /> Consignee
-                </TabsTrigger>
-                <TabsTrigger value="freight" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <DollarSign className="h-3 w-3 mr-1" /> Freight
-                </TabsTrigger>
-                <TabsTrigger value="other" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Settings className="h-3 w-3 mr-1" /> Other
-                </TabsTrigger>
+              <TabsList className="grid grid-cols-6 h-auto">
+                <TabsTrigger value="consignor" className="text-xs py-1">Consignor</TabsTrigger>
+                <TabsTrigger value="consignee" className="text-xs py-1">Consignee</TabsTrigger>
+                <TabsTrigger value="freight" className="text-xs py-1">Freight</TabsTrigger>
+                <TabsTrigger value="remarks" className="text-xs py-1">Remarks</TabsTrigger>
+                <TabsTrigger value="insurance" className="text-xs py-1">Insurance</TabsTrigger>
+                <TabsTrigger value="billing" className="text-xs py-1">Billing</TabsTrigger>
               </TabsList>
 
-              {/* Basic Tab */}
-              <TabsContent value="basic" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Freight On</Label>
-                    <Select value={freightOn} onValueChange={setFreightOn}>
-                      <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                      <SelectContent>{freightOnOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Charge Weight (kg)</Label>
-                    <Input type="number" value={chargeWeight} onChange={(e) => setChargeWeight(Number(e.target.value))} className="h-10 text-sm" />
-                  </div>
-                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Freight On</Label>
-                    <Select value={freightOn} onValueChange={setFreightOn}>
-                      <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                      <SelectContent>{freightOnOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Charge Weight (kg)</Label>
-                    <Input type="number" value={chargeWeight} onChange={(e) => setChargeWeight(Number(e.target.value))} className="h-10 text-sm" />
-                  </div>
-                </div>
+              {/* Consignor Tab - Now Opens First */}
+              <TabsContent value="consignor" className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="toPay" checked={toPay} onChange={(e) => setToPay(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="toPay" className="text-sm font-normal">To Pay</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="gst" checked={gst} onChange={(e) => setGst(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="gst" className="text-sm font-normal">GST</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="surface" checked={surface} onChange={(e) => setSurface(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="surface" className="text-sm font-normal">Surface</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="partLoad" checked={partLoad} onChange={(e) => setPartLoad(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="partLoad" className="text-sm font-normal">Part Load</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="manualRates" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="manualRates" className="text-sm font-normal">Manual Rates</Label>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Consignor Tab */}
-              <TabsContent value="consignor" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignor Name *</Label>
-                    <Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-9 text-sm" placeholder="Enter consignor name" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignor Code</Label>
-                    <Input value={consignorCode} onChange={(e) => setConsignorCode(e.target.value)} className="h-9 text-sm" placeholder="Enter code" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignor Address</Label>
-                    <Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" placeholder="Enter address" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">City</Label>
-                    <Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" placeholder="Enter city" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">State</Label>
-                    <Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" placeholder="Enter state" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Pincode</Label>
-                    <Input value={consignorPincode} onChange={(e) => setConsignorPincode(e.target.value)} className="h-9 text-sm" placeholder="Enter pincode" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Mobile</Label>
-                    <Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-9 text-sm" placeholder="Enter mobile" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Email</Label>
-                    <Input type="email" value={consignorEmail} onChange={(e) => setConsignorEmail(e.target.value)} className="h-9 text-sm" placeholder="Enter email" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">GST Number</Label>
-                    <Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-9 text-sm" placeholder="Enter GST" />
-                  </div>
+                  <div><Label className="text-xs">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Mobile No.</Label><Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Email ID</Label><Input value={consignorEmail} onChange={(e) => setConsignorEmail(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">IEC Code</Label><Input value={consignorIecCode} onChange={(e) => setConsignorIecCode(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Bank AD. No.</Label><Input value={consignorBankAdNo} onChange={(e) => setConsignorBankAdNo(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
               </TabsContent>
 
               {/* Consignee Tab */}
-              <TabsContent value="consignee" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignee Name *</Label>
-                    <Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-9 text-sm" placeholder="Enter consignee name" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignee Code</Label>
-                    <Input value={consigneeCode} onChange={(e) => setConsigneeCode(e.target.value)} className="h-9 text-sm" placeholder="Enter code" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Consignee Address</Label>
-                    <Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" placeholder="Enter address" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">City</Label>
-                    <Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" placeholder="Enter city" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">State</Label>
-                    <Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" placeholder="Enter state" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Pincode</Label>
-                    <Input value={consigneePincode} onChange={(e) => setConsigneePincode(e.target.value)} className="h-9 text-sm" placeholder="Enter pincode" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Mobile</Label>
-                    <Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-9 text-sm" placeholder="Enter mobile" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Email</Label>
-                    <Input type="email" value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-9 text-sm" placeholder="Enter email" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">GST Number</Label>
-                    <Input value={consigneeGst} onChange={(e) => setConsigneeGst(e.target.value)} className="h-9 text-sm" placeholder="Enter GST" />
-                  </div>
+              <TabsContent value="consignee" className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div><Label className="text-xs">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Mobile No.</Label><Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Email ID</Label><Input value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">IEC Code</Label><Input value={consigneeIecCode} onChange={(e) => setConsigneeIecCode(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
               </TabsContent>
 
               {/* Freight Tab */}
-              <TabsContent value="freight" className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Basic Freight (₹)</Label>
-                    <Input type="number" value={basicFreight} onChange={(e) => setBasicFreight(Number(e.target.value))} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Loading Charges (₹)</Label>
-                    <Input type="number" value={loadingCharges} onChange={(e) => setLoadingCharges(Number(e.target.value))} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Unloading Charges (₹)</Label>
-                    <Input type="number" value={unloadingCharges} onChange={(e) => setUnloadingCharges(Number(e.target.value))} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Door Delivery Charges (₹)</Label>
-                    <Input type="number" value={doorDeliveryCharges} onChange={(e) => setDoorDeliveryCharges(Number(e.target.value))} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Other Charges (₹)</Label>
-                    <Input type="number" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium font-bold text-green-600">Total Freight (₹)</Label>
-                    <Input type="number" value={totalFreight} readOnly className="h-9 text-sm font-bold bg-green-50 text-green-700" />
-                  </div>
+              <TabsContent value="freight" className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div><Label className="text-xs">Freight On</Label><Select value={freightOn} onValueChange={setFreightOn}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="flex items-center gap-2"><Label className="text-xs">Manual Rates</Label><input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="rounded" /></div>
+                  <div><Label className="text-xs font-bold text-green-600">Total Freight (₹)</Label><Input type="number" value={totalFreight} onChange={(e) => setTotalFreight(Number(e.target.value))} className="h-8 text-sm font-bold" /></div>
+                </div>
+                <Button onClick={calculateTotalFreight} size="sm" className="h-8 text-xs bg-green-600"><Calculator className="h-3 w-3 mr-1" />Calculate Freight</Button>
+              </TabsContent>
+
+              {/* Remarks Tab */}
+              <TabsContent value="remarks" className="mt-4 space-y-3">
+                <div><Label className="text-xs">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" /></div>
+                <div><Label className="text-xs">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" /></div>
+                <div><Label className="text-xs">GP Remarks</Label><Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={2} className="text-sm" /></div>
+              </TabsContent>
+
+              {/* Insurance Tab */}
+              <TabsContent value="insurance" className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div><Label className="text-xs">Insurance Covered By</Label><Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+                  <div><Label className="text-xs">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Insurance Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-sm"><CalendarIcon className="mr-1 h-3 w-3" />{format(insuranceDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} /></PopoverContent></Popover></div>
+                  <div><Label className="text-xs">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
               </TabsContent>
 
-              {/* Other Tab */}
-              <TabsContent value="other" className="mt-4 space-y-4">
-                {/* Remarks Section */}
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-purple-600">
-                    <MessageSquare className="h-4 w-4" />
-                    Remarks
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Remarks</Label>
-                      <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} className="text-sm" placeholder="General remarks" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">RO Remarks</Label>
-                      <Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={3} className="text-sm" placeholder="Route order remarks" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">GP Remarks</Label>
-                      <Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={3} className="text-sm" placeholder="General purpose remarks" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Insurance Section */}
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-600">
-                    <Shield className="h-4 w-4" />
-                    Insurance Details
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Insurance Covered By</Label>
-                      <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                        <SelectContent>{insuranceCoveredByOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Insurance Number</Label>
-                      <Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Insurance Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="h-9 w-full justify-start text-left text-sm">
-                            <CalendarIcon className="mr-2 h-3 w-3" />
-                            {format(insuranceDate, "dd-MM-yyyy")}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={insuranceDate} onSelect={(date) => date && setInsuranceDate(date)} />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Insurance Company</Label>
-                      <Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Insurance Amount (₹)</Label>
-                      <Input type="number" value={insuranceAmount} onChange={(e) => setInsuranceAmount(Number(e.target.value))} className="h-9 text-sm" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Invoices Section */}
-                <div className="border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-semibold flex items-center gap-2 text-green-600">
-                      <FileSpreadsheet className="h-4 w-4" />
-                      Invoice Details
-                    </h3>
-                    <Button type="button" variant="outline" size="sm" onClick={addInvoiceRow} className="h-8 text-xs">
-                      <PlusCircle className="mr-1 h-3 w-3" /> Add Invoice
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[700px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-gray-50">
-                            <TableHead className="text-[10px] py-2 px-1">Invoice #</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1">Date</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1">Value (₹)</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1">Away Bill #</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1">Away Bill Date</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1">Value Up To</TableHead>
-                            <TableHead className="text-[10px] py-2 px-1 w-8"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {invoices.map((invoice) => (
-                            <TableRow key={invoice.id}>
-                              <TableCell className="py-1 px-1"><Input value={invoice.invoiceNo} onChange={(e) => updateInvoice(invoice.id, "invoiceNo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
-                              <TableCell className="py-1 px-1">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-8 text-xs w-28 justify-start">
-                                      <CalendarIcon className="mr-1 h-3 w-3" />
-                                      {format(invoice.date, "dd-MM-yyyy")}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={invoice.date} onSelect={(date) => date && updateInvoice(invoice.id, "date", date)} />
-                                  </PopoverContent>
-                                </Popover>
-                              </TableCell>
-                              <TableCell className="py-1 px-1"><Input type="number" value={invoice.value} onChange={(e) => updateInvoice(invoice.id, "value", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
-                              <TableCell className="py-1 px-1"><Input value={invoice.awayBillNo} onChange={(e) => updateInvoice(invoice.id, "awayBillNo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
-                              <TableCell className="py-1 px-1">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-8 text-xs w-28 justify-start">
-                                      <CalendarIcon className="mr-1 h-3 w-3" />
-                                      {format(invoice.awayBillDate, "dd-MM-yyyy")}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={invoice.awayBillDate} onSelect={(date) => date && updateInvoice(invoice.id, "awayBillDate", date)} />
-                                  </PopoverContent>
-                                </Popover>
-                              </TableCell>
-                              <TableCell className="py-1 px-1"><Input value={invoice.valueUpTo} onChange={(e) => updateInvoice(invoice.id, "valueUpTo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
-                              <TableCell className="py-1 px-1">
-                                <Button variant="ghost" size="sm" onClick={() => removeInvoice(invoice.id)} className="h-7 w-7 p-0 text-red-500" disabled={invoices.length === 1}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
+              {/* Billing Tab */}
+              <TabsContent value="billing" className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Bill No</Label><Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Supplementary Bill No</Label><Input value={supplementaryBillNo} onChange={(e) => setSupplementaryBillNo(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
               </TabsContent>
             </Tabs>
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-white border-t px-6 py-4 gap-3">
-            <Button variant="outline" onClick={() => setIsBookingModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-              {loading ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  {editMode ? "Update Booking" : "Save Booking"}
-                </>
-              )}
-            </Button>
+            <Button variant="outline" onClick={() => setIsBookingModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={loading} className="bg-blue-600">{loading ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Saving...</> : <><Save className="mr-2 h-4 w-4" />{editMode ? "Update" : "Save"} Booking</>}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Missing Pencil Icon Import - Add this to imports */}
-      {/* Add: import { Pencil } from "lucide-react"; */}
     </div>
   );
 }
