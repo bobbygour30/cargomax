@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,12 +21,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarIcon,
   Save,
@@ -50,6 +72,15 @@ import {
   PlusCircle,
   Trash2,
   FileSpreadsheet,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Users,
+  History,
+  Plus,
+  Edit,
+  Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -132,10 +163,17 @@ const cargoTypeOptions = ["General", "Fragile", "Hazardous", "Perishable", "Liqu
 const damageReasonOptions = ["Transit Damage", "Handling Damage", "Water Damage", "Theft", "Shortage"];
 
 export default function GoodsArrival() {
-  const [activeMainTab, setActiveMainTab] = useState<"arrived" | "pending" | "entry">("arrived");
+  // Main Tab state
+  const [mainTab, setMainTab] = useState<"arrived" | "pending" | "entry">("arrived");
   const [activeEntryTab, setActiveEntryTab] = useState<"arrival" | "damage">("arrival");
   const [loading, setLoading] = useState<boolean>(false);
   const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"grid" | "report">("report");
+
+  // Sheet state for entry
+  const [isEntrySheetOpen, setIsEntrySheetOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState<number | null>(null);
 
   // Arrived Tab Filters
   const [arrivedBranch, setArrivedBranch] = useState<string>("ALL");
@@ -157,6 +195,8 @@ export default function GoodsArrival() {
   const [pendingVehicleNo, setPendingVehicleNo] = useState<string>("ALL");
   const [pendingDriverName, setPendingDriverName] = useState<string>("ALL");
   const [pendingResults, setPendingResults] = useState<PendingArrivalRecord[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage: number = 10;
 
   // Entry Tab State
   const [branch, setBranch] = useState<string>("");
@@ -215,10 +255,6 @@ export default function GoodsArrival() {
     totalExcess: 0
   });
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage: number = 10;
-
   // Sample Data
   const sampleArrivedData: ArrivalRecord[] = [
     { id: 1, manifestNo: "M001", arrivalDate: new Date(), despatchFrom: "DELHI", despatchTo: "MUMBAI", divisionName: "North", modeName: "Road", category: "MARKET", arrivalStatus: "Arrived", arrivalNo: "AR001", lhcNo: "LHC001", aWeight: 2500 },
@@ -252,13 +288,10 @@ export default function GoodsArrival() {
   };
 
   const handleSelectPending = (record: PendingArrivalRecord) => {
-    // Load data into entry tab
     setManifestNo(record.manifestNo);
     setFromStation(record.despatchFrom);
-    // setDestination(record.despatchTo);
     setDriver(record.driverName);
-    // setVehicleNo(record.vehicleNo);
-    setActiveMainTab("entry");
+    setIsEntrySheetOpen(true);
   };
 
   const handlePrintManifest = () => {
@@ -334,9 +367,10 @@ export default function GoodsArrival() {
   const handleSave = () => {
     calculateTotals();
     alert("Goods arrival saved successfully!");
+    setIsEntrySheetOpen(false);
   };
 
-  const handleClear = () => {
+  const resetForm = () => {
     setBranch("");
     setSelectGodown("");
     setManifestNo("");
@@ -350,86 +384,417 @@ export default function GoodsArrival() {
     setDamageClaims([{ id: 1, grNo: "", despatchPckgs: 0, despatchWeight: 0, receivedPckgs: 0, receivedWeight: 0, damagePckgs: 0, claimAmt: 0, damageReason: "", uploadDocument: "", documentFile: "" }]);
   };
 
+  const openEntrySheet = () => {
+    resetForm();
+    setEditMode(false);
+    setCurrentEditId(null);
+    setIsEntrySheetOpen(true);
+  };
+
   const paginatedResults = pendingResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(pendingResults.length / itemsPerPage);
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 
+  // Stats
+  const stats = {
+    arrived: arrivedResults.length,
+    pending: pendingResults.length,
+  };
+
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">GOODS ARRIVAL</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">GOODS ARRIVAL</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
+          <Button onClick={openEntrySheet} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+            <Plus className="mr-2 h-4 w-4" />
+            New Goods Arrival
+          </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeMainTab} onValueChange={(v) => setActiveMainTab(v as "arrived" | "pending" | "entry")} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="arrived" className="text-xs">Arrived</TabsTrigger>
-          <TabsTrigger value="pending" className="text-xs">Pending Arrival</TabsTrigger>
-          <TabsTrigger value="entry" className="text-xs">Entry</TabsTrigger>
-        </TabsList>
+      <div className="flex border-b bg-white rounded-t-lg">
+        <button
+          onClick={() => setMainTab("arrived")}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
+            mainTab === "arrived"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          )}
+        >
+          Arrived
+        </button>
+        <button
+          onClick={() => setMainTab("pending")}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
+            mainTab === "pending"
+              ? "bg-yellow-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          )}
+        >
+          Pending Arrival
+        </button>
+      </div>
 
-        {/* Arrived Tab */}
-        <TabsContent value="arrived" className="space-y-4 mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 border rounded-md bg-muted/20">
-            <div className="space-y-1"><Label className="text-xs">Branch *</Label><Select value={arrivedBranch} onValueChange={setArrivedBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Despatched From</Label><Select value={arrivedDespatchFrom} onValueChange={setArrivedDespatchFrom}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{despatchFromOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Manifest Type</Label><Select value={arrivedManifestType} onValueChange={setArrivedManifestType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{manifestTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Mode Type</Label><Select value={arrivedModeType} onValueChange={setArrivedModeType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{modeTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Period</Label><div className="flex gap-2"><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(arrivedFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={arrivedFromDate} onSelect={(d) => d && setArrivedFromDate(d)} /></PopoverContent></Popover><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(arrivedToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={arrivedToDate} onSelect={(d) => d && setArrivedToDate(d)} /></PopoverContent></Popover></div></div>
-            <div className="flex items-end gap-2"><Button onClick={handleArrivedSearch} size="sm" className="h-8 text-xs"><Search className="mr-1 h-3 w-3" />SHOW</Button></div>
+      {/* Arrived Tab */}
+      {mainTab === "arrived" && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Arrived</p>
+                    <p className="text-2xl font-bold">{stats.arrived}</p>
+                  </div>
+                  <Check className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Weight</p>
+                    <p className="text-2xl font-bold">5,700 kg</p>
+                  </div>
+                  <Package className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
-            <div className="min-w-[1200px]"><Table className="text-xs"><TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Manifest #</TableHead><TableHead>Arrival Date</TableHead><TableHead>Despatch From</TableHead><TableHead>Despatch To</TableHead><TableHead>Division Name</TableHead><TableHead>Mode Name</TableHead><TableHead>Category</TableHead><TableHead>Arrival Status</TableHead><TableHead>Arrival #</TableHead><TableHead>LHC #</TableHead><TableHead>A. Weight</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{arrivedResults.length === 0 ? (<TableRow><TableCell colSpan={13} className="text-center py-8">No records found</TableCell></TableRow>) : (arrivedResults.map((record, idx) => (<TableRow key={record.id}><TableCell>{idx+1}</TableCell><TableCell>{record.manifestNo}</TableCell><TableCell>{format(record.arrivalDate, "dd-MM-yyyy")}</TableCell><TableCell>{record.despatchFrom}</TableCell><TableCell>{record.despatchTo}</TableCell><TableCell>{record.divisionName}</TableCell><TableCell>{record.modeName}</TableCell><TableCell>{record.category}</TableCell><TableCell><span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full">{record.arrivalStatus}</span></TableCell><TableCell>{record.arrivalNo}</TableCell><TableCell>{record.lhcNo}</TableCell><TableCell>{record.aWeight}</TableCell><TableCell><Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-500"><Eye className="h-3.5 w-3.5" /></Button></TableCell></TableRow>)))}</TableBody></Table></div>
+          {/* Search Filters */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+                <Filter className="h-3.5 w-3.5" />
+                Search Arrived Goods
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Branch</Label>
+                  <Select value={arrivedBranch} onValueChange={setArrivedBranch}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Despatched From</Label>
+                  <Select value={arrivedDespatchFrom} onValueChange={setArrivedDespatchFrom}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Manifest Type</Label>
+                  <Select value={arrivedManifestType} onValueChange={setArrivedManifestType}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Mode Type</Label>
+                  <Select value={arrivedModeType} onValueChange={setArrivedModeType}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Period</Label>
+                  <div className="flex gap-2">
+                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(arrivedFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={arrivedFromDate} onSelect={(d) => d && setArrivedFromDate(d)} /></PopoverContent></Popover>
+                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(arrivedToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={arrivedToDate} onSelect={(d) => d && setArrivedToDate(d)} /></PopoverContent></Popover>
+                  </div>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={handleArrivedSearch} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700"><Search className="mr-1 h-3 w-3" />Search</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="gap-2 w-full">
+                  <Table className="text-gray-500" />
+                  <h3 className="text-[15px] font-semibold text-gray-800">Arrived Goods List</h3>
+                </div>
+                <div className="text-[10px] text-gray-500">Total: {arrivedResults.length} records</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Manifest #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Arrival Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">From</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">To</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Mode</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-[80px] text-right">Weight</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Status</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {arrivedResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                            <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No arrived records found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        arrivedResults.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50">
+                            <TableCell className="py-2 px-2 text-center text-xs">{idx + 1}</TableCell>
+                            <TableCell className="py-2 px-2 font-mono text-xs">{record.manifestNo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{format(record.arrivalDate, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.despatchFrom}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.despatchTo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.modeName}</TableCell>
+                            <TableCell className="py-2 px-2 text-right text-xs">{record.aWeight}</TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <Badge className="bg-green-100 text-green-700 text-[10px]">Arrived</Badge>
+                            </TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-500">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Pending Arrival Tab */}
+      {mainTab === "pending" && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Pending</p>
+                    <p className="text-2xl font-bold">{stats.pending}</p>
+                  </div>
+                  <Clock className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Vehicles Enroute</p>
+                    <p className="text-2xl font-bold">{stats.pending}</p>
+                  </div>
+                  <Truck className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </TabsContent>
 
-        {/* Pending Arrival Tab */}
-        <TabsContent value="pending" className="space-y-4 mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border rounded-md bg-muted/20">
-            <div className="space-y-1"><Label className="text-xs">Branch *</Label><Select value={pendingBranch} onValueChange={setPendingBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Despatched From</Label><Select value={pendingDespatchFrom} onValueChange={setPendingDespatchFrom}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{despatchFromOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Manifest Type</Label><Select value={pendingManifestType} onValueChange={setPendingManifestType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{manifestTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Mode Type</Label><Select value={pendingModeType} onValueChange={setPendingModeType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{modeTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Manifest Period</Label><div className="flex gap-2"><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(pendingFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={pendingFromDate} onSelect={(d) => d && setPendingFromDate(d)} /></PopoverContent></Popover><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(pendingToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={pendingToDate} onSelect={(d) => d && setPendingToDate(d)} /></PopoverContent></Popover></div></div>
-            <div className="space-y-1"><Label className="text-xs">Vehicle #</Label><Select value={pendingVehicleNo} onValueChange={setPendingVehicleNo}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="ALL" /></SelectTrigger><SelectContent><SelectItem value="ALL">ALL</SelectItem><SelectItem value="UP21CN8635">UP21CN8635</SelectItem><SelectItem value="UP21CT6464">UP21CT6464</SelectItem></SelectContent></Select><div className="flex items-center gap-1 mt-1"><input type="checkbox" className="h-3 w-3" id="allVehicle" /><Label htmlFor="allVehicle" className="text-[10px]">ALL</Label></div></div>
-            <div className="space-y-1"><Label className="text-xs">Driver Name</Label><Select value={pendingDriverName} onValueChange={setPendingDriverName}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="ALL" /></SelectTrigger><SelectContent><SelectItem value="ALL">ALL</SelectItem><SelectItem value="Rajesh Kumar">Rajesh Kumar</SelectItem><SelectItem value="Suresh Singh">Suresh Singh</SelectItem></SelectContent></Select><div className="flex items-center gap-1 mt-1"><input type="checkbox" className="h-3 w-3" id="allDriver" /><Label htmlFor="allDriver" className="text-[10px]">ALL</Label></div></div>
-            <div className="flex items-end gap-2"><Button onClick={handlePendingSearch} size="sm" className="h-8 text-xs"><Search className="mr-1 h-3 w-3" />SEARCH</Button><Button onClick={handlePrintManifest} variant="outline" size="sm" className="h-8 text-xs"><Printer className="mr-1 h-3 w-3" />PRINT MANIFEST</Button><Button onClick={handleUploadSheet} variant="outline" size="sm" className="h-8 text-xs"><Upload className="mr-1 h-3 w-3" />UPLOAD SHEET</Button></div>
-          </div>
+          {/* Search Filters */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+                <Search className="h-3.5 w-3.5" />
+                Search Pending Arrivals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Branch</Label>
+                  <Select value={pendingBranch} onValueChange={setPendingBranch}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Despatched From</Label>
+                  <Select value={pendingDespatchFrom} onValueChange={setPendingDespatchFrom}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Manifest Type</Label>
+                  <Select value={pendingManifestType} onValueChange={setPendingManifestType}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Mode Type</Label>
+                  <Select value={pendingModeType} onValueChange={setPendingModeType}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Manifest Period</Label>
+                  <div className="flex gap-2">
+                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(pendingFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={pendingFromDate} onSelect={(d) => d && setPendingFromDate(d)} /></PopoverContent></Popover>
+                    <Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(pendingToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={pendingToDate} onSelect={(d) => d && setPendingToDate(d)} /></PopoverContent></Popover>
+                  </div>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={handlePendingSearch} size="sm" className="h-8 text-xs bg-yellow-600 hover:bg-yellow-700"><Search className="mr-1 h-3 w-3" />Search</Button>
+                  <Button onClick={handlePrintManifest} variant="outline" size="sm" className="h-8 text-xs"><Printer className="mr-1 h-3 w-3" />Print</Button>
+                  <Button onClick={handleUploadSheet} variant="outline" size="sm" className="h-8 text-xs"><Upload className="mr-1 h-3 w-3" />Upload</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="rounded-md border overflow-x-auto">
-            <div className="min-w-[1200px]"><Table className="text-xs"><TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Manifest #</TableHead><TableHead>Date</TableHead><TableHead>Despatch From</TableHead><TableHead>Despatch To</TableHead><TableHead>Division Name</TableHead><TableHead>Mode Name</TableHead><TableHead>Category</TableHead><TableHead>Arrival Status</TableHead><TableHead>Arrival Date</TableHead><TableHead>LHC #</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.length === 0 ? (<TableRow><TableCell colSpan={12} className="text-center py-8">No records found</TableCell></TableRow>) : (paginatedResults.map((record, idx) => (<TableRow key={record.id}><TableCell>{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell>{record.manifestNo}</TableCell><TableCell>{format(record.date, "dd-MM-yyyy")}</TableCell><TableCell>{record.despatchFrom}</TableCell><TableCell>{record.despatchTo}</TableCell><TableCell>{record.divisionName || "-"}</TableCell><TableCell>{record.modeName || "-"}</TableCell><TableCell>{record.category}</TableCell><TableCell><span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">PENDING</span></TableCell><TableCell>{record.arrivalDate ? format(record.arrivalDate, "dd-MM-yyyy") : "-"}</TableCell><TableCell>{record.lhcNo || "-"}</TableCell><TableCell><Button onClick={() => handleSelectPending(record)} variant="ghost" size="sm" className="h-7 px-2 text-xs bg-green-100 text-green-700">Select</Button></TableCell></TableRow>)))}</TableBody></Table></div>
-          </div>
+          {/* Pending Results Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Table className="h-3.5 w-3.5 text-gray-500" />
+                  <h3 className="text-[11px] font-semibold text-gray-800">Pending Arrivals List</h3>
+                </div>
+                <div className="text-[10px] text-gray-500">Total: {pendingResults.length} records</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Manifest #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">From</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">To</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Vehicle #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Driver</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-20 text-center">Status</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-24 text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                            <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No pending arrival records found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedResults.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50">
+                            <TableCell className="py-2 px-2 text-center text-xs">
+                              {(currentPage - 1) * itemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-2 px-2 font-mono text-xs">{record.manifestNo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{format(record.date, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.despatchFrom}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.despatchTo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.vehicleNo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.driverName}</TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">Pending</Badge>
+                            </TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <Button onClick={() => handleSelectPending(record)} variant="ghost" size="sm" className="h-7 text-xs bg-green-100 text-green-700 px-2">
+                                Select
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
-          {totalPages > 1 && (<div className="flex justify-center gap-1"><Button variant="outline" size="sm" onClick={() => goToPage(currentPage-1)} disabled={currentPage===1} className="h-7 text-xs">Previous</Button><span className="px-3 py-1 text-xs">Page {currentPage} of {totalPages}</span><Button variant="outline" size="sm" onClick={() => goToPage(currentPage+1)} disabled={currentPage===totalPages} className="h-7 text-xs">Next</Button></div>)}
-        </TabsContent>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-[10px] text-gray-500">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, pendingResults.length)} of {pendingResults.length} entries
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-[10px]">
+                      <ChevronLeft className="h-3 w-3 mr-1" /> Previous
+                    </Button>
+                    <span className="px-3 py-1 text-[10px]">Page {currentPage} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-[10px]">
+                      Next <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-        {/* Entry Tab */}
-        <TabsContent value="entry" className="space-y-4 mt-4">
+      {/* Entry Sheet */}
+      <Sheet open={isEntrySheetOpen} onOpenChange={setIsEntrySheetOpen}>
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              {editMode ? (
+                <>
+                  <Edit className="h-4 w-4 text-blue-600" />
+                  Edit Goods Arrival
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 text-blue-600" />
+                  New Goods Arrival
+                </>
+              )}
+            </SheetTitle>
+          </SheetHeader>
+
           <Tabs value={activeEntryTab} onValueChange={(v) => setActiveEntryTab(v as "arrival" | "damage")} className="w-full">
             <TabsList className="grid w-full max-w-[300px] grid-cols-2">
-              <TabsTrigger value="arrival" className="text-xs">Arrival</TabsTrigger>
-              <TabsTrigger value="damage" className="text-xs">Damage GR For Claim</TabsTrigger>
+              <TabsTrigger value="arrival" className="text-xs">Arrival Details</TabsTrigger>
+              <TabsTrigger value="damage" className="text-xs">Damage Claim</TabsTrigger>
             </TabsList>
 
             {/* Arrival Tab */}
             <TabsContent value="arrival" className="space-y-4 mt-4">
-              {/* Row 1 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Branch</Label><Select value={branch} onValueChange={setBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.filter(b => b !== "ALL").map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-                <div className="space-y-1"><Label className="text-xs">Select Godown *</Label><Select value={selectGodown} onValueChange={setSelectGodown}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT GODOWN" /></SelectTrigger><SelectContent>{godownOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-                <div className="space-y-1"><Label className="text-xs">Manifest#</Label><Input value={manifestNo} onChange={(e) => setManifestNo(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Select Godown *</Label><Select value={selectGodown} onValueChange={setSelectGodown}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{godownOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-1"><Label className="text-xs">Manifest #</Label><Input value={manifestNo} onChange={(e) => setManifestNo(e.target.value)} className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Despatch On</Label><div className="flex gap-2"><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(despatchOn, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={despatchOn} onSelect={(d) => d && setDespatchOn(d)} /></PopoverContent></Popover><Input type="time" value={despatchTime} onChange={(e) => setDespatchTime(e.target.value)} className="h-8 w-24 text-xs" /></div></div>
               </div>
 
-              {/* Row 2 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="space-y-1"><Label className="text-xs">From Station</Label><Input value={fromStation} onChange={(e) => setFromStation(e.target.value)} className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Mode Type</Label><Select value={modeType} onValueChange={setModeType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{modeTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
@@ -437,7 +802,6 @@ export default function GoodsArrival() {
                 <div className="space-y-1"><Label className="text-xs">Driver</Label><Input value={driver} onChange={(e) => setDriver(e.target.value)} className="h-8 text-xs" /></div>
               </div>
 
-              {/* Row 3 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Mobile</Label><Input value={mobile} onChange={(e) => setMobile(e.target.value)} className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Unloading Person *</Label><Input value={unloadingPerson} onChange={(e) => setUnloadingPerson(e.target.value)} className="h-8 text-xs" /></div>
@@ -445,68 +809,94 @@ export default function GoodsArrival() {
                 <div className="space-y-1"><Label className="text-xs">Receive Date *</Label><div className="flex gap-2"><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 flex-1 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(receiveDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={receiveDate} onSelect={(d) => d && setReceiveDate(d)} /></PopoverContent></Popover><Input type="time" value={receiveTime} onChange={(e) => setReceiveTime(e.target.value)} className="h-8 w-24 text-xs" /></div></div>
               </div>
 
-              {/* Row 4 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Unloading Time (In Hours)</Label><div className="flex gap-2"><Input type="number" value={unloadingHours} onChange={(e) => setUnloadingHours(Number(e.target.value))} className="h-8 w-20 text-xs" /><span className="text-xs self-center">HH</span><Input type="number" value={unloadingMinutes} onChange={(e) => setUnloadingMinutes(Number(e.target.value))} className="h-8 w-20 text-xs" /><span className="text-xs self-center">MM</span></div></div>
-                <div className="space-y-1"><Label className="text-xs">Route</Label><Input value={route} onChange={(e) => setRoute(e.target.value)} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">TAT</Label><Input type="number" value={tat} onChange={(e) => setTat(Number(e.target.value))} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Schedule Arrival Date & Time</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(scheduleArrivalDateTime, "dd-MM-yyyy HH:mm")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={scheduleArrivalDateTime} onSelect={(d) => d && setScheduleArrivalDateTime(d)} /></PopoverContent></Popover></div>
-              </div>
-
-              {/* Row 5 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Vehicle Que #</Label><Input value={vehicleQueNo} onChange={(e) => setVehicleQueNo(e.target.value)} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Vehicle Arrival Date & Time</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(vehicleArrivalDateTime, "dd-MM-yyyy HH:mm")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={vehicleArrivalDateTime} onSelect={(d) => d && setVehicleArrivalDateTime(d)} /></PopoverContent></Popover></div>
-                <div className="space-y-1"><Label className="text-xs">Deviation</Label><Input value={deviation} onChange={(e) => setDeviation(e.target.value)} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Unloading Date & Time</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(unloadingDateTime, "dd-MM-yyyy HH:mm")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={unloadingDateTime} onSelect={(d) => d && setUnloadingDateTime(d)} /></PopoverContent></Popover></div>
-              </div>
-
-              {/* Row 6 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Seal #</Label><Input value={sealNo} onChange={(e) => setSealNo(e.target.value)} className="h-8 text-xs" /></div>
-                <div className="flex items-center gap-2"><input type="checkbox" checked={sealOk} onChange={(e) => setSealOk(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Seal Ok ?</Label></div>
-                <div className="space-y-1"><Label className="text-xs">Dharam Kanta Weight</Label><Input type="number" value={dharamKantaWeight} onChange={(e) => setDharamKantaWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
-                <div className="flex items-center gap-2"><input type="checkbox" checked={excessReceiptWithoutGR} onChange={(e) => setExcessReceiptWithoutGR(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Excess Receipt Without GR In Manifest</Label></div>
-              </div>
-
-              <div className="space-y-1"><Label className="text-xs">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-xs" /></div>
-
               {/* GR Items Table */}
               <div className="rounded-md border">
-                <div className="bg-muted/50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">GR Details</h3><Button onClick={addGRItem} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add GR</Button></div>
-                <div className="overflow-x-auto"><div className="min-w-[1600px]"><Table className="text-[10px]"><TableHeader><TableRow className="bg-muted/30"><TableHead className="w-8"><input type="checkbox" checked={selectAll} onChange={handleSelectAll} className="h-3 w-3" /></TableHead><TableHead>GR #</TableHead><TableHead>GR Date</TableHead><TableHead>Origin</TableHead><TableHead>Destination</TableHead><TableHead>Consignor</TableHead><TableHead>Consignee</TableHead><TableHead>Cargo Type</TableHead><TableHead>Desp. Pckgs</TableHead><TableHead>Desp. Wt</TableHead><TableHead>Receive Pckgs</TableHead><TableHead>Receive Wt</TableHead><TableHead>Damage Pcs</TableHead><TableHead>Damage Reason</TableHead><TableHead>Short</TableHead><TableHead>Excess</TableHead><TableHead>Godown</TableHead><TableHead>Remarks</TableHead><TableHead className="w-8">Action</TableHead></TableRow></TableHeader><TableBody>{grItems.map((item, idx) => (<TableRow key={item.id}><TableCell><input type="checkbox" className="h-3 w-3" /></TableCell><TableCell><Input value={item.grNo} onChange={(e) => updateGRItem(item.id, "grNo", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-24 text-[10px]"><CalendarIcon className="mr-1 h-2 w-2" />{format(item.grDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={item.grDate} onSelect={(d) => d && updateGRItem(item.id, "grDate", d)} /></PopoverContent></Popover></TableCell><TableCell><Input value={item.origin} onChange={(e) => updateGRItem(item.id, "origin", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input value={item.destination} onChange={(e) => updateGRItem(item.id, "destination", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input value={item.consignor} onChange={(e) => updateGRItem(item.id, "consignor", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input value={item.consignee} onChange={(e) => updateGRItem(item.id, "consignee", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Select value={item.cargoType} onValueChange={(v) => updateGRItem(item.id, "cargoType", v)}><SelectTrigger className="h-7 w-24 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{cargoTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input type="number" value={item.despPckgs} onChange={(e) => updateGRItem(item.id, "despPckgs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Input type="number" value={item.despWt} onChange={(e) => updateGRItem(item.id, "despWt", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Input type="number" value={item.receivePckgs} onChange={(e) => updateGRItem(item.id, "receivePckgs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Input type="number" value={item.receiveWt} onChange={(e) => updateGRItem(item.id, "receiveWt", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Input type="number" value={item.damagePcs} onChange={(e) => updateGRItem(item.id, "damagePcs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Select value={item.damageReason} onValueChange={(v) => updateGRItem(item.id, "damageReason", v)}><SelectTrigger className="h-7 w-24 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{damageReasonOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input type="number" value={item.short} onChange={(e) => updateGRItem(item.id, "short", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Input type="number" value={item.excess} onChange={(e) => updateGRItem(item.id, "excess", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell><TableCell><Select value={item.godown} onValueChange={(v) => updateGRItem(item.id, "godown", v)}><SelectTrigger className="h-7 w-24 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{godownOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input value={item.remarks} onChange={(e) => updateGRItem(item.id, "remarks", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeGRItem(item.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div>
+                <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">GR Details</h3><Button onClick={addGRItem} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add GR</Button></div>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[1200px]">
+                    <Table className="text-[10px]">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead>GR #</TableHead><TableHead>GR Date</TableHead><TableHead>Origin</TableHead><TableHead>Destination</TableHead>
+                          <TableHead>Consignor</TableHead><TableHead>Consignee</TableHead><TableHead>Desp Pckgs</TableHead><TableHead>Desp Wt</TableHead>
+                          <TableHead>Receive Pckgs</TableHead><TableHead>Receive Wt</TableHead><TableHead>Damage</TableHead><TableHead className="w-8">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {grItems.map((item, idx) => (
+                          <TableRow key={item.id}>
+                            <TableCell><Input value={item.grNo} onChange={(e) => updateGRItem(item.id, "grNo", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-24 text-[10px]"><CalendarIcon className="mr-1 h-2 w-2" />{format(item.grDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={item.grDate} onSelect={(d) => d && updateGRItem(item.id, "grDate", d)} /></PopoverContent></Popover></TableCell>
+                            <TableCell><Input value={item.origin} onChange={(e) => updateGRItem(item.id, "origin", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input value={item.destination} onChange={(e) => updateGRItem(item.id, "destination", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input value={item.consignor} onChange={(e) => updateGRItem(item.id, "consignor", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input value={item.consignee} onChange={(e) => updateGRItem(item.id, "consignee", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={item.despPckgs} onChange={(e) => updateGRItem(item.id, "despPckgs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={item.despWt} onChange={(e) => updateGRItem(item.id, "despWt", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={item.receivePckgs} onChange={(e) => updateGRItem(item.id, "receivePckgs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={item.receiveWt} onChange={(e) => updateGRItem(item.id, "receiveWt", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={item.damagePcs} onChange={(e) => updateGRItem(item.id, "damagePcs", Number(e.target.value))} className="h-7 w-20 text-[10px]" /></TableCell>
+                            <TableCell><Button variant="ghost" size="sm" onClick={() => removeGRItem(item.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
 
               {/* Totals Display */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border rounded-md p-3"><h4 className="text-sm font-semibold mb-2">As Per Manifest</h4><div className="grid grid-cols-3 gap-2 text-xs"><span>No. Of GR: {manifestTotals.noOfGR}</span><span>Total Pckgs: {manifestTotals.totalPckgs}</span><span>Total Weight: {manifestTotals.totalWeight.toFixed(3)}</span></div></div>
-                <div className="border rounded-md p-3"><h4 className="text-sm font-semibold mb-2">As Per Arrival</h4><div className="grid grid-cols-3 gap-2 text-xs"><span>No. Of GR: {arrivalTotals.noOfGR}</span><span>Total Pckgs: {arrivalTotals.totalPckgs}</span><span>Total Weight: {arrivalTotals.totalWeight.toFixed(3)}</span><span>Damage Pckgs: {arrivalTotals.damagePckgs}</span><span>Total Short: {arrivalTotals.totalShort}</span><span>Total Excess: {arrivalTotals.totalExcess}</span></div></div>
+                <div className="border rounded-md p-3"><h4 className="text-sm font-semibold mb-2">As Per Manifest</h4><div className="grid grid-cols-3 gap-2 text-xs"><span>GR: {manifestTotals.noOfGR}</span><span>Pckgs: {manifestTotals.totalPckgs}</span><span>Wt: {manifestTotals.totalWeight.toFixed(3)}</span></div></div>
+                <div className="border rounded-md p-3"><h4 className="text-sm font-semibold mb-2">As Per Arrival</h4><div className="grid grid-cols-3 gap-2 text-xs"><span>GR: {arrivalTotals.noOfGR}</span><span>Pckgs: {arrivalTotals.totalPckgs}</span><span>Wt: {arrivalTotals.totalWeight.toFixed(3)}</span><span>Damage: {arrivalTotals.damagePckgs}</span></div></div>
               </div>
 
+              <div className="space-y-1"><Label className="text-xs">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-xs" /></div>
+
               <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600"><Save className="mr-1 h-3 w-3" />SAVE</Button>
-                <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
-                <Button variant="destructive" size="sm" className="h-8 text-xs"><X className="mr-1 h-3 w-3" />CANCEL</Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs"><Printer className="mr-1 h-3 w-3" />PRINT ARRIVAL</Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs"><FileText className="mr-1 h-3 w-3" />PRINT DETAILS</Button>
+                <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs"><X className="mr-1 h-3 w-3" />Cancel</Button>
+                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700"><Save className="mr-1 h-3 w-3" />Save</Button>
               </div>
             </TabsContent>
 
-            {/* Damage GR For Claim Tab */}
+            {/* Damage Claim Tab */}
             <TabsContent value="damage" className="space-y-4 mt-4">
               <div className="rounded-md border">
-                <div className="bg-muted/50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">Damage GR For Claim</h3><Button onClick={addDamageClaim} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add Damage Claim</Button></div>
-                <div className="overflow-x-auto"><div className="min-w-[1200px]"><Table className="text-[10px]"><TableHeader><TableRow className="bg-muted/30"><TableHead>S#</TableHead><TableHead>GR #</TableHead><TableHead>Despatch Pckgs</TableHead><TableHead>Despatch Weight</TableHead><TableHead>Received Pckgs</TableHead><TableHead>Received Weight</TableHead><TableHead>Damage Pckgs</TableHead><TableHead>Claim Amt</TableHead><TableHead>Damage Reason</TableHead><TableHead>Upload Document</TableHead><TableHead>Document File</TableHead><TableHead className="w-8">Action</TableHead></TableRow></TableHeader><TableBody>{damageClaims.map((claim, idx) => (<TableRow key={claim.id}><TableCell>{idx+1}</TableCell><TableCell><Input value={claim.grNo} onChange={(e) => updateDamageClaim(claim.id, "grNo", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.despatchPckgs} onChange={(e) => updateDamageClaim(claim.id, "despatchPckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.despatchWeight} onChange={(e) => updateDamageClaim(claim.id, "despatchWeight", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.receivedPckgs} onChange={(e) => updateDamageClaim(claim.id, "receivedPckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.receivedWeight} onChange={(e) => updateDamageClaim(claim.id, "receivedWeight", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.damagePckgs} onChange={(e) => updateDamageClaim(claim.id, "damagePckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Input type="number" value={claim.claimAmt} onChange={(e) => updateDamageClaim(claim.id, "claimAmt", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell><TableCell><Select value={claim.damageReason} onValueChange={(v) => updateDamageClaim(claim.id, "damageReason", v)}><SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{damageReasonOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input type="file" className="h-7 text-[10px] file:h-6 file:text-[10px]" /></TableCell><TableCell><Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-500"><Upload className="h-3 w-3" /></Button></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeDamageClaim(claim.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody></Table></div></div>
+                <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">Damage GR For Claim</h3><Button onClick={addDamageClaim} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add Claim</Button></div>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[1000px]">
+                    <Table className="text-[10px]">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead>GR #</TableHead><TableHead>Despatch Pckgs</TableHead><TableHead>Received Pckgs</TableHead>
+                          <TableHead>Damage Pckgs</TableHead><TableHead>Claim Amt</TableHead><TableHead>Damage Reason</TableHead><TableHead className="w-8">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {damageClaims.map((claim, idx) => (
+                          <TableRow key={claim.id}>
+                            <TableCell><Input value={claim.grNo} onChange={(e) => updateDamageClaim(claim.id, "grNo", e.target.value)} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={claim.despatchPckgs} onChange={(e) => updateDamageClaim(claim.id, "despatchPckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={claim.receivedPckgs} onChange={(e) => updateDamageClaim(claim.id, "receivedPckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={claim.damagePckgs} onChange={(e) => updateDamageClaim(claim.id, "damagePckgs", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Input type="number" value={claim.claimAmt} onChange={(e) => updateDamageClaim(claim.id, "claimAmt", Number(e.target.value))} className="h-7 w-24 text-[10px]" /></TableCell>
+                            <TableCell><Select value={claim.damageReason} onValueChange={(v) => updateDamageClaim(claim.id, "damageReason", v)}><SelectTrigger className="h-7 w-32 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{damageReasonOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell>
+                            <TableCell><Button variant="ghost" size="sm" onClick={() => removeDamageClaim(claim.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600"><Save className="mr-1 h-3 w-3" />SAVE</Button>
-                <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
-                <Button variant="destructive" size="sm" className="h-8 text-xs"><X className="mr-1 h-3 w-3" />CANCEL</Button>
+                <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs"><X className="mr-1 h-3 w-3" />Cancel</Button>
+                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700"><Save className="mr-1 h-3 w-3" />Save</Button>
               </div>
             </TabsContent>
           </Tabs>
-        </TabsContent>
-      </Tabs>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
