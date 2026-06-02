@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Upload, FileSpreadsheet, Search, RefreshCw, Save, X, Check, AlertCircle, Eye, Download, Trash2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Upload, FileSpreadsheet, Search, RefreshCw, Save, X, Check, AlertCircle, Eye, Download, Trash2, Filter, ChevronLeft, ChevronRight, DollarSign, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
@@ -69,6 +76,7 @@ interface DRRecord {
   pfCharges: number;
   staticalCharge: number;
   surcharge: number;
+  status: "pending" | "updated";
 }
 
 const branchOptions = [
@@ -89,11 +97,13 @@ const branchOptions = [
 const actionOptions = [
   "Update Charges",
   "Recalculate",
-  "Reset",
+  "Reset to Zero",
   "Apply to All",
 ];
 
 export default function DRChargeUpdate() {
+  // Main state
+  const [activeTab, setActiveTab] = useState<"update" | "history">("update");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [selectedAction, setSelectedAction] = useState<string>("");
@@ -101,7 +111,12 @@ export default function DRChargeUpdate() {
   const [drRecords, setDrRecords] = useState<DRRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [historyCurrentPage, setHistoryCurrentPage] = useState<number>(1);
   const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [updatedRecords, setUpdatedRecords] = useState<DRRecord[]>([]);
   const itemsPerPage: number = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +130,7 @@ export default function DRChargeUpdate() {
       entryTax: 0, hamali: 0, insuranceCharge: 0, miscCharge: 0, newMiscCharge: 0, octroiCharge: 0,
       octroiServiceCh: 0, octroiServiceCharge: 0, osc: 0, oscCharges: 0, otherCharge: 0,
       otherChargeBooking: 0, otherExpense: 0, pfCharges: 0, staticalCharge: 0, surcharge: 0,
+      status: "pending",
     },
     {
       id: 2, grNo: "GR002", grDate: new Date("2026-04-26"), branch: "MUMBAI", origin: "MUMBAI",
@@ -124,6 +140,7 @@ export default function DRChargeUpdate() {
       entryTax: 0, hamali: 0, insuranceCharge: 0, miscCharge: 0, newMiscCharge: 0, octroiCharge: 0,
       octroiServiceCh: 0, octroiServiceCharge: 0, osc: 0, oscCharges: 0, otherCharge: 0,
       otherChargeBooking: 0, otherExpense: 0, pfCharges: 0, staticalCharge: 0, surcharge: 0,
+      status: "pending",
     },
     {
       id: 3, grNo: "GR003", grDate: new Date("2026-04-27"), branch: "BANGALORE", origin: "BANGALORE",
@@ -133,8 +150,26 @@ export default function DRChargeUpdate() {
       entryTax: 0, hamali: 0, insuranceCharge: 0, miscCharge: 0, newMiscCharge: 0, octroiCharge: 0,
       octroiServiceCh: 0, octroiServiceCharge: 0, osc: 0, oscCharges: 0, otherCharge: 0,
       otherChargeBooking: 0, otherExpense: 0, pfCharges: 0, staticalCharge: 0, surcharge: 0,
+      status: "pending",
+    },
+    {
+      id: 4, grNo: "GR004", grDate: new Date("2026-04-28"), branch: "CHENNAI", origin: "CHENNAI",
+      drNo: "DR004", drDate: new Date("2026-04-29"), pckgs: 12, chargeWeight: 600,
+      freight: 14400, serviceTax: 2592, otherAmt: 400, total: 17392, rebate: 200, recdAmt: 15000,
+      cartage: 0, codCharges: 0, delhiSTax: 0, deliveryCharge: 0, demurrage: 0, enrouteCharge: 0,
+      entryTax: 0, hamali: 0, insuranceCharge: 0, miscCharge: 0, newMiscCharge: 0, octroiCharge: 0,
+      octroiServiceCh: 0, octroiServiceCharge: 0, osc: 0, oscCharges: 0, otherCharge: 0,
+      otherChargeBooking: 0, otherExpense: 0, pfCharges: 0, staticalCharge: 0, surcharge: 0,
+      status: "pending",
     },
   ]);
+
+  const [historyRecords, setHistoryRecords] = useState<DRRecord[]>([]);
+
+  // Load data on mount
+  useEffect(() => {
+    setHistoryRecords([]);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -157,8 +192,7 @@ export default function DRChargeUpdate() {
       const workbook = XLSX.read(data, { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      
-      // Extract DR numbers from column A (skip header if exists)
+
       const drNumbers: string[] = [];
       const startRow = 0;
       for (let i = startRow; i < jsonData.length; i++) {
@@ -174,13 +208,16 @@ export default function DRChargeUpdate() {
         return;
       }
 
-      // Filter sample data based on DR numbers
-      const filteredRecords = sampleData.filter(record => 
+      const filteredRecords = sampleData.filter(record =>
         drNumbers.includes(record.drNo)
       );
 
       setDrRecords(filteredRecords);
-      alert(`Imported ${filteredRecords.length} DR records successfully!`);
+      setSelectedRecords([]);
+      setSelectAll(false);
+      setSuccessMessage(`Imported ${filteredRecords.length} DR records successfully!`);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
       setLoading(false);
     };
     reader.readAsArrayBuffer(selectedFile);
@@ -190,7 +227,7 @@ export default function DRChargeUpdate() {
     if (!searchTerm) {
       setDrRecords(sampleData);
     } else {
-      const filtered = sampleData.filter(record => 
+      const filtered = sampleData.filter(record =>
         record.grNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.drNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.branch.toLowerCase().includes(searchTerm.toLowerCase())
@@ -198,11 +235,31 @@ export default function DRChargeUpdate() {
       setDrRecords(filtered);
     }
     setCurrentPage(1);
+    setSelectedRecords([]);
+    setSelectAll(false);
   };
 
   const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedRecords([]);
+    } else {
+      setSelectedRecords(drRecords.map(record => record.id));
+    }
     setSelectAll(!selectAll);
-    // If you want to update all records with selected action, implement here
+  };
+
+  const handleSelectRecord = (id: number) => {
+    if (selectedRecords.includes(id)) {
+      setSelectedRecords(selectedRecords.filter(i => i !== id));
+    } else {
+      setSelectedRecords([...selectedRecords, id]);
+    }
+  };
+
+  const handleUpdateField = (id: number, field: keyof DRRecord, value: number) => {
+    setDrRecords(drRecords.map(record =>
+      record.id === id ? { ...record, [field]: value } : record
+    ));
   };
 
   const handleApplyAction = () => {
@@ -210,11 +267,64 @@ export default function DRChargeUpdate() {
       alert("Please select an action");
       return;
     }
-    if (drRecords.length === 0) {
-      alert("No records to update. Please import or search data first.");
+    if (selectedRecords.length === 0) {
+      alert("Please select at least one record to update");
       return;
     }
-    alert(`Action "${selectedAction}" applied to ${drRecords.length} records`);
+
+    let updatedCount = 0;
+
+    if (selectedAction === "Reset to Zero") {
+      const updated = drRecords.map(record => {
+        if (selectedRecords.includes(record.id)) {
+          updatedCount++;
+          return {
+            ...record,
+            cartage: 0, codCharges: 0, delhiSTax: 0, deliveryCharge: 0,
+            demurrage: 0, enrouteCharge: 0, entryTax: 0, hamali: 0,
+            insuranceCharge: 0, miscCharge: 0, newMiscCharge: 0, octroiCharge: 0,
+            octroiServiceCh: 0, octroiServiceCharge: 0, osc: 0, oscCharges: 0,
+            otherCharge: 0, otherChargeBooking: 0, otherExpense: 0, pfCharges: 0,
+            staticalCharge: 0, surcharge: 0,
+            status: "updated" as const,
+          };
+        }
+        return record;
+      });
+      setDrRecords(updated);
+    } else {
+      const updated = drRecords.map(record => {
+        if (selectedRecords.includes(record.id)) {
+          updatedCount++;
+          return { ...record, status: "updated" as const };
+        }
+        return record;
+      });
+      setDrRecords(updated);
+    }
+
+    setSuccessMessage(`Action "${selectedAction}" applied to ${updatedCount} records!`);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  const handleSaveCharges = () => {
+    if (selectedRecords.length === 0) {
+      alert("Please select at least one record to save");
+      return;
+    }
+
+    const savedRecords = drRecords.filter(record => selectedRecords.includes(record.id));
+    setHistoryRecords([...savedRecords, ...historyRecords]);
+
+    const remainingRecords = drRecords.filter(record => !selectedRecords.includes(record.id));
+    setDrRecords(remainingRecords);
+    setSelectedRecords([]);
+    setSelectAll(false);
+
+    setSuccessMessage(`Saved ${savedRecords.length} records to history!`);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const handleClear = () => {
@@ -224,14 +334,32 @@ export default function DRChargeUpdate() {
     setDrRecords([]);
     setSearchTerm("");
     setSelectAll(false);
+    setSelectedRecords([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
+  const handleReset = () => {
+    setDrRecords([]);
+    setSelectedRecords([]);
+    setSelectAll(false);
+    setSearchTerm("");
+  };
+
+  // Filter records for history
+  const filteredHistory = historyRecords.filter(record =>
+    record.grNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.drNo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const paginatedResults = drRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(drRecords.length / itemsPerPage);
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+
+  const historyTotalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const paginatedHistory = filteredHistory.slice((historyCurrentPage - 1) * itemsPerPage, historyCurrentPage * itemsPerPage);
+  const goToHistoryPage = (page: number) => setHistoryCurrentPage(Math.max(1, Math.min(page, historyTotalPages)));
 
   // Calculate totals
   const totals = {
@@ -243,236 +371,463 @@ export default function DRChargeUpdate() {
     totalRecdAmt: drRecords.reduce((sum, r) => sum + r.recdAmt, 0),
   };
 
+  const stats = {
+    totalRecords: drRecords.length,
+    selectedRecords: selectedRecords.length,
+    totalHistory: historyRecords.length,
+  };
+
   const headerColumns = [
     "S #", "GR #", "GR Date", "Branch", "Origin", "DR #", "DR Date", "Pckgs",
-    "Charge Weight", "Freight", "Service Tax", "Other Amt", "Total", "Rebate",
-    "Recd Amt", "CARTAGE", "COD_CHARGES", "DELHI_S_TAX", "DELIVERY_CHARGE",
-    "DEMURAGE", "ENROUTE_CHARGE", "ENTRY_TAX", "HAMALI", "INSURANCE_CHARGE",
-    "MISC_CHARGE", "NEW_MISC_CHARGE", "OCTROI_CHARGE", "OCTROI_SERVICE_CH",
-    "OCTROI_SERVICE_CHARGE", "OSC", "OSC_CHARGES", "OTHER_CHARGE",
-    "OTHER_CHARGE_BOOKING", "OTHER_EXPENSE", "P_F_CHARGES", "STATICAL_CHARGE", "SURCHARGE"
+    "Charge Wt", "Freight", "Service Tax", "Other Amt", "Total", "Rebate",
+    "Recd Amt", "Cartage", "COD", "Delhi Tax", "Delivery", "Demurrage",
+    "Enroute", "Entry Tax", "Hamali", "Insurance", "Misc", "New Misc",
   ];
 
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">DR CHARGE UPDATE</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">DR CHARGE UPDATE</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* File Import Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 border rounded-md bg-muted/20">
-        <div className="space-y-1">
-          <Label className="text-xs font-medium">Select Xls File</Label>
-          <div className="flex gap-2">
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              onChange={handleFileChange}
-              className="h-8 text-xs flex-1 file:h-7 file:text-xs"
-            />
-          </div>
-          {fileName && (
-            <p className="text-[10px] text-green-600">Selected: {fileName}</p>
+      {/* Main Tabs */}
+      <div className="flex border-b bg-white rounded-t-lg">
+        <button
+          onClick={() => {
+            setActiveTab("update");
+            setHistoryCurrentPage(1);
+          }}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg flex items-center gap-2",
+            activeTab === "update"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           )}
-          <p className="text-[10px] text-muted-foreground">
-            Xls file should have only one column DRNO in column 'A'
-          </p>
-        </div>
+        >
+          <DollarSign className="h-4 w-4" />
+          Update Charges
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("history");
+            setCurrentPage(1);
+          }}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg flex items-center gap-2",
+            activeTab === "history"
+              ? "bg-green-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          )}
+        >
+          <History className="h-4 w-4" />
+          Update History
+        </button>
+      </div>
 
-        <div className="flex items-end">
-          <Button 
-            onClick={handleImport} 
-            size="sm" 
-            className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
-            disabled={loading}
-          >
-            <Upload className="mr-1 h-3 w-3" />
-            {loading ? "Importing..." : "Import"}
-          </Button>
-        </div>
+      {/* Update Charges Tab */}
+      {activeTab === "update" && (
+        <>
+          {/* Success Message */}
+          {showSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-3">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-600" />
+                <p className="text-sm text-green-700">{successMessage}</p>
+              </div>
+            </div>
+          )}
 
-        <div className="space-y-1">
-          <Label className="text-xs font-medium">Select Action</Label>
-          <div className="flex gap-2">
-            <Select value={selectedAction} onValueChange={setSelectedAction}>
-              <SelectTrigger className="h-8 text-xs flex-1">
-                <SelectValue placeholder="Select Action" />
-              </SelectTrigger>
-              <SelectContent>
-                {actionOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt} className="text-xs">
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleApplyAction} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Records</p>
+                    <p className="text-2xl font-bold">{stats.totalRecords}</p>
+                  </div>
+                  <FileSpreadsheet className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Selected Records</p>
+                    <p className="text-2xl font-bold">{stats.selectedRecords}</p>
+                  </div>
+                  <Check className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Freight</p>
+                    <p className="text-2xl font-bold">₹{totals.totalFreight.toLocaleString()}</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">History Records</p>
+                    <p className="text-2xl font-bold">{stats.totalHistory}</p>
+                  </div>
+                  <History className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* File Import Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Import DR Data
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Select Excel File</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx, .xls, .csv"
+                      onChange={handleFileChange}
+                      className="h-9 text-sm flex-1 file:h-8 file:text-xs"
+                    />
+                  </div>
+                  {fileName && (
+                    <p className="text-[10px] text-green-600">Selected: {fileName}</p>
+                  )}
+                  <p className="text-[10px] text-gray-400">
+                    Excel file should have DR numbers in column 'A'
+                  </p>
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleImport}
+                    size="sm"
+                    className="h-9 text-xs bg-blue-600 hover:bg-blue-700"
+                    disabled={loading}
+                  >
+                    <Upload className="mr-1 h-3.5 w-3.5" />
+                    {loading ? "Importing..." : "Import"}
+                  </Button>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Select Action</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedAction} onValueChange={setSelectedAction}>
+                      <SelectTrigger className="h-9 text-sm flex-1">
+                        <SelectValue placeholder="Select Action" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {actionOptions.map((opt) => (
+                          <SelectItem key={opt} value={opt} className="text-sm">
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleApplyAction} size="sm" className="h-9 text-xs bg-green-600 hover:bg-green-700">
+                      <Save className="mr-1 h-3.5 w-3.5" />
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Search Bar */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+                <Search className="h-3.5 w-3.5" />
+                Search Records
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                  <Input
+                    placeholder="Search by GR #, DR # or Branch..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 h-9 text-sm"
+                  />
+                </div>
+                <Button onClick={handleSearch} size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-xs">
+                  <Search className="mr-1 h-3.5 w-3.5" />
+                  Search
+                </Button>
+                <Button onClick={handleReset} variant="outline" size="sm" className="h-9 text-xs">
+                  <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Main Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="gap-2 w-full">
+                  <Table className="text-gray-500" />
+                  <h3 className="text-[15px] font-semibold text-gray-800">
+                    DR Records List
+                  </h3>
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  Total: {drRecords.length} records
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[1200px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="py-2 px-1 w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onChange={handleSelectAll}
+                            className="h-3.5 w-3.5"
+                          />
+                        </TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-12 text-center">#</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">GR #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">GR Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">Branch</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">DR #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[60px] text-center">Pckgs</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[60px] text-center">Charge Wt</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[80px] text-right">Freight</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[80px] text-right">Service Tax</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[80px] text-right">Total</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[70px] text-right">Due Amt</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={13} className="text-center py-8 text-gray-500">
+                            <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No records to display. Please import XLS file to load data.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedResults.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50">
+                            <TableCell className="py-1.5 px-1 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedRecords.includes(record.id)}
+                                onChange={() => handleSelectRecord(record.id)}
+                                className="h-3.5 w-3.5"
+                              />
+                            </TableCell>
+                            <TableCell className="py-1.5 px-1 text-center text-xs">
+                              {(currentPage - 1) * itemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-1.5 px-1 font-mono text-xs">{record.grNo}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-xs">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-xs">{record.branch}</TableCell>
+                            <TableCell className="py-1.5 px-1 font-mono text-xs">{record.drNo}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-center text-xs">{record.pckgs}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-center text-xs">{record.chargeWeight}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-xs">₹{record.freight.toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-xs">₹{record.serviceTax.toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-xs">₹{record.total.toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-red-600 text-xs">₹{(record.total - record.recdAmt).toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-center">
+                              {record.status === "updated" ? (
+                                <Badge className="bg-green-100 text-green-700 text-[10px]">Updated</Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-[10px]">Pending</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-[10px] text-gray-500">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, drRecords.length)} of {drRecords.length} entries
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-[10px]">
+                      <ChevronLeft className="h-3 w-3 mr-1" /> Previous
+                    </Button>
+                    <span className="px-3 py-1 text-[10px]">Page {currentPage} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-[10px]">
+                      Next <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Totals Row */}
+          {drRecords.length > 0 && (
+            <Card className="bg-gray-50">
+              <CardContent className="p-3">
+                <div className="flex flex-wrap justify-between gap-2 text-[10px]">
+                  <div className="flex gap-4 flex-wrap">
+                    <span className="font-semibold">Totals:</span>
+                    <span>Records: {drRecords.length}</span>
+                    <span>Selected: {selectedRecords.length}</span>
+                    <span>Freight: ₹{totals.totalFreight.toLocaleString()}</span>
+                    <span>Service Tax: ₹{totals.totalServiceTax.toLocaleString()}</span>
+                    <span>Total Amt: ₹{totals.totalAmount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons Footer */}
+          <div className="flex flex-wrap justify-end gap-3 pt-2 border-t">
+            <Button onClick={handleSaveCharges} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
               <Save className="mr-1 h-3 w-3" />
-              Apply
+              Save Charges
+            </Button>
+            <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs">
+              <RefreshCw className="mr-1 h-3 w-3" />
+              Clear All
             </Button>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* Search Bar */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search by GR #, DR # or Branch..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
-          />
-        </div>
-        <Button onClick={handleSearch} size="sm" className="h-8 text-xs">
-          <Search className="mr-1 h-3.5 w-3.5" />
-          SEARCH
-        </Button>
-        <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs">
-          <RefreshCw className="mr-1 h-3.5 w-3.5" />
-          CLEAR
-        </Button>
-      </div>
+      {/* Update History Tab */}
+      {activeTab === "history" && (
+        <>
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <History className="h-3.5 w-3.5 text-gray-500" />
+                  <h3 className="text-[11px] font-semibold text-gray-800">
+                    Saved Update History
+                  </h3>
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  Total: {filteredHistory.length} records
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[800px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-12 text-center">#</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">GR #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">GR Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">Branch</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 min-w-[80px]">DR #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[60px] text-center">Pckgs</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[80px] text-right">Freight</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-[80px] text-right">Total</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-1 w-20 text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedHistory.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                            <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No update history found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedHistory.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50">
+                            <TableCell className="py-1.5 px-1 text-center text-xs">
+                              {(historyCurrentPage - 1) * itemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-1.5 px-1 font-mono text-xs">{record.grNo}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-xs">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-xs">{record.branch}</TableCell>
+                            <TableCell className="py-1.5 px-1 font-mono text-xs">{record.drNo}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-center text-xs">{record.pckgs}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-xs">₹{record.freight.toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-right text-xs">₹{record.total.toLocaleString()}</TableCell>
+                            <TableCell className="py-1.5 px-1 text-center">
+                              <Badge className="bg-blue-100 text-blue-700 text-[10px]">Saved</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
-      {/* Main Table */}
-      <div className="rounded-md border overflow-x-auto">
-        <div className="min-w-[1800px]">
-          <Table className="text-[10px]">
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="py-2 px-1 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={selectAll}
-                    onChange={handleSelectAll}
-                    className="h-3 w-3"
-                  />
-                </TableHead>
-                {headerColumns.map((col, idx) => (
-                  <TableHead key={idx} className="py-2 px-1 whitespace-nowrap">
-                    {col}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedResults.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={38} className="text-center py-8 text-muted-foreground">
-                    No records to display. Please import XLS file or search to load data.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedResults.map((record, idx) => (
-                  <TableRow key={record.id} className="hover:bg-muted/30">
-                    <TableCell className="py-1.5 px-1 text-center">
-                      <input type="checkbox" className="h-3 w-3" />
-                    </TableCell>
-                    <TableCell className="py-1.5 px-1 text-center">{(currentPage-1)*itemsPerPage+idx+1}</TableCell>
-                    <TableCell className="py-1.5 px-1">{record.grNo}</TableCell>
-                    <TableCell className="py-1.5 px-1 whitespace-nowrap">{format(record.grDate, "dd-MM-yyyy")}</TableCell>
-                    <TableCell className="py-1.5 px-1">{record.branch}</TableCell>
-                    <TableCell className="py-1.5 px-1">{record.origin}</TableCell>
-                    <TableCell className="py-1.5 px-1">{record.drNo}</TableCell>
-                    <TableCell className="py-1.5 px-1 whitespace-nowrap">{format(record.drDate, "dd-MM-yyyy")}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">{record.pckgs}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">{record.chargeWeight}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">₹{record.freight.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">₹{record.serviceTax.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">₹{record.otherAmt.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right font-medium">₹{record.total.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">₹{record.rebate.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right">₹{record.recdAmt.toLocaleString()}</TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.cartage} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.codCharges} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.delhiSTax} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.deliveryCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.demurrage} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.enrouteCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.entryTax} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.hamali} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.insuranceCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.miscCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.newMiscCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.octroiCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.octroiServiceCh} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.octroiServiceCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.osc} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.oscCharges} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.otherCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.otherChargeBooking} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.otherExpense} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.pfCharges} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.staticalCharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                    <TableCell className="py-1.5 px-1 text-right"><Input type="number" defaultValue={record.surcharge} className="h-7 w-20 text-[10px]" /></TableCell>
-                  </TableRow>
-                ))
+              {/* Pagination for History */}
+              {historyTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-[10px] text-gray-500">
+                    Showing {((historyCurrentPage - 1) * itemsPerPage) + 1} to {Math.min(historyCurrentPage * itemsPerPage, filteredHistory.length)} of {filteredHistory.length} entries
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => goToHistoryPage(historyCurrentPage - 1)} disabled={historyCurrentPage === 1} className="h-7 text-[10px]">
+                      <ChevronLeft className="h-3 w-3 mr-1" /> Previous
+                    </Button>
+                    <span className="px-3 py-1 text-[10px]">Page {historyCurrentPage} of {historyTotalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => goToHistoryPage(historyCurrentPage + 1)} disabled={historyCurrentPage === historyTotalPages} className="h-7 text-[10px]">
+                      Next <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
               )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Totals Row */}
-      {drRecords.length > 0 && (
-        <div className="rounded-md border bg-muted/30 p-2 overflow-x-auto">
-          <div className="flex flex-wrap justify-between gap-3 text-[10px] md:text-xs font-medium">
-            <span>Total Records: {drRecords.length}</span>
-            <span>Total Freight: ₹{totals.totalFreight.toLocaleString()}</span>
-            <span>Total Service Tax: ₹{totals.totalServiceTax.toLocaleString()}</span>
-            <span>Total Other Amt: ₹{totals.totalOtherAmt.toLocaleString()}</span>
-            <span>Total Amount: ₹{totals.totalAmount.toLocaleString()}</span>
-            <span>Total Rebate: ₹{totals.totalRebate.toLocaleString()}</span>
-            <span>Total Recd Amt: ₹{totals.totalRecdAmt.toLocaleString()}</span>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        </>
       )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs text-muted-foreground">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, drRecords.length)} of {drRecords.length} entries
-          </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-xs">Previous</Button>
-            <span className="px-3 py-1 text-xs bg-muted rounded-md">Page {currentPage} of {totalPages}</span>
-            <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-xs">Next</Button>
-          </div>
-        </div>
-      )}
-
-      {/* All Checkbox & Items Per Page */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <input type="checkbox" className="h-3.5 w-3.5" id="selectAllFooter" checked={selectAll} onChange={handleSelectAll} />
-          <Label htmlFor="selectAllFooter" className="text-xs cursor-pointer">All</Label>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          items per page: {itemsPerPage}
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end gap-3 pt-2 border-t">
-        <Button onClick={handleApplyAction} size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
-          <Save className="mr-1 h-3 w-3" />
-          SAVE CHARGES
-        </Button>
-        <Button onClick={handleClear} variant="outline" size="sm" className="h-8 text-xs">
-          <RefreshCw className="mr-1 h-3 w-3" />
-          RESET
-        </Button>
-      </div>
     </div>
   );
 }
+
+// Missing import
+import { History } from "lucide-react";
