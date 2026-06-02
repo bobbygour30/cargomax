@@ -29,13 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
-import {
   Card,
   CardContent,
   CardHeader,
@@ -54,12 +47,11 @@ import {
   Save,
   RefreshCw,
   Search,
-  Pencil,
-  Trash2,
-  Plus,
+  Printer,
+  FileText,
   Eye,
-  Check,
   X,
+  Check,
   Truck,
   Package,
   MapPin,
@@ -67,29 +59,33 @@ import {
   Phone,
   Mail,
   CreditCard,
-  FileText,
-  Printer,
-  Download,
-  AlertCircle,
-  TrendingUp,
-  Calculator,
-  Shield,
-  Users,
   FileSpreadsheet,
   PlusCircle,
-  MinusCircle,
-  User,
-  UserCheck,
-  MessageSquare,
-  DollarSign,
-  ShieldCheck,
-  Settings,
+  Trash2,
+  Send,
+  Mail as MailIcon,
+  FileImage,
+  FolderOpen,
+  AlertCircle,
   Filter,
   ChevronLeft,
   ChevronRight,
-  Send,
-  Grid3x3,
+  DollarSign,
+  Users,
+  Clock,
+  History,
+  Plus,
   Edit,
+  Grid3x3,
+  User,
+  PhoneCall,
+  MessageSquare,
+  Calculator,
+  Shield,
+  Settings,
+  IndianRupee,
+  TrendingUp,
+  Pencil, 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -185,19 +181,16 @@ const loadTypeOptions = [
   { value: "container", label: "Container" },
 ];
 
-// Sample branch list
 const branchOptions = [
   "DELHI", "MUMBAI", "BANGALORE", "CHENNAI", "KOLKATA", 
   "AHMEDABAD", "PUNE", "HYDERABAD", "LUCKNOW", "JAIPUR"
 ];
 
-// Sample executive list
 const executiveOptions = [
   "Rajesh Kumar", "Suresh Singh", "Amit Sharma", "Priya Verma", 
   "Vikash Gupta", "Neha Singh", "Rahul Mehta", "Pooja Yadav"
 ];
 
-// Cancelled Reason Options
 const cancelledReasonOptions = [
   "Customer Request", "Payment Issue", "Wrong Booking", "Duplicate Booking",
   "Vehicle Unavailable", "Route Not Available", "Other"
@@ -207,8 +200,8 @@ export default function BookingComputerizeGRL() {
   // Main Tab state
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   
-  // Sheet state
-  const [isEntrySheetOpen, setIsEntrySheetOpen] = useState(false);
+  // Modal state
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<number | null>(null);
   const [activeFormTab, setActiveFormTab] = useState<string>("basic");
@@ -298,7 +291,7 @@ export default function BookingComputerizeGRL() {
   const [cancelledCurrentPage, setCancelledCurrentPage] = useState<number>(1);
   const itemsPerPage: number = 10;
 
-  // Sample saved data with cancelled records
+  // Sample saved data
   const [savedRecords, setSavedRecords] = useState<BookingRecord[]>([
     {
       id: 1, grNo: "GR000001", grDate: new Date("2026-05-20"), bookingFrom: "DELHI", destination: "MUMBAI",
@@ -331,7 +324,6 @@ export default function BookingComputerizeGRL() {
     },
   ]);
 
-  // Load search results on mount
   useEffect(() => {
     filterActiveRecords();
     filterCancelledRecords();
@@ -516,7 +508,7 @@ export default function BookingComputerizeGRL() {
       filterCancelledRecords();
       alert(editMode ? "Record updated successfully!" : "Record saved successfully!");
       resetForm();
-      setIsEntrySheetOpen(false);
+      setIsBookingModalOpen(false);
       setLoading(false);
     }, 500);
   };
@@ -661,7 +653,7 @@ export default function BookingComputerizeGRL() {
     setInsuranceCompany(record.insuranceCompany);
     setInsuranceAmount(record.insuranceAmount);
     setInvoices(record.invoices);
-    setIsEntrySheetOpen(true);
+    setIsBookingModalOpen(true);
     setActiveFormTab("basic");
   };
 
@@ -675,12 +667,12 @@ export default function BookingComputerizeGRL() {
     }
   };
 
-  const openAddSheet = () => {
+  const openAddModal = () => {
     resetForm();
     setEditMode(false);
     setCurrentEditId(null);
     setGrNo(generateGrNo());
-    setIsEntrySheetOpen(true);
+    setIsBookingModalOpen(true);
   };
 
   const openCancelDialog = (record: BookingRecord) => {
@@ -726,7 +718,7 @@ export default function BookingComputerizeGRL() {
               <span>📅 Financial Year: 2026-2027</span>
             </div>
           </div>
-          <Button onClick={openAddSheet} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+          <Button onClick={openAddModal} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
             <Plus className="mr-2 h-4 w-4" />
             New Booking
           </Button>
@@ -1377,318 +1369,462 @@ export default function BookingComputerizeGRL() {
         </DialogContent>
       </Dialog>
 
-      {/* Entry Sheet (Same as before) */}
-      <Sheet open={isEntrySheetOpen} onOpenChange={setIsEntrySheetOpen}>
-        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="flex items-center gap-2 text-base">
+      {/* New Booking Modal - Full Size Dialog */}
+      <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
+        <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2 text-xl">
               {editMode ? (
                 <>
-                  <Edit className="h-4 w-4 text-blue-600" />
-                  Edit Booking
+                  <Edit className="h-5 w-5 text-blue-600" />
+                  Edit Booking - {currentEditId ? `GR #${savedRecords.find(r => r.id === currentEditId)?.grNo}` : ""}
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 text-blue-600" />
-                  New Booking
+                  <Plus className="h-5 w-5 text-blue-600" />
+                  Create New Booking
                 </>
               )}
-            </SheetTitle>
-          </SheetHeader>
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the booking details below. All fields marked with * are mandatory.
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 justify-end mb-4">
-            <Button variant="outline" size="sm" className="h-7 text-xs">
-              <PlusCircle className="mr-1 h-3 w-3" /> Add More...
-            </Button>
-            <Button variant="outline" size="sm" className="h-7 text-xs">
-              <TrendingUp className="mr-1 h-3 w-3" /> Free Freight On
-            </Button>
-            <Button 
-              onClick={calculateTotalFreight} 
-              variant="default" 
-              size="sm" 
-              className="h-7 text-xs bg-green-600 hover:bg-green-700"
-            >
-              <Calculator className="mr-1 h-3 w-3" /> Calculate Freight
-            </Button>
-          </div>
-
-          {/* Basic Information */}
-          <div className="border rounded-md p-3 mb-4">
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Basic Information
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">GR #</Label>
-                <Input value={grNo} readOnly className="h-8 text-xs bg-gray-50" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">GR Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-8 w-full justify-start text-left text-xs">
-                      <CalendarIcon className="mr-2 h-3 w-3" />
-                      {format(grDate, "dd-MM-yyyy")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={grDate} onSelect={(date) => date && setGrDate(date)} />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Booking From</Label>
-                <Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Destination</Label>
-                <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Delivery Point</Label>
-                <Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Collection At</Label>
-                <Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-8 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Delivery Type</Label>
-                <Select value={deliveryType} onValueChange={setDeliveryType}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                  <SelectContent>{deliveryTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">MKT. Executive</Label>
-                <Select value={mkExecutive} onValueChange={setMkExecutive}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                  <SelectContent>{executiveOptions.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Load Type</Label>
-                <Select value={loadType} onValueChange={setLoadType}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                  <SelectContent>{loadTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
+          <div className="px-6 py-4 space-y-5">
+            {/* Action Buttons Row */}
+            <div className="flex flex-wrap gap-2 justify-end sticky top-[73px] bg-white py-2 z-10 border-b">
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <PlusCircle className="mr-1 h-3 w-3" /> Add More...
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <TrendingUp className="mr-1 h-3 w-3" /> Free Freight On
+              </Button>
+              <Button 
+                onClick={calculateTotalFreight} 
+                variant="default" 
+                size="sm" 
+                className="h-8 text-xs bg-green-600 hover:bg-green-700"
+              >
+                <Calculator className="mr-1 h-3 w-3" /> Calculate Freight
+              </Button>
             </div>
-          </div>
 
-          {/* Form Tabs */}
-          <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-gray-100">
-              <TabsTrigger value="basic" className="text-xs py-1.5">
-                <Settings className="h-3 w-3 mr-1" /> Basic
-              </TabsTrigger>
-              <TabsTrigger value="consignor" className="text-xs py-1.5">
-                <Building className="h-3 w-3 mr-1" /> Consignor
-              </TabsTrigger>
-              <TabsTrigger value="consignee" className="text-xs py-1.5">
-                <Users className="h-3 w-3 mr-1" /> Consignee
-              </TabsTrigger>
-              <TabsTrigger value="freight" className="text-xs py-1.5">
-                <DollarSign className="h-3 w-3 mr-1" /> Freight
-              </TabsTrigger>
-              <TabsTrigger value="other" className="text-xs py-1.5">
-                <Settings className="h-3 w-3 mr-1" /> Other
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Basic Tab */}
-            <TabsContent value="basic" className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Basic Information Section */}
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-600">
+                <FileText className="h-4 w-4" />
+                Basic Information
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs">Freight On</Label>
-                  <Select value={freightOn} onValueChange={setFreightOn}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{freightOnOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                  <Label className="text-xs font-medium">GR #</Label>
+                  <Input value={grNo} readOnly className="h-9 text-sm bg-gray-50" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">GR Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full justify-start text-left text-sm">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(grDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={grDate} onSelect={(date) => date && setGrDate(date)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Booking From</Label>
+                  <Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Destination</Label>
+                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Delivery Point</Label>
+                  <Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Collection At</Label>
+                  <Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Delivery Type</Label>
+                  <Select value={deliveryType} onValueChange={setDeliveryType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{deliveryTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Charge Weight (kg)</Label>
-                  <Input type="number" value={chargeWeight} onChange={(e) => setChargeWeight(Number(e.target.value))} className="h-8 text-xs" />
+                  <Label className="text-xs font-medium">MKT. Executive</Label>
+                  <Select value={mkExecutive} onValueChange={setMkExecutive}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{executiveOptions.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Load Type</Label>
+                  <Select value={loadType} onValueChange={setLoadType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{loadTypeOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={toPay} onChange={(e) => setToPay(e.target.checked)} className="h-3.5 w-3.5" />
-                  <span className="text-xs">TO PAY</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={gst} onChange={(e) => setGst(e.target.checked)} className="h-3.5 w-3.5" />
-                  <span className="text-xs">GST</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={surface} onChange={(e) => setSurface(e.target.checked)} className="h-3.5 w-3.5" />
-                  <span className="text-xs">SURFACE</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={partLoad} onChange={(e) => setPartLoad(e.target.checked)} className="h-3.5 w-3.5" />
-                  <span className="text-xs">PART LOAD</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="h-3.5 w-3.5" />
-                  <span className="text-xs">Manual Rates</span>
-                </label>
-              </div>
-            </TabsContent>
+            </div>
 
-            {/* Consignor Tab */}
-            <TabsContent value="consignor" className="mt-3">
-              <div className="border rounded-md">
-                <div className="bg-gray-50 px-3 py-2 border-b">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Building className="h-4 w-4" /> CONSIGNOR DETAILS
-                  </h3>
-                </div>
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div><Label className="text-xs">Dealer Code</Label><Input value={consignorCode} onChange={(e) => setConsignorCode(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Name *</Label><Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-8 text-xs" /></div>
-                  <div className="sm:col-span-2"><Label className="text-xs">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Pincode</Label><Input value={consignorPincode} onChange={(e) => setConsignorPincode(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Mobile No.</Label><Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Email ID</Label><Input value={consignorEmail} onChange={(e) => setConsignorEmail(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">GST</Label><Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-8 text-xs uppercase" /></div>
-                </div>
-              </div>
-            </TabsContent>
+            {/* Form Tabs */}
+            <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-gray-100 rounded-lg">
+                <TabsTrigger value="basic" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Settings className="h-3 w-3 mr-1" /> Basic
+                </TabsTrigger>
+                <TabsTrigger value="consignor" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Building className="h-3 w-3 mr-1" /> Consignor
+                </TabsTrigger>
+                <TabsTrigger value="consignee" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Users className="h-3 w-3 mr-1" /> Consignee
+                </TabsTrigger>
+                <TabsTrigger value="freight" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <DollarSign className="h-3 w-3 mr-1" /> Freight
+                </TabsTrigger>
+                <TabsTrigger value="other" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Settings className="h-3 w-3 mr-1" /> Other
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Consignee Tab */}
-            <TabsContent value="consignee" className="mt-3">
-              <div className="border rounded-md">
-                <div className="bg-gray-50 px-3 py-2 border-b">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Users className="h-4 w-4" /> CONSIGNEE DETAILS
-                  </h3>
-                </div>
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div><Label className="text-xs">Dealer Code</Label><Input value={consigneeCode} onChange={(e) => setConsigneeCode(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Name *</Label><Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-8 text-xs" /></div>
-                  <div className="sm:col-span-2"><Label className="text-xs">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Pincode</Label><Input value={consigneePincode} onChange={(e) => setConsigneePincode(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Mobile No.</Label><Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Email ID</Label><Input value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">GST</Label><Input value={consigneeGst} onChange={(e) => setConsigneeGst(e.target.value)} className="h-8 text-xs uppercase" /></div>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Freight Tab */}
-            <TabsContent value="freight" className="mt-3">
-              <div className="border rounded-md">
-                <div className="bg-gray-50 px-3 py-2 border-b">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" /> FREIGHT DETAILS
-                  </h3>
-                </div>
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div><Label className="text-xs">Basic Freight (₹)</Label><Input type="number" value={basicFreight} onChange={(e) => setBasicFreight(Number(e.target.value))} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Loading Charges (₹)</Label><Input type="number" value={loadingCharges} onChange={(e) => setLoadingCharges(Number(e.target.value))} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Unloading Charges (₹)</Label><Input type="number" value={unloadingCharges} onChange={(e) => setUnloadingCharges(Number(e.target.value))} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Door Delivery Charges (₹)</Label><Input type="number" value={doorDeliveryCharges} onChange={(e) => setDoorDeliveryCharges(Number(e.target.value))} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Other Charges (₹)</Label><Input type="number" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} className="h-8 text-xs" /></div>
-                  <div className="bg-blue-50 p-2 rounded-md">
-                    <Label className="text-xs font-semibold">Total Freight (₹)</Label>
-                    <p className="text-lg font-bold text-blue-600">{totalFreight.toLocaleString()}</p>
+              {/* Basic Tab */}
+              <TabsContent value="basic" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Freight On</Label>
+                    <Select value={freightOn} onValueChange={setFreightOn}>
+                      <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                      <SelectContent>{freightOnOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Charge Weight (kg)</Label>
+                    <Input type="number" value={chargeWeight} onChange={(e) => setChargeWeight(Number(e.target.value))} className="h-10 text-sm" />
                   </div>
                 </div>
-              </div>
-            </TabsContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Freight On</Label>
+                    <Select value={freightOn} onValueChange={setFreightOn}>
+                      <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                      <SelectContent>{freightOnOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Charge Weight (kg)</Label>
+                    <Input type="number" value={chargeWeight} onChange={(e) => setChargeWeight(Number(e.target.value))} className="h-10 text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="toPay" checked={toPay} onChange={(e) => setToPay(e.target.checked)} className="rounded border-gray-300" />
+                    <Label htmlFor="toPay" className="text-sm font-normal">To Pay</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="gst" checked={gst} onChange={(e) => setGst(e.target.checked)} className="rounded border-gray-300" />
+                    <Label htmlFor="gst" className="text-sm font-normal">GST</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="surface" checked={surface} onChange={(e) => setSurface(e.target.checked)} className="rounded border-gray-300" />
+                    <Label htmlFor="surface" className="text-sm font-normal">Surface</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="partLoad" checked={partLoad} onChange={(e) => setPartLoad(e.target.checked)} className="rounded border-gray-300" />
+                    <Label htmlFor="partLoad" className="text-sm font-normal">Part Load</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="manualRates" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="rounded border-gray-300" />
+                    <Label htmlFor="manualRates" className="text-sm font-normal">Manual Rates</Label>
+                  </div>
+                </div>
+              </TabsContent>
 
-            {/* Other Tab */}
-            <TabsContent value="other" className="mt-3 space-y-3">
-              <div className="border rounded-md">
-                <div className="bg-gray-50 px-3 py-2 border-b">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" /> REMARKS
+              {/* Consignor Tab */}
+              <TabsContent value="consignor" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignor Name *</Label>
+                    <Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-9 text-sm" placeholder="Enter consignor name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignor Code</Label>
+                    <Input value={consignorCode} onChange={(e) => setConsignorCode(e.target.value)} className="h-9 text-sm" placeholder="Enter code" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignor Address</Label>
+                    <Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" placeholder="Enter address" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">City</Label>
+                    <Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" placeholder="Enter city" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">State</Label>
+                    <Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" placeholder="Enter state" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Pincode</Label>
+                    <Input value={consignorPincode} onChange={(e) => setConsignorPincode(e.target.value)} className="h-9 text-sm" placeholder="Enter pincode" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Mobile</Label>
+                    <Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-9 text-sm" placeholder="Enter mobile" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Email</Label>
+                    <Input type="email" value={consignorEmail} onChange={(e) => setConsignorEmail(e.target.value)} className="h-9 text-sm" placeholder="Enter email" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">GST Number</Label>
+                    <Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-9 text-sm" placeholder="Enter GST" />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Consignee Tab */}
+              <TabsContent value="consignee" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignee Name *</Label>
+                    <Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-9 text-sm" placeholder="Enter consignee name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignee Code</Label>
+                    <Input value={consigneeCode} onChange={(e) => setConsigneeCode(e.target.value)} className="h-9 text-sm" placeholder="Enter code" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Consignee Address</Label>
+                    <Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" placeholder="Enter address" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">City</Label>
+                    <Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" placeholder="Enter city" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">State</Label>
+                    <Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" placeholder="Enter state" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Pincode</Label>
+                    <Input value={consigneePincode} onChange={(e) => setConsigneePincode(e.target.value)} className="h-9 text-sm" placeholder="Enter pincode" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Mobile</Label>
+                    <Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-9 text-sm" placeholder="Enter mobile" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Email</Label>
+                    <Input type="email" value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-9 text-sm" placeholder="Enter email" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">GST Number</Label>
+                    <Input value={consigneeGst} onChange={(e) => setConsigneeGst(e.target.value)} className="h-9 text-sm" placeholder="Enter GST" />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Freight Tab */}
+              <TabsContent value="freight" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Basic Freight (₹)</Label>
+                    <Input type="number" value={basicFreight} onChange={(e) => setBasicFreight(Number(e.target.value))} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Loading Charges (₹)</Label>
+                    <Input type="number" value={loadingCharges} onChange={(e) => setLoadingCharges(Number(e.target.value))} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Unloading Charges (₹)</Label>
+                    <Input type="number" value={unloadingCharges} onChange={(e) => setUnloadingCharges(Number(e.target.value))} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Door Delivery Charges (₹)</Label>
+                    <Input type="number" value={doorDeliveryCharges} onChange={(e) => setDoorDeliveryCharges(Number(e.target.value))} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Other Charges (₹)</Label>
+                    <Input type="number" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium font-bold text-green-600">Total Freight (₹)</Label>
+                    <Input type="number" value={totalFreight} readOnly className="h-9 text-sm font-bold bg-green-50 text-green-700" />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Other Tab */}
+              <TabsContent value="other" className="mt-4 space-y-4">
+                {/* Remarks Section */}
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-purple-600">
+                    <MessageSquare className="h-4 w-4" />
+                    Remarks
                   </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Remarks</Label>
+                      <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} className="text-sm" placeholder="General remarks" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">RO Remarks</Label>
+                      <Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={3} className="text-sm" placeholder="Route order remarks" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">GP Remarks</Label>
+                      <Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={3} className="text-sm" placeholder="General purpose remarks" />
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1"><Label className="text-xs">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-xs">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-xs">GP Remarks</Label><Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={2} className="text-xs" /></div>
-                </div>
-              </div>
 
-              <div className="border rounded-md">
-                <div className="bg-gray-50 px-3 py-2 border-b">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Shield className="h-4 w-4" /> INSURANCE DETAILS
+                {/* Insurance Section */}
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-600">
+                    <Shield className="h-4 w-4" />
+                    Insurance Details
                   </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Insurance Covered By</Label>
+                      <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                        <SelectContent>{insuranceCoveredByOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Insurance Number</Label>
+                      <Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Insurance Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="h-9 w-full justify-start text-left text-sm">
+                            <CalendarIcon className="mr-2 h-3 w-3" />
+                            {format(insuranceDate, "dd-MM-yyyy")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={insuranceDate} onSelect={(date) => date && setInsuranceDate(date)} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Insurance Company</Label>
+                      <Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Insurance Amount (₹)</Label>
+                      <Input type="number" value={insuranceAmount} onChange={(e) => setInsuranceAmount(Number(e.target.value))} className="h-9 text-sm" />
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div><Label className="text-xs">Insurance Covered By</Label><Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{insuranceCoveredByOptions.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent></Select></div>
-                  <div><Label className="text-xs">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Insurance Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(insuranceDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={insuranceDate} onSelect={(date) => date && setInsuranceDate(date)} /></PopoverContent></Popover></div>
-                  <div><Label className="text-xs">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-8 text-xs" /></div>
-                  <div><Label className="text-xs">Insurance Amount (₹)</Label><Input type="number" value={insuranceAmount} onChange={(e) => setInsuranceAmount(Number(e.target.value))} className="h-8 text-xs" /></div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
 
-          {/* Invoices Table */}
-          <div className="rounded-md border mt-4">
-            <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" /> Invoices
-              </h3>
-              <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-7 text-xs">
-                <Plus className="mr-1 h-3 w-3" /> ADD INVOICE
-              </Button>
-            </div>
-            <div className="overflow-x-auto">
-              <Table className="text-xs">
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Value (₹)</TableHead>
-                    <TableHead>Away Bill #</TableHead>
-                    <TableHead>Away Date</TableHead>
-                    <TableHead>Value Up to</TableHead>
-                    <TableHead className="w-12">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.map((inv, idx) => (
-                    <TableRow key={inv.id}>
-                      <TableCell>{idx + 1}</TableCell>
-                      <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-7 w-28 text-xs" /></TableCell>
-                      <TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-28 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(inv.date, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.date} onSelect={(date) => date && updateInvoice(inv.id, "date", date)} /></PopoverContent></Popover></TableCell>
-                      <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-7 w-24 text-xs" /></TableCell>
-                      <TableCell><Input value={inv.awayBillNo} onChange={(e) => updateInvoice(inv.id, "awayBillNo", e.target.value)} className="h-7 w-28 text-xs" /></TableCell>
-                      <TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-7 w-28 text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(inv.awayBillDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.awayBillDate} onSelect={(date) => date && updateInvoice(inv.id, "awayBillDate", date)} /></PopoverContent></Popover></TableCell>
-                      <TableCell><Input value={inv.valueUpTo} onChange={(e) => updateInvoice(inv.id, "valueUpTo", e.target.value)} className="h-7 w-24 text-xs" /></TableCell>
-                      <TableCell><Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                {/* Invoices Section */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2 text-green-600">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Invoice Details
+                    </h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addInvoiceRow} className="h-8 text-xs">
+                      <PlusCircle className="mr-1 h-3 w-3" /> Add Invoice
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[700px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50">
+                            <TableHead className="text-[10px] py-2 px-1">Invoice #</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1">Date</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1">Value (₹)</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1">Away Bill #</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1">Away Bill Date</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1">Value Up To</TableHead>
+                            <TableHead className="text-[10px] py-2 px-1 w-8"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {invoices.map((invoice) => (
+                            <TableRow key={invoice.id}>
+                              <TableCell className="py-1 px-1"><Input value={invoice.invoiceNo} onChange={(e) => updateInvoice(invoice.id, "invoiceNo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
+                              <TableCell className="py-1 px-1">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="h-8 text-xs w-28 justify-start">
+                                      <CalendarIcon className="mr-1 h-3 w-3" />
+                                      {format(invoice.date, "dd-MM-yyyy")}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={invoice.date} onSelect={(date) => date && updateInvoice(invoice.id, "date", date)} />
+                                  </PopoverContent>
+                                </Popover>
+                              </TableCell>
+                              <TableCell className="py-1 px-1"><Input type="number" value={invoice.value} onChange={(e) => updateInvoice(invoice.id, "value", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
+                              <TableCell className="py-1 px-1"><Input value={invoice.awayBillNo} onChange={(e) => updateInvoice(invoice.id, "awayBillNo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
+                              <TableCell className="py-1 px-1">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="h-8 text-xs w-28 justify-start">
+                                      <CalendarIcon className="mr-1 h-3 w-3" />
+                                      {format(invoice.awayBillDate, "dd-MM-yyyy")}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={invoice.awayBillDate} onSelect={(date) => date && updateInvoice(invoice.id, "awayBillDate", date)} />
+                                  </PopoverContent>
+                                </Popover>
+                              </TableCell>
+                              <TableCell className="py-1 px-1"><Input value={invoice.valueUpTo} onChange={(e) => updateInvoice(invoice.id, "valueUpTo", e.target.value)} className="h-8 text-xs w-28" /></TableCell>
+                              <TableCell className="py-1 px-1">
+                                <Button variant="ghost" size="sm" onClick={() => removeInvoice(invoice.id)} className="h-7 w-7 p-0 text-red-500" disabled={invoices.length === 1}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs">
-              <X className="mr-1 h-3 w-3" /> Cancel
+          <DialogFooter className="sticky bottom-0 bg-white border-t px-6 py-4 gap-3">
+            <Button variant="outline" onClick={() => setIsBookingModalOpen(false)}>
+              Cancel
             </Button>
-            <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700" disabled={loading}>
-              <Save className="mr-1 h-3 w-3" />
-              {editMode ? "Update" : "Save"}
+            <Button onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+              {loading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {editMode ? "Update Booking" : "Save Booking"}
+                </>
+              )}
             </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Missing Pencil Icon Import - Add this to imports */}
+      {/* Add: import { Pencil } from "lucide-react"; */}
     </div>
   );
 }
