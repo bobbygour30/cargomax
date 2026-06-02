@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,12 +21,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarIcon,
   Save,
@@ -51,6 +73,15 @@ import {
   CreditCard,
   FileSpreadsheet,
   Download,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Users,
+  Clock,
+  AlertCircle,
+  History,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -115,6 +146,8 @@ interface GatePassRecord {
   proofOfDelivery: string;
   images: string[];
   status: "active" | "cancelled";
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const branchOptions = [
@@ -152,11 +185,26 @@ const chargesOptions = [
 
 const applicableOnOptions = ["Docket", "Weight", "Package", "Freight", "Value"];
 
+const cancelledReasonOptions = [
+  "Customer Request", "Wrong Entry", "Duplicate Entry", "Payment Issue", "Other"
+];
+
 export default function GatePassEntry() {
-  const [activeMainTab, setActiveMainTab] = useState<"entry" | "cancelled" | "search">("entry");
+  // Main Tab state
+  const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
+  
+  // Sheet state
+  const [isEntrySheetOpen, setIsEntrySheetOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState<number | null>(null);
   const [activeEntryTab, setActiveEntryTab] = useState<"entry" | "image">("entry");
-  const [editId, setEditId] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"grid" | "report">("report");
+
+  // Cancelled Dialog state
+  const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
+  const [cancellingGatePass, setCancellingGatePass] = useState<GatePassRecord | null>(null);
+  const [cancelledReason, setCancelledReason] = useState<string>("");
 
   // Form state
   const [branch, setBranch] = useState<string>("");
@@ -217,14 +265,32 @@ export default function GatePassEntry() {
   const [searchToDate, setSearchToDate] = useState<Date>(new Date());
   const [searchDrNo, setSearchDrNo] = useState<string>("");
   const [searchResults, setSearchResults] = useState<GatePassRecord[]>([]);
+  const [cancelledSearchResults, setCancelledSearchResults] = useState<GatePassRecord[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [cancelledCurrentPage, setCancelledCurrentPage] = useState<number>(1);
   const itemsPerPage: number = 10;
 
   // Sample data
   const [savedRecords, setSavedRecords] = useState<GatePassRecord[]>([]);
 
+  // Load search results on mount
+  useEffect(() => {
+    filterActiveRecords();
+    filterCancelledRecords();
+  }, []);
+
+  const filterActiveRecords = () => {
+    const activeRecords = savedRecords.filter(r => r.status === "active");
+    setSearchResults(activeRecords);
+  };
+
+  const filterCancelledRecords = () => {
+    const cancelledRecords = savedRecords.filter(r => r.status === "cancelled");
+    setCancelledSearchResults(cancelledRecords);
+  };
+
   const generateGatePassNo = (): string => {
-    const count = savedRecords.length + 1;
+    const count = savedRecords.filter(r => r.status === "active").length + 1;
     return `GP${String(count).padStart(6, "0")}`;
   };
 
@@ -349,7 +415,9 @@ export default function GatePassEntry() {
     setBalance(0);
     setProofOfDelivery("");
     setImages([]);
-    setEditId(null);
+    setEditMode(false);
+    setCurrentEditId(null);
+    setActiveEntryTab("entry");
   };
 
   const handleSave = () => {
@@ -370,7 +438,7 @@ export default function GatePassEntry() {
     setTimeout(() => {
       const total = calculateTotal();
       const newRecord: GatePassRecord = {
-        id: editId || Date.now(),
+        id: currentEditId || Date.now(),
         branch, date, gatePassNo, grNo, refNo, origin, destination, customer,
         consignor, consignorGst, consignee, consigneeTelNo, grPckgs, chgWeight,
         actWeight, deliveryType, consigneeType, deliveredAgainstConsigneeCopy,
@@ -380,23 +448,70 @@ export default function GatePassEntry() {
         deliveredPckgs, deliveredWeight, godown, grFreight, charges, gstPaidBy,
         gstType, gst, advance, balance: total - advance, proofOfDelivery, images,
         status: "active",
+        createdAt: editMode && currentEditId ? 
+          savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : 
+          new Date(),
+        updatedAt: new Date(),
       };
 
-      if (editId) {
-        setSavedRecords(savedRecords.map(record => record.id === editId ? newRecord : record));
-        alert("Record updated successfully!");
+      let updatedRecords;
+      if (editMode && currentEditId) {
+        updatedRecords = savedRecords.map(record => record.id === currentEditId ? newRecord : record);
       } else {
-        setSavedRecords([...savedRecords, newRecord]);
-        alert("Record saved successfully!");
+        updatedRecords = [...savedRecords, newRecord];
       }
+      setSavedRecords(updatedRecords);
+      filterActiveRecords();
+      filterCancelledRecords();
+      alert(editMode ? "Record updated successfully!" : "Record saved successfully!");
       resetForm();
-      setActiveMainTab("search");
+      setIsEntrySheetOpen(false);
       setLoading(false);
     }, 500);
   };
 
+  const handleCancelGatePass = () => {
+    if (!cancelledReason) {
+      alert("Please select cancellation reason");
+      return;
+    }
+    
+    if (cancellingGatePass) {
+      const updatedRecords = savedRecords.map(record => 
+        record.id === cancellingGatePass.id 
+          ? { 
+              ...record, 
+              status: "cancelled" as const, 
+              updatedAt: new Date()
+            }
+          : record
+      );
+      setSavedRecords(updatedRecords);
+      filterActiveRecords();
+      filterCancelledRecords();
+      alert(`Gate Pass ${cancellingGatePass.gatePassNo} has been cancelled successfully!`);
+      setIsCancelledDialogOpen(false);
+      setCancellingGatePass(null);
+      setCancelledReason("");
+    }
+  };
+
+  const handleRestoreGatePass = (record: GatePassRecord) => {
+    if (confirm(`Are you sure you want to restore Gate Pass ${record.gatePassNo}?`)) {
+      const updatedRecords = savedRecords.map(r => 
+        r.id === record.id 
+          ? { ...r, status: "active" as const, updatedAt: new Date() }
+          : r
+      );
+      setSavedRecords(updatedRecords);
+      filterActiveRecords();
+      filterCancelledRecords();
+      alert(`Gate Pass ${record.gatePassNo} has been restored successfully!`);
+    }
+  };
+
   const handleSearch = () => {
-    let results = savedRecords.filter(record => record.status !== "cancelled");
+    let results = savedRecords.filter(record => record.status === "active");
     if (searchBranch) results = results.filter(r => r.branch === searchBranch);
     if (searchDrNo) results = results.filter(r => r.gatePassNo.toLowerCase().includes(searchDrNo.toLowerCase()));
     if (searchFromDate) results = results.filter(r => r.date >= searchFromDate);
@@ -405,8 +520,30 @@ export default function GatePassEntry() {
     setCurrentPage(1);
   };
 
+  const handleCancelledSearch = () => {
+    let results = savedRecords.filter(record => record.status === "cancelled");
+    if (searchBranch) results = results.filter(r => r.branch === searchBranch);
+    if (searchDrNo) results = results.filter(r => r.gatePassNo.toLowerCase().includes(searchDrNo.toLowerCase()));
+    if (searchFromDate) results = results.filter(r => r.date >= searchFromDate);
+    if (searchToDate) results = results.filter(r => r.date <= searchToDate);
+    setCancelledSearchResults(results);
+    setCancelledCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchBranch("");
+    setSearchFromDate(new Date());
+    setSearchToDate(new Date());
+    setSearchDrNo("");
+    filterActiveRecords();
+    filterCancelledRecords();
+    setCurrentPage(1);
+    setCancelledCurrentPage(1);
+  };
+
   const handleEdit = (record: GatePassRecord) => {
-    setEditId(record.id);
+    setEditMode(true);
+    setCurrentEditId(record.id);
     setBranch(record.branch);
     setDate(record.date);
     setGatePassNo(record.gatePassNo);
@@ -455,23 +592,16 @@ export default function GatePassEntry() {
     setBalance(record.balance);
     setProofOfDelivery(record.proofOfDelivery);
     setImages(record.images);
-    setActiveMainTab("entry");
+    setIsEntrySheetOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this record?")) {
-      setSavedRecords(savedRecords.filter(record => record.id !== id));
-      setSearchResults(searchResults.filter(record => record.id !== id));
+    if (confirm("Are you sure you want to permanently delete this record?")) {
+      const updatedRecords = savedRecords.filter(record => record.id !== id);
+      setSavedRecords(updatedRecords);
+      filterActiveRecords();
+      filterCancelledRecords();
       alert("Record deleted successfully!");
-    }
-  };
-
-  const handleCancel = (id: number) => {
-    if (confirm("Are you sure you want to cancel this Gate Pass?")) {
-      setSavedRecords(savedRecords.map(record => 
-        record.id === id ? { ...record, status: "cancelled" } : record
-      ));
-      alert("Gate Pass cancelled successfully!");
     }
   };
 
@@ -479,207 +609,740 @@ export default function GatePassEntry() {
     window.print();
   };
 
-  const paginatedResults = searchResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const openAddSheet = () => {
+    resetForm();
+    setEditMode(false);
+    setCurrentEditId(null);
+    setGatePassNo(generateGatePassNo());
+    setIsEntrySheetOpen(true);
+  };
+
+  const openCancelDialog = (record: GatePassRecord) => {
+    setCancellingGatePass(record);
+    setCancelledReason("");
+    setIsCancelledDialogOpen(true);
+  };
+
+  // Stats
+  const activeStats = {
+    total: searchResults.length,
+    totalAmount: searchResults.reduce((sum, r) => sum + r.charges.reduce((s, c) => s + c.amount, 0), 0),
+  };
+
+  const cancelledStats = {
+    total: cancelledSearchResults.length,
+  };
+
+  // Pagination
   const totalPages = Math.ceil(searchResults.length / itemsPerPage);
+  const paginatedResults = searchResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 
+  const cancelledTotalPages = Math.ceil(cancelledSearchResults.length / itemsPerPage);
+  const paginatedCancelledResults = cancelledSearchResults.slice((cancelledCurrentPage - 1) * itemsPerPage, cancelledCurrentPage * itemsPerPage);
+  const goToCancelledPage = (page: number) => setCancelledCurrentPage(Math.max(1, Math.min(page, cancelledTotalPages)));
+
   return (
-    <div className="space-y-4 p-3 md:p-4">
+    <div className="space-y-4 p-3 md:p-4 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
-      <div className="border-b pb-3">
-        <h1 className="text-base md:text-lg font-bold">GATE PASS ENTRY</h1>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] md:text-xs text-muted-foreground">
-          <span>Company : GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
-          <span>Login By : MAYANK.GRLOGISTICS@GMAIL.COM</span>
-          <span>Login Branch : CORPORATE OFFICE</span>
-          <span>Financial Year : 2026-2027</span>
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800">GATE PASS ENTRY</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
+              <span>📍 Branch: CORPORATE OFFICE</span>
+              <span>📅 Financial Year: 2026-2027</span>
+            </div>
+          </div>
+          <Button onClick={openAddSheet} size="default" className="bg-blue-600 hover:bg-blue-700 shadow-md">
+            <Plus className="mr-2 h-4 w-4" />
+            New Gate Pass
+          </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
-      <div className="flex border-b">
-        <button onClick={() => { setActiveMainTab("entry"); resetForm(); }} className={cn("px-4 py-2 text-sm font-medium transition-all", activeMainTab === "entry" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground")}>Entry</button>
-        <button onClick={() => { setActiveMainTab("search"); handleSearch(); }} className={cn("px-4 py-2 text-sm font-medium transition-all", activeMainTab === "search" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground")}>Search</button>
-        <button onClick={() => { setActiveMainTab("cancelled"); }} className={cn("px-4 py-2 text-sm font-medium transition-all", activeMainTab === "cancelled" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground")}>Cancelled</button>
+      <div className="flex border-b bg-white rounded-t-lg">
+        <button
+          onClick={() => {
+            setMainTab("active");
+            filterActiveRecords();
+          }}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
+            mainTab === "active"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          )}
+        >
+          Active Gate Passes
+        </button>
+        <button
+          onClick={() => {
+            setMainTab("cancelled");
+            filterCancelledRecords();
+          }}
+          className={cn(
+            "px-6 py-2.5 text-sm font-medium transition-all rounded-t-lg",
+            mainTab === "cancelled"
+              ? "bg-red-600 text-white shadow-md"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          )}
+        >
+          Cancelled Gate Passes
+        </button>
       </div>
 
-      {/* Entry Tab */}
-      {activeMainTab === "entry" && (
-        <Tabs value={activeEntryTab} onValueChange={(v) => setActiveEntryTab(v as "entry" | "image")} className="w-full">
-          <TabsList className="grid w-full max-w-[200px] grid-cols-2">
-            <TabsTrigger value="entry" className="text-xs">Entry</TabsTrigger>
-            <TabsTrigger value="image" className="text-xs">Image</TabsTrigger>
-          </TabsList>
+      {/* Active Gate Passes Tab */}
+      {mainTab === "active" && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Active Gate Passes</p>
+                    <p className="text-2xl font-bold">{activeStats.total}</p>
+                  </div>
+                  <FileText className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Amount</p>
+                    <p className="text-2xl font-bold">₹{activeStats.totalAmount.toLocaleString()}</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* Entry Form Tab */}
-          <TabsContent value="entry" className="space-y-4 mt-4">
-            {/* Row 1 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Branch <span className="text-red-500">*</span></Label><Select value={branch} onValueChange={setBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">Date <span className="text-red-500">*</span></Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(date, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} /></PopoverContent></Popover></div>
-              <div className="space-y-1"><Label className="text-xs">Gate Pass# <span className="text-red-500">*</span></Label><div className="flex gap-2"><Input value={gatePassNo} onChange={(e) => setGatePassNo(e.target.value)} readOnly={auto} className={cn("h-8 text-xs flex-1", auto && "bg-muted")} /><div className="flex items-center gap-1"><input type="checkbox" checked={auto} onChange={handleAutoChange} className="h-3.5 w-3.5" id="auto" /><Label htmlFor="auto" className="text-xs cursor-pointer">Auto</Label></div></div></div>
-              <div className="space-y-1"><Label className="text-xs">GR # <span className="text-red-500">*</span></Label><Input value={grNo} onChange={(e) => setGrNo(e.target.value)} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Ref.#</Label><Input value={refNo} onChange={(e) => setRefNo(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Origin</Label><Input value={origin} onChange={(e) => setOrigin(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Destination</Label><Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Customer</Label><Input value={customer} onChange={(e) => setCustomer(e.target.value)} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Row 3 - Consignor */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Consignor</Label><Input value={consignor} onChange={(e) => setConsignor(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">CNGE GST#</Label><Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-8 text-xs uppercase" /></div>
-              <div className="space-y-1"><Label className="text-xs">Consignee <span className="text-red-500">*</span></Label><Input value={consignee} onChange={(e) => setConsignee(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Consignee Tel. # <span className="text-red-500">*</span></Label><Input value={consigneeTelNo} onChange={(e) => setConsigneeTelNo(e.target.value)} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Row 4 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">GR Pckgs</Label><Input type="number" value={grPckgs} onChange={(e) => setGrPckgs(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Chg. Weight</Label><Input type="number" value={chgWeight} onChange={(e) => setChgWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Act. Weight</Label><Input type="number" value={actWeight} onChange={(e) => setActWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Delivery Type</Label><Select value={deliveryType} onValueChange={setDeliveryType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{deliveryTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            </div>
-
-            {/* Row 5 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Consignee Type</Label><Select value={consigneeType} onValueChange={setConsigneeType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{consigneeTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="flex items-center gap-3"><input type="checkbox" checked={deliveredAgainstConsigneeCopy} onChange={(e) => setDeliveredAgainstConsigneeCopy(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Delivered Against Consignee Copy</Label></div>
-              <div className="flex items-center gap-3"><input type="checkbox" checked={ccReceived} onChange={(e) => setCcReceived(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">CC Received</Label></div>
-              <div className="space-y-1"><Label className="text-xs">Consignee Email</Label><Input value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Row 6 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">PVT Marka</Label><Input value={pvtMarka} onChange={(e) => setPvtMarka(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Delivered To <span className="text-red-500">*</span></Label><Input value={deliveredTo} onChange={(e) => setDeliveredTo(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="flex items-center gap-3"><input type="checkbox" checked={rebooking} onChange={(e) => setRebooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Rebooking</Label></div>
-              <div className="flex items-center gap-3"><input type="checkbox" checked={dueGatepass} onChange={(e) => setDueGatepass(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Due Gatepass</Label></div>
-            </div>
-
-            {/* Row 7 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Due Order By</Label><Select value={dueOrderBy} onValueChange={setDueOrderBy}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{dueOrderByOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">Select Customer For Billing</Label><Select value={selectCustomerForBilling} onValueChange={setSelectCustomerForBilling}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{selectCustomerForBillingOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="flex items-center gap-3"><input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Print After Save</Label></div>
-            </div>
-
-            {/* Row 8 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Item</Label><Input value={item} onChange={(e) => setItem(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Packing</Label><Input value={packing} onChange={(e) => setPacking(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">GR Type</Label><Select value={grType} onValueChange={setGrType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{grTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">GR Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(grDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={grDate} onSelect={(d) => d && setGrDate(d)} /></PopoverContent></Popover></div>
-            </div>
-
-            {/* Row 9 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">DDR #</Label><Input value={ddrNo} onChange={(e) => setDdrNo(e.target.value)} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Arrival Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(arrivalDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={arrivalDate} onSelect={(d) => d && setArrivalDate(d)} /></PopoverContent></Popover></div>
-              <div className="space-y-1"><Label className="text-xs">Received Pckgs</Label><Input type="number" value={receivedPckgs} onChange={(e) => setReceivedPckgs(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Balance Pckgs</Label><Input type="number" value={balancePckgs} onChange={(e) => setBalancePckgs(Number(e.target.value))} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Row 10 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Delivered Pckgs</Label><Input type="number" value={deliveredPckgs} onChange={(e) => setDeliveredPckgs(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Delivered Weight</Label><Input type="number" value={deliveredWeight} onChange={(e) => setDeliveredWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Godown</Label><Select value={godown} onValueChange={setGodown}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{godownOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">GR Freight</Label><Input type="number" value={grFreight} onChange={(e) => setGrFreight(Number(e.target.value))} className="h-8 text-xs" /></div>
-            </div>
-
-            {/* Remarks */}
-            <div className="space-y-1"><Label className="text-xs">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-xs" /></div>
-
-            {/* Charges Table */}
-            <div className="rounded-md border">
-              <div className="bg-muted/50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">Charges</h3><Button onClick={addChargeRow} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add Charge</Button></div>
-              <div className="overflow-x-auto">
-                <Table className="text-xs">
-                  <TableHeader><TableRow className="bg-muted/30"><TableHead className="w-12">S#</TableHead><TableHead>Charges</TableHead><TableHead>Applicable On</TableHead><TableHead>Rate</TableHead><TableHead>Applicable Value</TableHead><TableHead>Amount</TableHead><TableHead className="w-12">Action</TableHead></TableRow></TableHeader>
-                  <TableBody>{charges.map((charge, idx) => (<TableRow key={charge.id}><TableCell>{idx+1}</TableCell><TableCell><Select value={charge.charges} onValueChange={(v) => updateCharge(charge.id, "charges", v)}><SelectTrigger className="h-7 w-32 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{chargesOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Select value={charge.applicableOn} onValueChange={(v) => updateCharge(charge.id, "applicableOn", v)}><SelectTrigger className="h-7 w-28 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{applicableOnOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input type="number" value={charge.rate} onChange={(e) => updateCharge(charge.id, "rate", Number(e.target.value))} className="h-7 w-24 text-xs" /></TableCell><TableCell><Input type="number" value={charge.applicableValue} onChange={(e) => updateCharge(charge.id, "applicableValue", Number(e.target.value))} className="h-7 w-24 text-xs" /></TableCell><TableCell>₹{charge.amount.toFixed(2)}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeCharge(charge.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody>
-                </Table>
+          {/* Search Filters */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+                <Search className="h-3.5 w-3.5" />
+                Search Gate Passes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Branch</Label>
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">From Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {format(searchFromDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={searchFromDate} onSelect={(date) => date && setSearchFromDate(date)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">To Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {format(searchToDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={searchToDate} onSelect={(date) => date && setSearchToDate(date)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Gate Pass #</Label>
+                  <Input value={searchDrNo} onChange={(e) => setSearchDrNo(e.target.value)} placeholder="Enter GP Number" className="h-8 text-xs" />
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={handleSearch} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700">
+                    <Search className="mr-1 h-3 w-3" />
+                    Search
+                  </Button>
+                  <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs">
+                    <RefreshCw className="mr-1 h-3 w-3" />
+                    Clear
+                  </Button>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* View Mode Toggle */}
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={() => setViewMode("report")}
+              variant={viewMode === "report" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+            >
+              <Table className="h-3.5 w-3.5 mr-1" /> Report View
+            </Button>
+            <Button
+              onClick={() => setViewMode("grid")}
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+            >
+              <Grid3x3 className="h-3.5 w-3.5 mr-1" /> Grid View
+            </Button>
+          </div>
+
+          {/* Report View Table */}
+          {viewMode === "report" && searchResults.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Table className="h-3.5 w-3.5 text-gray-500" />
+                    <h3 className="text-[11px] font-semibold text-gray-800">Gate Passes List</h3>
+                  </div>
+                  <div className="text-[10px] text-gray-500">Total: {searchResults.length} records</div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border overflow-x-auto">
+                  <div className="min-w-[1000px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Gate Pass #</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Date</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR #</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Branch</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignee</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-[60px] text-center">Pckgs</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-[80px] text-right">Amount</TableHead>
+                          <TableHead className="text-[11px] font-semibold py-2 px-2 w-32 text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedResults.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50">
+                            <TableCell className="py-2 px-2 text-center text-xs">
+                              {(currentPage - 1) * itemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-2 px-2 font-mono font-semibold text-xs">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[11px]">
+                                {record.gatePassNo}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{format(record.date, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-2 px-2 font-mono text-xs">{record.grNo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.branch}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consignee}</TableCell>
+                            <TableCell className="py-2 px-2 text-center text-xs">{record.grPckgs}</TableCell>
+                            <TableCell className="py-2 px-2 text-right text-xs">₹{record.charges.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}</TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(record)}
+                                  className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openCancelDialog(record)}
+                                  className="h-7 w-7 p-0 text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                                  title="Cancel Gate Pass"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(record.id)}
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-[10px] text-gray-500">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, searchResults.length)} of {searchResults.length} entries
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-[10px]">
+                        <ChevronLeft className="h-3 w-3 mr-1" /> Previous
+                      </Button>
+                      <span className="px-3 py-1 text-[10px]">Page {currentPage} of {totalPages}</span>
+                      <Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-[10px]">
+                        Next <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Grid View */}
+          {viewMode === "grid" && searchResults.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {searchResults.map((record) => (
+                <Card key={record.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-500" />
+                          <h3 className="font-semibold text-sm">{record.gatePassNo}</h3>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-1">{format(record.date, "dd-MM-yyyy")}</p>
+                      </div>
+                      <Badge className="bg-green-100 text-green-700 text-[10px]">Active</Badge>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-3 w-3 text-gray-400" />
+                        <span>GR #: {record.grNo}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-3 w-3 text-gray-400" />
+                        <span>Branch: {record.branch}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3 w-3 text-gray-400" />
+                        <span className="truncate">Consignee: {record.consignee}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Package className="h-3 w-3 text-gray-400" />
+                        <span>Pckgs: {record.grPckgs}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-3 w-3 text-gray-400" />
+                        <span>Amount: ₹{record.charges.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(record)} className="h-7 w-7 p-0 text-blue-500">
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openCancelDialog(record)} className="h-7 w-7 p-0 text-orange-500">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
+          )}
 
-            {/* GST and Totals */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1"><Label className="text-xs">GST Paid By</Label><Select value={gstPaidBy} onValueChange={setGstPaidBy}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{gstPaidByOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">GST Type</Label><Select value={gstType} onValueChange={setGstType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{gstTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-1"><Label className="text-xs">GST</Label><Input type="number" value={gst} readOnly className="h-8 text-xs bg-muted" /></div>
-              <div className="space-y-1"><Label className="text-xs">Advance</Label><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} className="h-8 text-xs" /></div>
-            </div>
+          {/* No Data Message */}
+          {searchResults.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                <p className="text-gray-500 text-sm">No active gate pass records found</p>
+                <p className="text-xs text-gray-400 mt-1">Click "New Gate Pass" to create one</p>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
 
-            {/* Subtotal and Balance */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs font-semibold">SubTotal</Label><Input type="number" value={charges.reduce((sum, c) => sum + c.amount, 0)} readOnly className="h-8 text-xs bg-muted font-semibold" /></div>
-              <div className="space-y-1"><Label className="text-xs font-semibold">Balance</Label><Input type="number" value={balance} readOnly className="h-8 text-xs bg-muted font-semibold text-red-600" /></div>
-            </div>
+      {/* Cancelled Gate Passes Tab */}
+      {mainTab === "cancelled" && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm opacity-90">Total Cancelled Gate Passes</p>
+                    <p className="text-2xl font-bold">{cancelledStats.total}</p>
+                  </div>
+                  <X className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Proof of Delivery */}
-            <div className="space-y-1"><Label className="text-xs">Proof Of Delivery</Label><Select value={proofOfDelivery} onValueChange={setProofOfDelivery}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent><SelectItem value="POD">POD</SelectItem><SelectItem value="Manual">Manual</SelectItem><SelectItem value="Electronic">Electronic</SelectItem></SelectContent></Select></div>
+          {/* Search Filters for Cancelled */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[11px] font-semibold flex items-center gap-2 text-gray-700">
+                <Search className="h-3.5 w-3.5" />
+                Search Cancelled Gate Passes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Branch</Label>
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">From Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {format(searchFromDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={searchFromDate} onSelect={(date) => date && setSearchFromDate(date)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">To Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 w-full text-xs justify-start">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {format(searchToDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar mode="single" selected={searchToDate} onSelect={(date) => date && setSearchToDate(date)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-medium">Gate Pass #</Label>
+                  <Input value={searchDrNo} onChange={(e) => setSearchDrNo(e.target.value)} placeholder="Enter GP Number" className="h-8 text-xs" />
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={handleCancelledSearch} size="sm" className="h-8 text-xs bg-red-600 hover:bg-red-700">
+                    <Search className="mr-1 h-3 w-3" />
+                    Search
+                  </Button>
+                  <Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs">
+                    <RefreshCw className="mr-1 h-3 w-3" />
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Buttons */}
-            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-              <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600" disabled={loading}><Save className="mr-1 h-3 w-3" />SAVE</Button>
-              <Button onClick={resetForm} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
-              <Button onClick={() => handleDelete(editId!)} variant="destructive" size="sm" className="h-8 text-xs" disabled={!editId}><Trash2 className="mr-1 h-3 w-3" />DELETE</Button>
-              <Button onClick={handlePrint} variant="outline" size="sm" className="h-8 text-xs"><Printer className="mr-1 h-3 w-3" />PRINT</Button>
-            </div>
-          </TabsContent>
+          {/* Cancelled Records Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Table className="h-3.5 w-3.5 text-gray-500" />
+                  <h3 className="text-[11px] font-semibold text-gray-800">Cancelled Gate Passes List</h3>
+                </div>
+                <div className="text-[10px] text-gray-500">Total: {cancelledSearchResults.length} records</div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[800px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-12 text-center">#</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Gate Pass #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[80px]">GR #</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[100px]">Branch</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 min-w-[120px]">Consignee</TableHead>
+                        <TableHead className="text-[11px] font-semibold py-2 px-2 w-24 text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedCancelledResults.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                            <X className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No cancelled gate pass records found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedCancelledResults.map((record, idx) => (
+                          <TableRow key={record.id} className="hover:bg-gray-50 bg-red-50/30">
+                            <TableCell className="py-2 px-2 text-center text-xs">
+                              {(cancelledCurrentPage - 1) * itemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-2 px-2 font-mono font-semibold text-xs">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 text-[11px]">
+                                {record.gatePassNo}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{format(record.date, "dd-MM-yyyy")}</TableCell>
+                            <TableCell className="py-2 px-2 font-mono text-xs">{record.grNo}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs">{record.branch}</TableCell>
+                            <TableCell className="py-2 px-2 text-xs truncate max-w-[150px]">{record.consignee}</TableCell>
+                            <TableCell className="py-2 px-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRestoreGatePass(record)}
+                                  className="h-7 w-7 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
+                                  title="Restore Gate Pass"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(record.id)}
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
-          {/* Image Tab */}
-          <TabsContent value="image" className="space-y-4 mt-4">
-            <div className="border rounded-md p-4">
-              <div className="mb-4"><Label className="text-xs">Images</Label><Input type="file" accept="image/jpeg,image/jpg" onChange={handleImageUpload} className="h-8 text-xs file:h-7 file:text-xs" /></div>
-              <p className="text-[10px] text-muted-foreground mb-3">You can only upload JPG/JPEG files.</p>
-              {images.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-3">
-                  {images.map((img, idx) => (<div key={idx} className="relative border rounded-md p-2"><img src={img} alt={`Upload ${idx+1}`} className="w-full h-24 object-cover rounded" /><Button variant="ghost" size="sm" onClick={() => removeImage(idx)} className="absolute top-1 right-1 h-6 w-6 p-0 bg-red-500 text-white rounded-full"><X className="h-3 w-3" /></Button></div>))}
+              {/* Pagination for Cancelled */}
+              {cancelledTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-[10px] text-gray-500">
+                    Showing {((cancelledCurrentPage - 1) * itemsPerPage) + 1} to {Math.min(cancelledCurrentPage * itemsPerPage, cancelledSearchResults.length)} of {cancelledSearchResults.length} entries
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledCurrentPage - 1)} disabled={cancelledCurrentPage === 1} className="h-7 text-[10px]">
+                      <ChevronLeft className="h-3 w-3 mr-1" /> Previous
+                    </Button>
+                    <span className="px-3 py-1 text-[10px]">Page {cancelledCurrentPage} of {cancelledTotalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledCurrentPage + 1)} disabled={cancelledCurrentPage === cancelledTotalPages} className="h-7 text-[10px]">
+                      Next <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Cancel Gate Pass Dialog */}
+      <Dialog open={isCancelledDialogOpen} onOpenChange={setIsCancelledDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <X className="h-5 w-5" />
+              Cancel Gate Pass
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel Gate Pass <strong>{cancellingGatePass?.gatePassNo}</strong>?
+              This action cannot be undone immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Cancellation Reason <span className="text-red-500">*</span>
+              </Label>
+              <Select value={cancelledReason} onValueChange={setCancelledReason}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select cancellation reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cancelledReasonOptions.map(opt => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-              <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-green-600"><Save className="mr-1 h-3 w-3" />SAVE</Button>
-              <Button onClick={resetForm} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="mr-1 h-3 w-3" />CLEAR</Button>
-              <Button onClick={() => handleDelete(editId!)} variant="destructive" size="sm" className="h-8 text-xs" disabled={!editId}><Trash2 className="mr-1 h-3 w-3" />DELETE</Button>
-              <Button onClick={handlePrint} variant="outline" size="sm" className="h-8 text-xs"><Printer className="mr-1 h-3 w-3" />PRINT</Button>
+            <div className="bg-yellow-50 p-3 rounded-md">
+              <p className="text-xs text-yellow-800 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Note: Cancelled gate passes will be moved to Cancelled List and can be restored later.
+              </p>
             </div>
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Search Tab */}
-      {activeMainTab === "search" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border rounded-md bg-muted/20">
-            <div className="space-y-1"><Label className="text-xs">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div>
-            <div className="space-y-1"><Label className="text-xs">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div>
-            <div className="space-y-1"><Label className="text-xs">DR #</Label><Input value={searchDrNo} onChange={(e) => setSearchDrNo(e.target.value)} placeholder="Enter DR Number" className="h-8 text-xs" /></div>
-            <div className="flex items-end"><Button onClick={handleSearch} size="sm" className="h-8 text-xs"><Search className="mr-1 h-3.5 w-3.5" />SHOW</Button></div>
           </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>
+              No, Keep Gate Pass
+            </Button>
+            <Button variant="destructive" onClick={handleCancelGatePass}>
+              Yes, Cancel Gate Pass
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <div className="rounded-md border overflow-x-auto"><div className="min-w-[1000px]"><Table className="text-xs"><TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>DR #</TableHead><TableHead>DR Date</TableHead><TableHead>GR #</TableHead><TableHead>Delivery Branch</TableHead><TableHead>Booking Branch</TableHead><TableHead>Division Name</TableHead><TableHead>Consignee</TableHead><TableHead>DDR #</TableHead><TableHead>Bill #</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead className="w-20">Action</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.length === 0 ? (<TableRow><TableCell colSpan={13} className="text-center py-8">No records found</TableCell></TableRow>) : (paginatedResults.map((record, idx) => (<TableRow key={record.id}><TableCell>{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell>{record.gatePassNo}</TableCell><TableCell>{format(record.date, "dd-MM-yyyy")}</TableCell><TableCell>{record.grNo}</TableCell><TableCell>{record.branch}</TableCell><TableCell>{record.branch}</TableCell><TableCell>-</TableCell><TableCell>{record.consignee}</TableCell><TableCell>{record.ddrNo}</TableCell><TableCell>-</TableCell><TableCell>{record.customer}</TableCell><TableCell>₹{record.charges.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => handleEdit(record)} className="h-6 w-6 p-0 text-blue-500"><Eye className="h-3 w-3" /></Button></TableCell></TableRow>)))}</TableBody></Table></div></div>
-          {totalPages > 1 && (<div className="flex justify-center gap-1"><Button variant="outline" size="sm" onClick={() => goToPage(currentPage-1)} disabled={currentPage===1} className="h-7 text-xs">Previous</Button><span className="px-3 py-1 text-xs">Page {currentPage} of {totalPages}</span><Button variant="outline" size="sm" onClick={() => goToPage(currentPage+1)} disabled={currentPage===totalPages} className="h-7 text-xs">Next</Button></div>)}
-        </div>
-      )}
+      {/* Entry Sheet */}
+      <Sheet open={isEntrySheetOpen} onOpenChange={setIsEntrySheetOpen}>
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              {editMode ? (
+                <>
+                  <Edit className="h-4 w-4 text-blue-600" />
+                  Edit Gate Pass
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 text-blue-600" />
+                  New Gate Pass
+                </>
+              )}
+            </SheetTitle>
+          </SheetHeader>
 
-      {/* Cancelled Tab */}
-      {activeMainTab === "cancelled" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 border rounded-md bg-muted/20">
-            <div className="space-y-1"><Label className="text-xs">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />30-04-2026</Button></PopoverTrigger><PopoverContent><Calendar mode="single" /></PopoverContent></Popover></div>
-            <div className="space-y-1"><Label className="text-xs">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />30-04-2026</Button></PopoverTrigger><PopoverContent><Calendar mode="single" /></PopoverContent></Popover></div>
-            <div className="flex items-end"><Button className="h-8 text-xs"><Search className="mr-1 h-3.5 w-3.5" />SHOW</Button></div>
-          </div>
-          <div className="rounded-md border overflow-x-auto"><div className="min-w-[800px]"><Table className="text-xs"><TableHeader><TableRow className="bg-muted/50"><TableHead>S#</TableHead><TableHead>Branch</TableHead><TableHead>DR #</TableHead><TableHead>DR Date</TableHead><TableHead>GR #</TableHead><TableHead>GR Date</TableHead><TableHead>Pckgs</TableHead><TableHead>Charge Weight</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell colSpan={8} className="text-center py-8">No items to display</TableCell></TableRow></TableBody></Table></div></div>
-        </div>
-      )}
+          <Tabs value={activeEntryTab} onValueChange={(v) => setActiveEntryTab(v as "entry" | "image")} className="w-full">
+            <TabsList className="grid w-full max-w-[200px] grid-cols-2">
+              <TabsTrigger value="entry" className="text-xs">Entry</TabsTrigger>
+              <TabsTrigger value="image" className="text-xs">Image</TabsTrigger>
+            </TabsList>
+
+            {/* Entry Form Tab */}
+            <TabsContent value="entry" className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Branch <span className="text-red-500">*</span></Label><Select value={branch} onValueChange={setBranch}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{branchOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-1"><Label className="text-xs">Date <span className="text-red-500">*</span></Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-2 h-3 w-3" />{format(date, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} /></PopoverContent></Popover></div>
+                <div className="space-y-1"><Label className="text-xs">Gate Pass# <span className="text-red-500">*</span></Label><div className="flex gap-2"><Input value={gatePassNo} onChange={(e) => setGatePassNo(e.target.value)} readOnly={auto} className={cn("h-8 text-xs flex-1", auto && "bg-gray-50")} /><div className="flex items-center gap-1"><input type="checkbox" checked={auto} onChange={handleAutoChange} className="h-3.5 w-3.5" id="auto" /><Label htmlFor="auto" className="text-xs cursor-pointer">Auto</Label></div></div></div>
+                <div className="space-y-1"><Label className="text-xs">GR # <span className="text-red-500">*</span></Label><Input value={grNo} onChange={(e) => setGrNo(e.target.value)} className="h-8 text-xs" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Ref.#</Label><Input value={refNo} onChange={(e) => setRefNo(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Origin</Label><Input value={origin} onChange={(e) => setOrigin(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Destination</Label><Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Customer</Label><Input value={customer} onChange={(e) => setCustomer(e.target.value)} className="h-8 text-xs" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Consignor</Label><Input value={consignor} onChange={(e) => setConsignor(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">CNGE GST#</Label><Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-8 text-xs uppercase" /></div>
+                <div className="space-y-1"><Label className="text-xs">Consignee <span className="text-red-500">*</span></Label><Input value={consignee} onChange={(e) => setConsignee(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Consignee Tel. #</Label><Input value={consigneeTelNo} onChange={(e) => setConsigneeTelNo(e.target.value)} className="h-8 text-xs" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">GR Pckgs</Label><Input type="number" value={grPckgs} onChange={(e) => setGrPckgs(Number(e.target.value))} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Chg. Weight</Label><Input type="number" value={chgWeight} onChange={(e) => setChgWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Act. Weight</Label><Input type="number" value={actWeight} onChange={(e) => setActWeight(Number(e.target.value))} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Delivery Type</Label><Select value={deliveryType} onValueChange={setDeliveryType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{deliveryTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Delivered To</Label><Input value={deliveredTo} onChange={(e) => setDeliveredTo(e.target.value)} className="h-8 text-xs" /></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={deliveredAgainstConsigneeCopy} onChange={(e) => setDeliveredAgainstConsigneeCopy(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Against Consignee Copy</Label></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={ccReceived} onChange={(e) => setCcReceived(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">CC Received</Label></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={rebooking} onChange={(e) => setRebooking(e.target.checked)} className="h-3.5 w-3.5" /><Label className="text-xs">Rebooking</Label></div>
+              </div>
+
+              {/* Charges Table */}
+              <div className="rounded-md border">
+                <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center"><h3 className="text-sm font-semibold">Charges</h3><Button onClick={addChargeRow} variant="ghost" size="sm" className="h-7 text-xs"><PlusCircle className="mr-1 h-3 w-3" />Add Charge</Button></div>
+                <div className="overflow-x-auto">
+                  <Table className="text-xs">
+                    <TableHeader><TableRow className="bg-gray-50"><TableHead className="w-12">#</TableHead><TableHead>Charges</TableHead><TableHead>Applicable On</TableHead><TableHead>Rate</TableHead><TableHead>Applicable Value</TableHead><TableHead>Amount</TableHead><TableHead className="w-12">Action</TableHead></TableRow></TableHeader>
+                    <TableBody>{charges.map((charge, idx) => (<TableRow key={charge.id}><TableCell>{idx+1}</TableCell><TableCell><Select value={charge.charges} onValueChange={(v) => updateCharge(charge.id, "charges", v)}><SelectTrigger className="h-7 w-32 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{chargesOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Select value={charge.applicableOn} onValueChange={(v) => updateCharge(charge.id, "applicableOn", v)}><SelectTrigger className="h-7 w-28 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{applicableOnOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></TableCell><TableCell><Input type="number" value={charge.rate} onChange={(e) => updateCharge(charge.id, "rate", Number(e.target.value))} className="h-7 w-24 text-xs" /></TableCell><TableCell><Input type="number" value={charge.applicableValue} onChange={(e) => updateCharge(charge.id, "applicableValue", Number(e.target.value))} className="h-7 w-24 text-xs" /></TableCell><TableCell>₹{charge.amount.toFixed(2)}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeCharge(charge.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* GST and Totals */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1"><Label className="text-xs">GST Paid By</Label><Select value={gstPaidBy} onValueChange={setGstPaidBy}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{gstPaidByOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-1"><Label className="text-xs">GST Type</Label><Select value={gstType} onValueChange={setGstType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{gstTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-1"><Label className="text-xs">Advance</Label><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Remarks</Label><Input value={remarks} onChange={(e) => setRemarks(e.target.value)} className="h-8 text-xs" /></div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs">
+                  <X className="mr-1 h-3 w-3" /> Cancel
+                </Button>
+                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                  <Save className="mr-1 h-3 w-3" />
+                  {editMode ? "Update" : "Save"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* Image Tab */}
+            <TabsContent value="image" className="space-y-4 mt-4">
+              <div className="border rounded-md p-4">
+                <div className="mb-4"><Label className="text-xs">Upload Images</Label><Input type="file" accept="image/jpeg,image/jpg" onChange={handleImageUpload} className="h-8 text-xs file:h-7 file:text-xs" /></div>
+                <p className="text-[10px] text-gray-500 mb-3">You can only upload JPG/JPEG files.</p>
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-3">
+                    {images.map((img, idx) => (<div key={idx} className="relative border rounded-md p-2"><img src={img} alt={`Upload ${idx+1}`} className="w-full h-24 object-cover rounded" /><Button variant="ghost" size="sm" onClick={() => removeImage(idx)} className="absolute top-1 right-1 h-6 w-6 p-0 bg-red-500 text-white rounded-full"><X className="h-3 w-3" /></Button></div>))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsEntrySheetOpen(false)} className="h-8 text-xs">
+                  <X className="mr-1 h-3 w-3" /> Cancel
+                </Button>
+                <Button onClick={handleSave} size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700">
+                  <Save className="mr-1 h-3 w-3" />
+                  {editMode ? "Update" : "Save"}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
+
+// Missing imports
+import { Plus, Edit, Grid3x3 } from "lucide-react";
