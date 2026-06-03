@@ -1,3 +1,5 @@
+// ==================== UPDATED BOOKING COMPUTERIZE GRL WITH SELF OPTION & COLLAPSIBLE ADDRESS ====================
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -59,14 +61,20 @@ import {
   MessageSquare,
   Calculator,
   Shield,
-  Settings,
-  TrendingUp,
+  ChevronDown,
+  ChevronRight,
   Pencil,
   PlusCircle,
   Trash2,
   AlertCircle,
   ChevronLeft,
-  ChevronRight,
+  ChevronRight as ChevronRightIcon,
+  User,
+  Phone,
+  Mail as MailIcon,
+  IdCard,
+  Fingerprint,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -75,10 +83,14 @@ import { format } from "date-fns";
 interface PackageItem {
   id: number;
   noOfPackages: number;
+  contentCategory: string;
+  contentSubCategory: string;
   content: string;
   packing: string;
   actualWeight: number;
   chargeWeight: number;
+  isWeightValid: boolean;
+  weightError?: string;
 }
 
 interface InvoiceItem {
@@ -92,6 +104,42 @@ interface InvoiceItem {
   isNcv: boolean;
 }
 
+interface ClientData {
+  id: number;
+  name: string;
+  gstNumber: string;
+  adhaarNumber: string;
+  panNumber: string;
+  address: string;
+  city: string;
+  state: string;
+  mobile: string;
+  email: string;
+  dealerCode: string;
+  iecCode: string;
+  bankAdNo: string;
+}
+
+interface ContentCategory {
+  id: number;
+  name: string;
+  subCategories: ContentSubCategory[];
+}
+
+interface ContentSubCategory {
+  id: number;
+  name: string;
+  parentId: number;
+}
+
+interface PackingType {
+  id: number;
+  name: string;
+  minWeight: number;
+  maxWeight: number;
+  defaultWeight: number;
+}
+
 interface BookingRecord {
   id: number;
   grNo: string;
@@ -102,8 +150,11 @@ interface BookingRecord {
   deliveryPoint: string;
   bookingType: string;
   collectionAt: string;
+  consignorId: number;
   consignorName: string;
   consignorGst: string;
+  consignorAdhaar: string;
+  consignorPan: string;
   consignorDealerCode: string;
   consignorAddress: string;
   consignorCity: string;
@@ -112,8 +163,11 @@ interface BookingRecord {
   consignorEmail: string;
   consignorIecCode: string;
   consignorBankAdNo: string;
+  consigneeId: number;
   consigneeName: string;
   consigneeGst: string;
+  consigneeAdhaar: string;
+  consigneePan: string;
   consigneeDealerCode: string;
   consigneeAddress: string;
   consigneeCity: string;
@@ -153,7 +207,67 @@ interface BookingRecord {
   updatedAt: Date;
 }
 
-// Options
+// Sample Client Data
+const sampleClients: ClientData[] = [
+  {
+    id: 1, name: "ABC Traders", gstNumber: "07ABCDE1234F1Z5", adhaarNumber: "123456789012", panNumber: "ABCDE1234F",
+    address: "123, Transport Nagar", city: "Delhi", state: "Delhi", mobile: "9876543210", email: "abc@traders.com",
+    dealerCode: "D001", iecCode: "IEC001", bankAdNo: "BANK001"
+  },
+  {
+    id: 2, name: "XYZ Enterprises", gstNumber: "27FGHIJ5678K1Z6", adhaarNumber: "234567890123", panNumber: "FGHIJ5678K",
+    address: "456, MIDC Area", city: "Mumbai", state: "Maharashtra", mobile: "9876543220", email: "xyz@enterprises.com",
+    dealerCode: "D002", iecCode: "IEC002", bankAdNo: "BANK002"
+  },
+];
+
+// Content Categories with SubCategories
+const contentCategories: ContentCategory[] = [
+  {
+    id: 1, name: "Electrical Goods",
+    subCategories: [
+      { id: 11, name: "Fan", parentId: 1 },
+      { id: 12, name: "Switch Boards", parentId: 1 },
+      { id: 13, name: "Wires", parentId: 1 },
+      { id: 14, name: "Light/LED", parentId: 1 },
+    ]
+  },
+  {
+    id: 2, name: "Electronics",
+    subCategories: [
+      { id: 21, name: "Mobile Phones", parentId: 2 },
+      { id: 22, name: "Laptops", parentId: 2 },
+      { id: 23, name: "TV/Monitors", parentId: 2 },
+    ]
+  },
+  {
+    id: 3, name: "Automobile Parts",
+    subCategories: [
+      { id: 31, name: "Engine Parts", parentId: 3 },
+      { id: 32, name: "Tyres", parentId: 3 },
+      { id: 33, name: "Batteries", parentId: 3 },
+    ]
+  },
+  {
+    id: 4, name: "General Cargo",
+    subCategories: [
+      { id: 41, name: "General Goods", parentId: 4 },
+      { id: 42, name: "Consumer Goods", parentId: 4 },
+    ]
+  },
+];
+
+// Packing Types with Weight Limits
+const packingTypes: PackingType[] = [
+  { id: 1, name: "BOX", minWeight: 0, maxWeight: 30, defaultWeight: 0 },
+  { id: 2, name: "CARTON", minWeight: 0, maxWeight: 50, defaultWeight: 0 },
+  { id: 3, name: "WOODEN BOX", minWeight: 0, maxWeight: 40, defaultWeight: 0 },
+  { id: 4, name: "PALLET", minWeight: 0, maxWeight: 200, defaultWeight: 0 },
+  { id: 5, name: "BAG", minWeight: 0, maxWeight: 50, defaultWeight: 0 },
+  { id: 6, name: "DRUM", minWeight: 0, maxWeight: 200, defaultWeight: 0 },
+  { id: 7, name: "LOOSE", minWeight: 0, maxWeight: 1000, defaultWeight: 0 },
+];
+
 const bookingTypeOptions = [
   { value: "topay", label: "TOPAY" },
   { value: "prepaid", label: "PREPAID" },
@@ -190,35 +304,70 @@ const insuranceCoveredByOptions = [
   { value: "third_party", label: "Third Party" },
 ];
 
-const packingOptions = ["BOX", "BAG", "PALLET", "DRUM", "LOOSE", "ROLL", "CARTON", "STRAPPED"];
+const executiveOptions = ["Rajesh Kumar", "Suresh Singh", "Amit Sharma", "Priya Verma", "Vikash Gupta", "Neha Singh", "Rahul Mehta", "Pooja Yadav"];
+const branchOptions = ["DELHI", "MUMBAI", "BANGALORE", "CHENNAI", "KOLKATA", "AHMEDABAD", "PUNE", "HYDERABAD", "LUCKNOW", "JAIPUR"];
+const cancelledReasonOptions = ["Customer Request", "Payment Issue", "Wrong Booking", "Duplicate Booking", "Vehicle Unavailable", "Route Not Available", "Other"];
 
-const executiveOptions = [
-  "Rajesh Kumar", "Suresh Singh", "Amit Sharma", "Priya Verma", 
-  "Vikash Gupta", "Neha Singh", "Rahul Mehta", "Pooja Yadav"
-];
-
-const branchOptions = [
-  "DELHI", "MUMBAI", "BANGALORE", "CHENNAI", "KOLKATA", 
-  "AHMEDABAD", "PUNE", "HYDERABAD", "LUCKNOW", "JAIPUR"
-];
-
-const cancelledReasonOptions = [
-  "Customer Request", "Payment Issue", "Wrong Booking", "Duplicate Booking",
-  "Vehicle Unavailable", "Route Not Available", "Other"
-];
+// ID Type Options with SELF
+const idTypeOptions = ["Self", "GST Number", "Adhaar Number", "PAN Number"];
 
 export default function BookingComputerizeGRL() {
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<number | null>(null);
-  // IMPORTANT: Default tab set to "consignor"
   const [activeFormTab, setActiveFormTab] = useState<string>("consignor");
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "report">("report");
   const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState<BookingRecord | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
+
+  // Collapsible sections state
+  const [isConsignorAddressOpen, setIsConsignorAddressOpen] = useState(false);
+  const [isConsigneeAddressOpen, setIsConsigneeAddressOpen] = useState(false);
+
+  // New Client Dialog
+  const [isNewConsignorDialogOpen, setIsNewConsignorDialogOpen] = useState(false);
+  const [isNewConsigneeDialogOpen, setIsNewConsigneeDialogOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState<Partial<ClientData>>({});
+
+  // Clients Data
+  const [clients, setClients] = useState<ClientData[]>(sampleClients);
+
+  // Consignor Selection
+  const [consignorIdType, setConsignorIdType] = useState<string>("");
+  const [consignorIdValue, setConsignorIdValue] = useState<string>("");
+  const [consignorId, setConsignorId] = useState<number>(0);
+  const [consignorName, setConsignorName] = useState<string>("");
+  const [consignorGst, setConsignorGst] = useState<string>("");
+  const [consignorAdhaar, setConsignorAdhaar] = useState<string>("");
+  const [consignorPan, setConsignorPan] = useState<string>("");
+  const [consignorDealerCode, setConsignorDealerCode] = useState<string>("");
+  const [consignorAddress, setConsignorAddress] = useState<string>("");
+  const [consignorCity, setConsignorCity] = useState<string>("");
+  const [consignorState, setConsignorState] = useState<string>("");
+  const [consignorMobile, setConsignorMobile] = useState<string>("");
+  const [consignorEmail, setConsignorEmail] = useState<string>("");
+  const [consignorIecCode, setConsignorIecCode] = useState<string>("");
+  const [consignorBankAdNo, setConsignorBankAdNo] = useState<string>("");
+
+  // Consignee Selection
+  const [consigneeIdType, setConsigneeIdType] = useState<string>("");
+  const [consigneeIdValue, setConsigneeIdValue] = useState<string>("");
+  const [consigneeId, setConsigneeId] = useState<number>(0);
+  const [consigneeName, setConsigneeName] = useState<string>("");
+  const [consigneeGst, setConsigneeGst] = useState<string>("");
+  const [consigneeAdhaar, setConsigneeAdhaar] = useState<string>("");
+  const [consigneePan, setConsigneePan] = useState<string>("");
+  const [consigneeDealerCode, setConsigneeDealerCode] = useState<string>("");
+  const [consigneeAddress, setConsigneeAddress] = useState<string>("");
+  const [consigneeCity, setConsigneeCity] = useState<string>("");
+  const [consigneeState, setConsigneeState] = useState<string>("");
+  const [consigneeMobile, setConsigneeMobile] = useState<string>("");
+  const [consigneeEmail, setConsigneeEmail] = useState<string>("");
+  const [consigneeIecCode, setConsigneeIecCode] = useState<string>("");
+  const [consigneeEximCode, setConsigneeEximCode] = useState<string>("");
 
   // Basic Info State
   const [grNo, setGrNo] = useState<string>("");
@@ -239,33 +388,9 @@ export default function BookingComputerizeGRL() {
   const [ccAttached, setCcAttached] = useState<boolean>(false);
   const [printAfterSave, setPrintAfterSave] = useState<boolean>(false);
 
-  // Consignor State
-  const [consignorName, setConsignorName] = useState<string>("");
-  const [consignorGst, setConsignorGst] = useState<string>("");
-  const [consignorDealerCode, setConsignorDealerCode] = useState<string>("");
-  const [consignorAddress, setConsignorAddress] = useState<string>("");
-  const [consignorCity, setConsignorCity] = useState<string>("");
-  const [consignorState, setConsignorState] = useState<string>("");
-  const [consignorMobile, setConsignorMobile] = useState<string>("");
-  const [consignorEmail, setConsignorEmail] = useState<string>("");
-  const [consignorIecCode, setConsignorIecCode] = useState<string>("");
-  const [consignorBankAdNo, setConsignorBankAdNo] = useState<string>("");
-
-  // Consignee State
-  const [consigneeName, setConsigneeName] = useState<string>("");
-  const [consigneeGst, setConsigneeGst] = useState<string>("");
-  const [consigneeDealerCode, setConsigneeDealerCode] = useState<string>("");
-  const [consigneeAddress, setConsigneeAddress] = useState<string>("");
-  const [consigneeCity, setConsigneeCity] = useState<string>("");
-  const [consigneeState, setConsigneeState] = useState<string>("");
-  const [consigneeMobile, setConsigneeMobile] = useState<string>("");
-  const [consigneeEmail, setConsigneeEmail] = useState<string>("");
-  const [consigneeIecCode, setConsigneeIecCode] = useState<string>("");
-  const [consigneeEximCode, setConsigneeEximCode] = useState<string>("");
-
   // Packages State
   const [packages, setPackages] = useState<PackageItem[]>([
-    { id: 1, noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 },
+    { id: 1, noOfPackages: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true },
   ]);
 
   // Invoices State
@@ -304,28 +429,7 @@ export default function BookingComputerizeGRL() {
   const itemsPerPage: number = 10;
 
   // Sample Data
-  const [savedRecords, setSavedRecords] = useState<BookingRecord[]>([
-    {
-      id: 1, grNo: "GR000001", grDate: new Date(), bookingFrom: "DELHI", destination: "MUMBAI",
-      pickupFrom: "Delhi Transport Nagar", deliveryPoint: "Andheri West", bookingType: "topay",
-      collectionAt: "Delhi Hub", consignorName: "ABC Traders", consignorGst: "07ABCDE1234F1Z5",
-      consignorDealerCode: "D001", consignorAddress: "123, Transport Nagar", consignorCity: "Delhi",
-      consignorState: "Delhi", consignorMobile: "9876543210", consignorEmail: "abc@traders.com",
-      consignorIecCode: "IEC001", consignorBankAdNo: "BANK001", consigneeName: "XYZ Enterprises",
-      consigneeGst: "27FGHIJ5678K1Z6", consigneeDealerCode: "D002", consigneeAddress: "456, MIDC Area",
-      consigneeCity: "Mumbai", consigneeState: "Maharashtra", consigneeMobile: "9876543220",
-      consigneeEmail: "xyz@enterprises.com", consigneeIecCode: "IEC002", consigneeEximCode: "EXIM001",
-      pvtMarkaSealNo: "MARKA001", serviceProduct: "surface", deliveryType: "godown", loadType: "part_load",
-      mkExecutive: "Rajesh Kumar", freightOn: "charge_weight", manualRates: false,
-      totalPackages: 5, totalActualWeight: 500, totalChargeWeight: 550, totalFreight: 15000,
-      remarks: "Handle with care", roRemarks: "", gpRemarks: "", insuranceCoveredBy: "self",
-      insuranceNo: "INS001", insuranceDate: new Date(), insuranceCompany: "New India",
-      billNo: "BILL001", supplementaryBillNo: "SUPP001", ccAttached: false, printAfterSave: false,
-      packages: [{ id: 1, noOfPackages: 5, content: "GENERAL CARGO", packing: "BOX", actualWeight: 500, chargeWeight: 550 }],
-      invoices: [{ id: 1, invoiceNo: "INV001", date: new Date(), value: 50000, ewayBillNo: "EWB001", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false }],
-      status: "active", createdAt: new Date(), updatedAt: new Date()
-    },
-  ]);
+  const [savedRecords, setSavedRecords] = useState<BookingRecord[]>([]);
 
   useEffect(() => {
     filterActiveRecords();
@@ -337,6 +441,42 @@ export default function BookingComputerizeGRL() {
     calculateTotals();
   }, [packages]);
 
+  const validatePackageWeight = (pkg: PackageItem): { isValid: boolean; error?: string } => {
+    const packingType = packingTypes.find(p => p.name === pkg.packing);
+    if (packingType && pkg.chargeWeight > 0 && pkg.noOfPackages > 0) {
+      const perPackageWeight = pkg.chargeWeight / pkg.noOfPackages;
+      if (perPackageWeight > packingType.maxWeight) {
+        return { 
+          isValid: false, 
+          error: `Per package weight (${perPackageWeight.toFixed(2)} kg) exceeds limit for ${packingType.name} (Max: ${packingType.maxWeight} kg/package)` 
+        };
+      }
+    }
+    return { isValid: true };
+  };
+
+  const updatePackage = (id: number, field: keyof PackageItem, value: any) => {
+    setPackages(packages.map(pkg => {
+      if (pkg.id === id) {
+        const updated = { ...pkg, [field]: value };
+        if (field === "contentCategory") {
+          updated.contentSubCategory = "";
+          updated.content = "";
+        }
+        if (field === "contentSubCategory") {
+          const category = contentCategories.find(c => c.id === Number(pkg.contentCategory));
+          const subCategory = category?.subCategories.find(s => s.id === Number(value));
+          updated.content = subCategory?.name || "";
+        }
+        const validation = validatePackageWeight(updated);
+        updated.isWeightValid = validation.isValid;
+        updated.weightError = validation.error;
+        return updated;
+      }
+      return pkg;
+    }));
+  };
+
   const calculateTotals = () => {
     const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.noOfPackages || 0), 0);
     const actualWt = packages.reduce((sum, pkg) => sum + (pkg.actualWeight || 0), 0);
@@ -344,6 +484,173 @@ export default function BookingComputerizeGRL() {
     setTotalPackages(pkgCount);
     setTotalActualWeight(actualWt);
     setTotalChargeWeight(chargeWt);
+    setTotalFreight(chargeWt * 30);
+  };
+
+  const searchClient = (idType: string, idValue: string): ClientData | undefined => {
+    if (!idValue || idType === "Self") return undefined;
+    switch (idType) {
+      case "GST Number": return clients.find(c => c.gstNumber === idValue);
+      case "Adhaar Number": return clients.find(c => c.adhaarNumber === idValue);
+      case "PAN Number": return clients.find(c => c.panNumber === idValue);
+      default: return undefined;
+    }
+  };
+
+  const handleConsignorSearch = () => {
+    if (!consignorIdType) {
+      alert("Please select ID type");
+      return;
+    }
+    
+    // If Self is selected, clear all fields and set name as "Self"
+    if (consignorIdType === "Self") {
+      setConsignorId(0);
+      setConsignorName("Self");
+      setConsignorGst("");
+      setConsignorAdhaar("");
+      setConsignorPan("");
+      setConsignorDealerCode("");
+      setConsignorAddress("");
+      setConsignorCity("");
+      setConsignorState("");
+      setConsignorMobile("");
+      setConsignorEmail("");
+      setConsignorIecCode("");
+      setConsignorBankAdNo("");
+      return;
+    }
+    
+    if (!consignorIdValue) {
+      alert("Please enter ID value");
+      return;
+    }
+    
+    const client = searchClient(consignorIdType, consignorIdValue);
+    if (client) {
+      setConsignorId(client.id);
+      setConsignorName(client.name);
+      setConsignorGst(client.gstNumber);
+      setConsignorAdhaar(client.adhaarNumber);
+      setConsignorPan(client.panNumber);
+      setConsignorDealerCode(client.dealerCode);
+      setConsignorAddress(client.address);
+      setConsignorCity(client.city);
+      setConsignorState(client.state);
+      setConsignorMobile(client.mobile);
+      setConsignorEmail(client.email);
+      setConsignorIecCode(client.iecCode);
+      setConsignorBankAdNo(client.bankAdNo);
+    } else {
+      alert("Client not found. Please add new client.");
+      setIsNewConsignorDialogOpen(true);
+    }
+  };
+
+  const handleConsigneeSearch = () => {
+    if (!consigneeIdType) {
+      alert("Please select ID type");
+      return;
+    }
+    
+    // If Self is selected, clear all fields and set name as "Self"
+    if (consigneeIdType === "Self") {
+      setConsigneeId(0);
+      setConsigneeName("Self");
+      setConsigneeGst("");
+      setConsigneeAdhaar("");
+      setConsigneePan("");
+      setConsigneeDealerCode("");
+      setConsigneeAddress("");
+      setConsigneeCity("");
+      setConsigneeState("");
+      setConsigneeMobile("");
+      setConsigneeEmail("");
+      setConsigneeIecCode("");
+      setConsigneeEximCode("");
+      return;
+    }
+    
+    if (!consigneeIdValue) {
+      alert("Please enter ID value");
+      return;
+    }
+    
+    const client = searchClient(consigneeIdType, consigneeIdValue);
+    if (client) {
+      setConsigneeId(client.id);
+      setConsigneeName(client.name);
+      setConsigneeGst(client.gstNumber);
+      setConsigneeAdhaar(client.adhaarNumber);
+      setConsigneePan(client.panNumber);
+      setConsigneeDealerCode(client.dealerCode);
+      setConsigneeAddress(client.address);
+      setConsigneeCity(client.city);
+      setConsigneeState(client.state);
+      setConsigneeMobile(client.mobile);
+      setConsigneeEmail(client.email);
+      setConsigneeIecCode(client.iecCode);
+    } else {
+      alert("Client not found. Please add new client.");
+      setIsNewConsigneeDialogOpen(true);
+    }
+  };
+
+  const addNewClient = (type: "consignor" | "consignee") => {
+    if (!newClientData.name) {
+      alert("Please enter client name");
+      return;
+    }
+    const newClient: ClientData = {
+      id: clients.length + 1,
+      name: newClientData.name || "",
+      gstNumber: newClientData.gstNumber || "",
+      adhaarNumber: newClientData.adhaarNumber || "",
+      panNumber: newClientData.panNumber || "",
+      address: newClientData.address || "",
+      city: newClientData.city || "",
+      state: newClientData.state || "",
+      mobile: newClientData.mobile || "",
+      email: newClientData.email || "",
+      dealerCode: newClientData.dealerCode || "",
+      iecCode: newClientData.iecCode || "",
+      bankAdNo: newClientData.bankAdNo || "",
+    };
+    const updatedClients = [...clients, newClient];
+    setClients(updatedClients);
+
+    if (type === "consignor") {
+      setConsignorId(newClient.id);
+      setConsignorName(newClient.name);
+      setConsignorGst(newClient.gstNumber);
+      setConsignorAdhaar(newClient.adhaarNumber);
+      setConsignorPan(newClient.panNumber);
+      setConsignorDealerCode(newClient.dealerCode);
+      setConsignorAddress(newClient.address);
+      setConsignorCity(newClient.city);
+      setConsignorState(newClient.state);
+      setConsignorMobile(newClient.mobile);
+      setConsignorEmail(newClient.email);
+      setConsignorIecCode(newClient.iecCode);
+      setConsignorBankAdNo(newClient.bankAdNo);
+      setIsNewConsignorDialogOpen(false);
+    } else {
+      setConsigneeId(newClient.id);
+      setConsigneeName(newClient.name);
+      setConsigneeGst(newClient.gstNumber);
+      setConsigneeAdhaar(newClient.adhaarNumber);
+      setConsigneePan(newClient.panNumber);
+      setConsigneeDealerCode(newClient.dealerCode);
+      setConsigneeAddress(newClient.address);
+      setConsigneeCity(newClient.city);
+      setConsigneeState(newClient.state);
+      setConsigneeMobile(newClient.mobile);
+      setConsigneeEmail(newClient.email);
+      setConsigneeIecCode(newClient.iecCode);
+      setIsNewConsigneeDialogOpen(false);
+    }
+    setNewClientData({});
+    alert("New client added successfully!");
   };
 
   const generateGrNo = (): string => {
@@ -352,11 +659,10 @@ export default function BookingComputerizeGRL() {
   };
 
   const addPackageRow = () => {
-    setPackages([...packages, { id: Date.now(), noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 }]);
-  };
-
-  const updatePackage = (id: number, field: keyof PackageItem, value: any) => {
-    setPackages(packages.map(pkg => pkg.id === id ? { ...pkg, [field]: value } : pkg));
+    setPackages([...packages, { 
+      id: Date.now(), noOfPackages: 0, contentCategory: "", contentSubCategory: "", 
+      content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true 
+    }]);
   };
 
   const removePackage = (id: number) => {
@@ -378,11 +684,6 @@ export default function BookingComputerizeGRL() {
   const filterActiveRecords = () => setSearchResults(savedRecords.filter(r => r.status === "active"));
   const filterCancelledRecords = () => setCancelledSearchResults(savedRecords.filter(r => r.status === "cancelled"));
 
-  const calculateTotalFreight = () => {
-    const calculatedFreight = totalChargeWeight * 30;
-    setTotalFreight(calculatedFreight);
-  };
-
   const resetForm = () => {
     setGrNo(generateGrNo());
     setGrDate(new Date());
@@ -401,8 +702,15 @@ export default function BookingComputerizeGRL() {
     setPvtMarkaSealNo("");
     setCcAttached(false);
     setPrintAfterSave(false);
+    
+    // Reset Consignor
+    setConsignorIdType("");
+    setConsignorIdValue("");
+    setConsignorId(0);
     setConsignorName("");
     setConsignorGst("");
+    setConsignorAdhaar("");
+    setConsignorPan("");
     setConsignorDealerCode("");
     setConsignorAddress("");
     setConsignorCity("");
@@ -411,8 +719,15 @@ export default function BookingComputerizeGRL() {
     setConsignorEmail("");
     setConsignorIecCode("");
     setConsignorBankAdNo("");
+    
+    // Reset Consignee
+    setConsigneeIdType("");
+    setConsigneeIdValue("");
+    setConsigneeId(0);
     setConsigneeName("");
     setConsigneeGst("");
+    setConsigneeAdhaar("");
+    setConsigneePan("");
     setConsigneeDealerCode("");
     setConsigneeAddress("");
     setConsigneeCity("");
@@ -421,7 +736,8 @@ export default function BookingComputerizeGRL() {
     setConsigneeEmail("");
     setConsigneeIecCode("");
     setConsigneeEximCode("");
-    setPackages([{ id: 1, noOfPackages: 0, content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0 }]);
+    
+    setPackages([{ id: 1, noOfPackages: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true }]);
     setInvoices([{ id: 1, invoiceNo: "", date: new Date(), value: 0, ewayBillNo: "", ewayBillDate: new Date(), validUpto: new Date(), isNcv: false }]);
     setRemarks("");
     setRoRemarks("");
@@ -435,23 +751,34 @@ export default function BookingComputerizeGRL() {
     setTotalFreight(0);
     setEditMode(false);
     setCurrentEditId(null);
-    // Reset tab to consignor when opening new form
     setActiveFormTab("consignor");
+    setIsConsignorAddressOpen(false);
+    setIsConsigneeAddressOpen(false);
   };
 
   const handleSave = () => {
-    if (!consignorName) { alert("Please enter Consignor Name"); return; }
-    if (!consigneeName) { alert("Please enter Consignee Name"); return; }
+    if (!consignorName) { alert("Please select Consignor"); return; }
+    if (!consigneeName) { alert("Please select Consignee"); return; }
+    
+    const hasWeightError = packages.some(pkg => !pkg.isWeightValid);
+    if (hasWeightError) {
+      alert("Please fix weight validation errors before saving");
+      return;
+    }
     
     setLoading(true);
     setTimeout(() => {
       const newRecord: BookingRecord = {
         id: currentEditId || Date.now(), grNo, grDate, bookingFrom, destination, pickupFrom, deliveryPoint,
-        bookingType, collectionAt, consignorName, consignorGst, consignorDealerCode, consignorAddress, consignorCity,
-        consignorState, consignorMobile, consignorEmail, consignorIecCode, consignorBankAdNo, consigneeName,
-        consigneeGst, consigneeDealerCode, consigneeAddress, consigneeCity, consigneeState, consigneeMobile,
-        consigneeEmail, consigneeIecCode, consigneeEximCode, pvtMarkaSealNo, serviceProduct, deliveryType, loadType,
-        mkExecutive, freightOn, manualRates, totalPackages, totalActualWeight, totalChargeWeight, totalFreight,
+        bookingType, collectionAt,
+        consignorId, consignorName, consignorGst, consignorAdhaar, consignorPan,
+        consignorDealerCode, consignorAddress, consignorCity, consignorState, consignorMobile,
+        consignorEmail, consignorIecCode, consignorBankAdNo,
+        consigneeId, consigneeName, consigneeGst, consigneeAdhaar, consigneePan,
+        consigneeDealerCode, consigneeAddress, consigneeCity, consigneeState, consigneeMobile,
+        consigneeEmail, consigneeIecCode, consigneeEximCode,
+        pvtMarkaSealNo, serviceProduct, deliveryType, loadType, mkExecutive, freightOn, manualRates,
+        totalPackages, totalActualWeight, totalChargeWeight, totalFreight,
         remarks, roRemarks, gpRemarks, insuranceCoveredBy, insuranceNo, insuranceDate, insuranceCompany,
         billNo, supplementaryBillNo, ccAttached, printAfterSave, packages, invoices, status: "active",
         createdAt: editMode && currentEditId ? savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : new Date(),
@@ -541,8 +868,12 @@ export default function BookingComputerizeGRL() {
     setPvtMarkaSealNo(record.pvtMarkaSealNo);
     setCcAttached(record.ccAttached);
     setPrintAfterSave(record.printAfterSave);
+    
+    setConsignorId(record.consignorId);
     setConsignorName(record.consignorName);
     setConsignorGst(record.consignorGst);
+    setConsignorAdhaar(record.consignorAdhaar);
+    setConsignorPan(record.consignorPan);
     setConsignorDealerCode(record.consignorDealerCode);
     setConsignorAddress(record.consignorAddress);
     setConsignorCity(record.consignorCity);
@@ -551,8 +882,12 @@ export default function BookingComputerizeGRL() {
     setConsignorEmail(record.consignorEmail);
     setConsignorIecCode(record.consignorIecCode);
     setConsignorBankAdNo(record.consignorBankAdNo);
+    
+    setConsigneeId(record.consigneeId);
     setConsigneeName(record.consigneeName);
     setConsigneeGst(record.consigneeGst);
+    setConsigneeAdhaar(record.consigneeAdhaar);
+    setConsigneePan(record.consigneePan);
     setConsigneeDealerCode(record.consigneeDealerCode);
     setConsigneeAddress(record.consigneeAddress);
     setConsigneeCity(record.consigneeCity);
@@ -561,6 +896,7 @@ export default function BookingComputerizeGRL() {
     setConsigneeEmail(record.consigneeEmail);
     setConsigneeIecCode(record.consigneeIecCode);
     setConsigneeEximCode(record.consigneeEximCode);
+    
     setPackages(record.packages);
     setInvoices(record.invoices);
     setRemarks(record.remarks);
@@ -646,7 +982,7 @@ export default function BookingComputerizeGRL() {
           </div>
 
           <Card>
-            <CardHeader><CardTitle className="text-xs flex items-center gap-2"><Search className="h-3 w-3" />Search Active Bookings</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-xs"><Search className="h-3 w-3 inline mr-1" />Search Active Bookings</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 <div><Label className="text-[10px]">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchFromDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div>
@@ -658,13 +994,10 @@ export default function BookingComputerizeGRL() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setViewMode("report")} variant={viewMode === "report" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Table className="h-3 w-3 mr-1" />Report</Button>
-            <Button onClick={() => setViewMode("grid")} variant={viewMode === "grid" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Grid3x3 className="h-3 w-3 mr-1" />Grid</Button>
-          </div>
+          <div className="flex justify-end gap-2"><Button onClick={() => setViewMode("report")} variant={viewMode === "report" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Table className="h-3 w-3 mr-1" />Report</Button><Button onClick={() => setViewMode("grid")} variant={viewMode === "grid" ? "default" : "outline"} size="sm" className="h-7 text-xs"><Grid3x3 className="h-3 w-3 mr-1" />Grid</Button></div>
 
           {viewMode === "report" && searchResults.length > 0 && (
-            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2 text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((r, idx) => (<TableRow key={r.id}><TableCell className="text-xs p-2">{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2 font-mono font-bold"><Badge variant="outline" className="bg-blue-50">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2 text-center"><div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => handleEdit(r)} className="h-6 w-6 p-0 text-blue-500"><Pencil className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => openCancelDialog(r)} className="h-6 w-6 p-0 text-orange-500"><X className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></div></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
+            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2 text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((r, idx) => (<TableRow key={r.id}><TableCell className="text-xs p-2">{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2"><Badge className="bg-blue-50">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate max-w-[120px]">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2 text-center"><div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => handleEdit(r)} className="h-6 w-6 p-0 text-blue-500"><Pencil className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => openCancelDialog(r)} className="h-6 w-6 p-0 text-orange-500"><X className="h-3 w-3" /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-6 w-6 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></div></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
           )}
 
           {searchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><FileText className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No active bookings</p></CardContent></Card>)}
@@ -681,7 +1014,7 @@ export default function BookingComputerizeGRL() {
 
           <Card><CardHeader><CardTitle className="text-xs"><Search className="h-3 w-3 inline mr-1" />Search Cancelled</CardTitle></CardHeader><CardContent><div className="grid grid-cols-2 md:grid-cols-5 gap-2"><div><Label className="text-[10px]">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchFromDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label className="text-[10px]">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-full text-xs"><CalendarIcon className="mr-1 h-3 w-3" />{format(searchToDate, "dd-MM-yy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label className="text-[10px]">GR No.</Label><Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} className="h-8 text-xs" /></div><div><Label className="text-[10px]">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div className="flex gap-1 items-end"><Button onClick={handleCancelledSearch} size="sm" className="h-8 text-xs bg-red-600"><Search className="h-3 w-3 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" size="sm" className="h-8 text-xs"><RefreshCw className="h-3 w-3" /></Button></div></div></CardContent></Card>
 
-          {viewMode === "report" && cancelledSearchResults.length > 0 && (<Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2">Cancel Date</TableHead><TableHead className="text-[10px] p-2">Reason</TableHead><TableHead className="text-[10px] p-2">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedCancelledResults.map((r, idx) => (<TableRow key={r.id} className="bg-red-50/30"><TableCell className="text-xs p-2">{(cancelledCurrentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2"><Badge variant="outline" className="bg-red-50 text-red-700">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2">{r.cancelledDate ? format(r.cancelledDate, "dd-MM-yy") : "-"}</TableCell><TableCell className="text-xs p-2 truncate max-w-[100px]">{r.cancelledReason}</TableCell><TableCell className="text-xs p-2"><Button variant="ghost" size="sm" onClick={() => handleRestoreBooking(r)} className="h-6 w-6 p-0 text-green-500"><RefreshCw className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>)}
+          {viewMode === "report" && cancelledSearchResults.length > 0 && (<Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-[10px] p-2">#</TableHead><TableHead className="text-[10px] p-2">GR No.</TableHead><TableHead className="text-[10px] p-2">Date</TableHead><TableHead className="text-[10px] p-2">From</TableHead><TableHead className="text-[10px] p-2">To</TableHead><TableHead className="text-[10px] p-2">Consignor</TableHead><TableHead className="text-[10px] p-2">Consignee</TableHead><TableHead className="text-[10px] p-2 text-right">Freight</TableHead><TableHead className="text-[10px] p-2">Cancel Date</TableHead><TableHead className="text-[10px] p-2">Reason</TableHead><TableHead className="text-[10px] p-2">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedCancelledResults.map((r, idx) => (<TableRow key={r.id} className="bg-red-50/30"><TableCell className="text-xs p-2">{(cancelledCurrentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-xs p-2"><Badge className="bg-red-50 text-red-700">{r.grNo}</Badge></TableCell><TableCell className="text-xs p-2">{format(r.grDate, "dd-MM-yy")}</TableCell><TableCell className="text-xs p-2">{r.bookingFrom}</TableCell><TableCell className="text-xs p-2">{r.destination}</TableCell><TableCell className="text-xs p-2 truncate">{r.consignorName}</TableCell><TableCell className="text-xs p-2 truncate">{r.consigneeName}</TableCell><TableCell className="text-xs p-2 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-xs p-2">{r.cancelledDate ? format(r.cancelledDate, "dd-MM-yy") : "-"}</TableCell><TableCell className="text-xs p-2 truncate max-w-[100px]">{r.cancelledReason}</TableCell><TableCell className="text-xs p-2"><Button variant="ghost" size="sm" onClick={() => handleRestoreBooking(r)} className="h-6 w-6 p-0 text-green-500"><RefreshCw className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>)}
 
           {cancelledSearchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><X className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No cancelled bookings</p></CardContent></Card>)}
         </>
@@ -692,7 +1025,45 @@ export default function BookingComputerizeGRL() {
         <DialogContent><DialogHeader><DialogTitle className="text-red-600 flex items-center gap-2"><X className="h-5 w-5" />Cancel Booking</DialogTitle><DialogDescription>Cancel {cancellingBooking?.grNo}?</DialogDescription></DialogHeader><div><Label>Cancellation Reason *</Label><Select value={cancelledReason} onValueChange={setCancelledReason}><SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger><SelectContent>{cancelledReasonOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><DialogFooter><Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>No, Keep</Button><Button variant="destructive" onClick={handleCancelBooking}>Yes, Cancel</Button></DialogFooter></DialogContent>
       </Dialog>
 
-      {/* Main Booking Modal - CONSignor TAB OPEN BY DEFAULT */}
+      {/* New Consignor Dialog */}
+      <Dialog open={isNewConsignorDialogOpen} onOpenChange={setIsNewConsignorDialogOpen}>
+        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Add New Consignor</DialogTitle><DialogDescription>Enter consignor details below</DialogDescription></DialogHeader>
+          <div className="space-y-3 py-4">
+            <div><Label className="text-xs">Name *</Label><Input value={newClientData.name || ""} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">GST Number</Label><Input value={newClientData.gstNumber || ""} onChange={(e) => setNewClientData({...newClientData, gstNumber: e.target.value})} className="h-8 text-sm uppercase" /></div>
+            <div><Label className="text-xs">Adhaar Number</Label><Input value={newClientData.adhaarNumber || ""} onChange={(e) => setNewClientData({...newClientData, adhaarNumber: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">PAN Number</Label><Input value={newClientData.panNumber || ""} onChange={(e) => setNewClientData({...newClientData, panNumber: e.target.value})} className="h-8 text-sm uppercase" /></div>
+            <div><Label className="text-xs">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Email</Label><Input value={newClientData.email || ""} onChange={(e) => setNewClientData({...newClientData, email: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Address</Label><Input value={newClientData.address || ""} onChange={(e) => setNewClientData({...newClientData, address: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">City</Label><Input value={newClientData.city || ""} onChange={(e) => setNewClientData({...newClientData, city: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">State</Label><Input value={newClientData.state || ""} onChange={(e) => setNewClientData({...newClientData, state: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Dealer Code</Label><Input value={newClientData.dealerCode || ""} onChange={(e) => setNewClientData({...newClientData, dealerCode: e.target.value})} className="h-8 text-sm" /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setIsNewConsignorDialogOpen(false)}>Cancel</Button><Button onClick={() => addNewClient("consignor")} className="bg-blue-600">Add Consignor</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Consignee Dialog */}
+      <Dialog open={isNewConsigneeDialogOpen} onOpenChange={setIsNewConsigneeDialogOpen}>
+        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Add New Consignee</DialogTitle><DialogDescription>Enter consignee details below</DialogDescription></DialogHeader>
+          <div className="space-y-3 py-4">
+            <div><Label className="text-xs">Name *</Label><Input value={newClientData.name || ""} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">GST Number</Label><Input value={newClientData.gstNumber || ""} onChange={(e) => setNewClientData({...newClientData, gstNumber: e.target.value})} className="h-8 text-sm uppercase" /></div>
+            <div><Label className="text-xs">Adhaar Number</Label><Input value={newClientData.adhaarNumber || ""} onChange={(e) => setNewClientData({...newClientData, adhaarNumber: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">PAN Number</Label><Input value={newClientData.panNumber || ""} onChange={(e) => setNewClientData({...newClientData, panNumber: e.target.value})} className="h-8 text-sm uppercase" /></div>
+            <div><Label className="text-xs">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Email</Label><Input value={newClientData.email || ""} onChange={(e) => setNewClientData({...newClientData, email: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Address</Label><Input value={newClientData.address || ""} onChange={(e) => setNewClientData({...newClientData, address: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">City</Label><Input value={newClientData.city || ""} onChange={(e) => setNewClientData({...newClientData, city: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">State</Label><Input value={newClientData.state || ""} onChange={(e) => setNewClientData({...newClientData, state: e.target.value})} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Dealer Code</Label><Input value={newClientData.dealerCode || ""} onChange={(e) => setNewClientData({...newClientData, dealerCode: e.target.value})} className="h-8 text-sm" /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setIsNewConsigneeDialogOpen(false)}>Cancel</Button><Button onClick={() => addNewClient("consignee")} className="bg-blue-600">Add Consignee</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Booking Modal */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b">
@@ -714,19 +1085,98 @@ export default function BookingComputerizeGRL() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <div><Label className="text-xs">Booking Type *</Label><Select value={bookingType} onValueChange={setBookingType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{bookingTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
               <div><Label className="text-xs">Collection At *</Label><Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-8 text-sm" /></div>
-              <div><Label className="text-xs">Consignor *</Label><Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-8 text-sm" placeholder="Consignor Name" /></div>
-              <div><Label className="text-xs">Consignor GST</Label><Input value={consignorGst} onChange={(e) => setConsignorGst(e.target.value)} className="h-8 text-sm" /></div>
-              <div><Label className="text-xs">Consignee *</Label><Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-8 text-sm" placeholder="Consignee Name" /></div>
-              <div><Label className="text-xs">Consignee GST</Label><Input value={consigneeGst} onChange={(e) => setConsigneeGst(e.target.value)} className="h-8 text-sm" /></div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <div><Label className="text-xs">Pvt Marka/Seal No</Label><Input value={pvtMarkaSealNo} onChange={(e) => setPvtMarkaSealNo(e.target.value)} className="h-8 text-sm" /></div>
               <div><Label className="text-xs">Service/Product *</Label><Select value={serviceProduct} onValueChange={setServiceProduct}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{serviceProductOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
               <div><Label className="text-xs">Delivery Type *</Label><Select value={deliveryType} onValueChange={setDeliveryType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{deliveryTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
               <div><Label className="text-xs">Load Type *</Label><Select value={loadType} onValueChange={setLoadType}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{loadTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><Label className="text-xs">MKT Executive</Label><Select value={mkExecutive} onValueChange={setMkExecutive}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{executiveOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
               <div><Label className="text-xs">Freight On</Label><Select value={freightOn} onValueChange={setFreightOn}><SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger><SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+              <div className="flex items-center"><label className="flex items-center gap-2"><input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="rounded" /><span className="text-xs">Manual Rates</span></label></div>
+            </div>
+
+            {/* Consignor Selection Section */}
+            <div className="border rounded-lg p-3 bg-blue-50/30">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-blue-700"><Building className="h-4 w-4" />Consignor Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div><Label className="text-xs">Select ID Type</Label><Select value={consignorIdType} onValueChange={setConsignorIdType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                {consignorIdType !== "Self" && (
+                  <div><Label className="text-xs">Enter ID Value</Label><Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-8 text-xs" /></div>
+                )}
+                <div className="flex items-end"><Button onClick={handleConsignorSearch} size="sm" className="h-8 text-xs bg-blue-600"><Search className="h-3 w-3 mr-1" />Search / Add</Button></div>
+              </div>
+              {consignorName && consignorIdType !== "Self" && (
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-white p-2 rounded">
+                  <div><strong>Name:</strong> {consignorName}</div>
+                  <div><strong>Mobile:</strong> {consignorMobile}</div>
+                  <div><strong>Email:</strong> {consignorEmail || "-"}</div>
+                </div>
+              )}
+              {consignorName === "Self" && (
+                <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+              )}
+              
+              {/* Collapsible Address Section for Consignor */}
+              <button
+                onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
+                className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              >
+                {isConsignorAddressOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {isConsignorAddressOpen ? "Hide Address Details" : "Show Address Details"}
+              </button>
+              {isConsignorAddressOpen && (
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 bg-white p-3 rounded border">
+                  <div><Label className="text-[10px]">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">IEC Code</Label><Input value={consignorIecCode} onChange={(e) => setConsignorIecCode(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Bank AD No.</Label><Input value={consignorBankAdNo} onChange={(e) => setConsignorBankAdNo(e.target.value)} className="h-7 text-xs" /></div>
+                </div>
+              )}
+            </div>
+
+            {/* Consignee Selection Section */}
+            <div className="border rounded-lg p-3 bg-green-50/30">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-green-700"><Users className="h-4 w-4" />Consignee Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div><Label className="text-xs">Select ID Type</Label><Select value={consigneeIdType} onValueChange={setConsigneeIdType}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
+                {consigneeIdType !== "Self" && (
+                  <div><Label className="text-xs">Enter ID Value</Label><Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-8 text-xs" /></div>
+                )}
+                <div className="flex items-end"><Button onClick={handleConsigneeSearch} size="sm" className="h-8 text-xs bg-green-600"><Search className="h-3 w-3 mr-1" />Search / Add</Button></div>
+              </div>
+              {consigneeName && consigneeIdType !== "Self" && (
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-white p-2 rounded">
+                  <div><strong>Name:</strong> {consigneeName}</div>
+                  <div><strong>Mobile:</strong> {consigneeMobile}</div>
+                  <div><strong>Email:</strong> {consigneeEmail || "-"}</div>
+                </div>
+              )}
+              {consigneeName === "Self" && (
+                <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+              )}
+              
+              {/* Collapsible Address Section for Consignee */}
+              <button
+                onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
+                className="mt-3 flex items-center gap-1 text-xs text-green-600 hover:text-green-800"
+              >
+                {isConsigneeAddressOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {isConsigneeAddressOpen ? "Hide Address Details" : "Show Address Details"}
+              </button>
+              {isConsigneeAddressOpen && (
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 bg-white p-3 rounded border">
+                  <div><Label className="text-[10px]">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">IEC Code</Label><Input value={consigneeIecCode} onChange={(e) => setConsigneeIecCode(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-7 text-xs" /></div>
+                </div>
+              )}
             </div>
 
             {/* Packages Table */}
@@ -734,11 +1184,48 @@ export default function BookingComputerizeGRL() {
               <div className="flex justify-between mb-2"><Label className="text-sm font-semibold">Package Details</Label><Button variant="outline" size="sm" onClick={addPackageRow}><PlusCircle className="h-3 w-3 mr-1" />Add Package</Button></div>
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead className="text-[10px] p-1">No of Pckgs</TableHead><TableHead className="text-[10px] p-1">Content</TableHead><TableHead className="text-[10px] p-1">Packing</TableHead><TableHead className="text-[10px] p-1">Actual Wt</TableHead><TableHead className="text-[10px] p-1">Charge Wt</TableHead><TableHead className="w-8"></TableHead></TableRow></TableHeader>
-                  <TableBody>{packages.map(pkg => (<TableRow key={pkg.id}><TableCell><Input type="number" value={pkg.noOfPackages} onChange={(e) => updatePackage(pkg.id, "noOfPackages", Number(e.target.value))} className="h-8 w-20 text-xs" /></TableCell><TableCell><Input value={pkg.content} onChange={(e) => updatePackage(pkg.id, "content", e.target.value)} className="h-8 w-28 text-xs" /></TableCell><TableCell><Select value={pkg.packing} onValueChange={(val) => updatePackage(pkg.id, "packing", val)}><SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger><SelectContent>{packingOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><Input type="number" value={pkg.actualWeight} onChange={(e) => updatePackage(pkg.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-xs" /></TableCell><TableCell><Input type="number" value={pkg.chargeWeight} onChange={(e) => updatePackage(pkg.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-xs" /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removePackage(pkg.id)} disabled={packages.length === 1} className="h-7 w-7 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow><TableHead className="text-[10px] p-1">No of Pckgs</TableHead><TableHead className="text-[10px] p-1">Content Category</TableHead><TableHead className="text-[10px] p-1">Content (Sub)</TableHead><TableHead className="text-[10px] p-1">Packing</TableHead><TableHead className="text-[10px] p-1">Actual Wt</TableHead><TableHead className="text-[10px] p-1">Charge Wt</TableHead><TableHead className="text-[10px] p-1">Status</TableHead><TableHead className="w-8"></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {packages.map(pkg => {
+                      const selectedCategory = contentCategories.find(c => c.id === Number(pkg.contentCategory));
+                      const packingLimit = packingTypes.find(p => p.name === pkg.packing);
+                      return (
+                        <TableRow key={pkg.id} className={!pkg.isWeightValid ? "bg-red-50" : ""}>
+                          <TableCell><Input type="number" value={pkg.noOfPackages} onChange={(e) => updatePackage(pkg.id, "noOfPackages", Number(e.target.value))} className="h-8 w-20 text-xs" /></TableCell>
+                          <TableCell>
+                            <Select value={pkg.contentCategory} onValueChange={(val) => updatePackage(pkg.id, "contentCategory", val)}>
+                              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                              <SelectContent>{contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}</SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={pkg.contentSubCategory} onValueChange={(val) => updatePackage(pkg.id, "contentSubCategory", val)} disabled={!pkg.contentCategory}>
+                              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
+                              <SelectContent>
+                                {selectedCategory?.subCategories.map(sub => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={pkg.packing} onValueChange={(val) => updatePackage(pkg.id, "packing", val)}>
+                              <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>{packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}</SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell><Input type="number" value={pkg.actualWeight} onChange={(e) => updatePackage(pkg.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-xs" step="0.01" /></TableCell>
+                          <TableCell><Input type="number" value={pkg.chargeWeight} onChange={(e) => updatePackage(pkg.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-xs" step="0.01" /></TableCell>
+                          <TableCell>
+                            {!pkg.isWeightValid && <span className="text-red-500 text-[10px] flex items-center gap-1"><AlertCircle className="h-3 w-3" />{pkg.weightError?.substring(0, 30)}</span>}
+                            {pkg.isWeightValid && pkg.chargeWeight > 0 && <span className="text-green-500 text-[10px]">✓ Valid</span>}
+                          </TableCell>
+                          <TableCell><Button variant="ghost" size="sm" onClick={() => removePackage(pkg.id)} disabled={packages.length === 1} className="h-7 w-7 p-0 text-red-500"><Trash2 className="h-3 w-3" /></Button></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
                 </Table>
               </div>
-              <div className="mt-2 text-xs bg-gray-50 p-2 rounded">Total: Pckgs: {totalPackages} | Actual Wt: {totalActualWeight} kg | Charge Wt: {totalChargeWeight} kg | Freight: ₹{totalFreight}</div>
+              <div className="mt-2 text-xs bg-gray-50 p-2 rounded">Total: Pckgs: {totalPackages} | Actual Wt: {totalActualWeight.toFixed(2)} kg | Charge Wt: {totalChargeWeight.toFixed(2)} kg | Freight: ₹{totalFreight.toFixed(2)}</div>
             </div>
 
             {/* Invoices Table */}
@@ -752,7 +1239,7 @@ export default function BookingComputerizeGRL() {
               </div>
             </div>
 
-            {/* Form Tabs - DEFAULT TAB IS "consignor" */}
+            {/* Form Tabs */}
             <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
               <TabsList className="grid grid-cols-6 h-auto">
                 <TabsTrigger value="consignor" className="text-xs py-1">Consignor</TabsTrigger>
@@ -763,29 +1250,19 @@ export default function BookingComputerizeGRL() {
                 <TabsTrigger value="billing" className="text-xs py-1">Billing</TabsTrigger>
               </TabsList>
 
-              {/* Consignor Tab - Now Opens First */}
+              {/* Consignor Tab - Additional Details */}
               <TabsContent value="consignor" className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div><Label className="text-xs">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Mobile No.</Label><Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Email ID</Label><Input value={consignorEmail} onChange={(e) => setConsignorEmail(e.target.value)} className="h-8 text-sm" /></div>
                   <div><Label className="text-xs">IEC Code</Label><Input value={consignorIecCode} onChange={(e) => setConsignorIecCode(e.target.value)} className="h-8 text-sm" /></div>
                   <div><Label className="text-xs">Bank AD. No.</Label><Input value={consignorBankAdNo} onChange={(e) => setConsignorBankAdNo(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
               </TabsContent>
 
-              {/* Consignee Tab */}
+              {/* Consignee Tab - Additional Details */}
               <TabsContent value="consignee" className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div><Label className="text-xs">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Mobile No.</Label><Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Email ID</Label><Input value={consigneeEmail} onChange={(e) => setConsigneeEmail(e.target.value)} className="h-8 text-sm" /></div>
                   <div><Label className="text-xs">IEC Code</Label><Input value={consigneeIecCode} onChange={(e) => setConsigneeIecCode(e.target.value)} className="h-8 text-sm" /></div>
                   <div><Label className="text-xs">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-8 text-sm" /></div>
                 </div>
@@ -798,7 +1275,7 @@ export default function BookingComputerizeGRL() {
                   <div className="flex items-center gap-2"><Label className="text-xs">Manual Rates</Label><input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="rounded" /></div>
                   <div><Label className="text-xs font-bold text-green-600">Total Freight (₹)</Label><Input type="number" value={totalFreight} onChange={(e) => setTotalFreight(Number(e.target.value))} className="h-8 text-sm font-bold" /></div>
                 </div>
-                <Button onClick={calculateTotalFreight} size="sm" className="h-8 text-xs bg-green-600"><Calculator className="h-3 w-3 mr-1" />Calculate Freight</Button>
+                <Button onClick={calculateTotals} size="sm" className="h-8 text-xs bg-green-600"><Calculator className="h-3 w-3 mr-1" />Calculate Freight</Button>
               </TabsContent>
 
               {/* Remarks Tab */}
