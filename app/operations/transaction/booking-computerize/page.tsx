@@ -35,7 +35,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -51,27 +50,42 @@ import {
   Trash2,
   Plus,
   X,
-  MapPin,
+  FileText,
+  Printer,
+  AlertCircle,
   Building,
-  DollarSign,
   Users,
   Package,
   MessageSquare,
   Calculator,
   Shield,
-  FileText,
-  Printer,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Grid3x3,
-  Edit,
-  PlusCircle,
   ChevronDown,
   ChevronRight as ChevronRightIcon,
+  Loader2,
+  CheckCircle,
+  DollarSign,
+  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
+
+// Import API services
+import {
+  getBookings,
+  createBooking,
+  updateBooking,
+  cancelBooking,
+  restoreBooking,
+  deleteBooking,
+  getBookingStats,
+  getClients,
+  createClient,
+  searchClient,
+  getContentCategories,
+  getPackingTypes,
+  getBranches,
+} from "@/services/api";
 
 // Types
 interface GoodsItem {
@@ -98,7 +112,8 @@ interface InvoiceItem {
 }
 
 interface ClientData {
-  id: number;
+  _id?: string;
+  id?: number;
   name: string;
   gstNumber: string;
   adhaarNumber: string;
@@ -113,28 +128,9 @@ interface ClientData {
   bankAdNo: string;
 }
 
-interface ContentCategory {
-  id: number;
-  name: string;
-  subCategories: ContentSubCategory[];
-}
-
-interface ContentSubCategory {
-  id: number;
-  name: string;
-  parentId: number;
-}
-
-interface PackingType {
-  id: number;
-  name: string;
-  minWeight: number;
-  maxWeight: number;
-  defaultWeight: number;
-}
-
 interface BookingRecord {
-  id: number;
+  _id?: string;
+  id?: number;
   grNo: string;
   bookingFrom: string;
   bookingDate: Date;
@@ -143,7 +139,7 @@ interface BookingRecord {
   deliveryPoint: string;
   bookingType: string;
   collectionAt: string;
-  consignorId: number;
+  consignorId: string;
   consignorName: string;
   consignorGst: string;
   consignorAdhaar: string;
@@ -156,7 +152,7 @@ interface BookingRecord {
   consignorState: string;
   consignorIec: string;
   consignorBankAd: string;
-  consigneeId: number;
+  consigneeId: string;
   consigneeName: string;
   consigneeGst: string;
   consigneeAdhaar: string;
@@ -201,83 +197,6 @@ interface BookingRecord {
   updatedAt: Date;
 }
 
-// Sample Client Data
-const sampleClients: ClientData[] = [
-  {
-    id: 1, name: "ABC Traders", gstNumber: "07ABCDE1234F1Z5", adhaarNumber: "123456789012", panNumber: "ABCDE1234",
-    address: "123, Transport Nagar", city: "Delhi", state: "Delhi", mobile: "9876543210", email: "abc@traders.com",
-    dealerCode: "D001", iecCode: "IEC001", bankAdNo: "BANK001"
-  },
-  {
-    id: 2, name: "XYZ Enterprises", gstNumber: "27FGHIJ5678K1Z6", adhaarNumber: "234567890123", panNumber: "FGHIJ5678K",
-    address: "456, MIDC Area", city: "Mumbai", state: "Maharashtra", mobile: "9876543220", email: "xyz@enterprises.com",
-    dealerCode: "D002", iecCode: "IEC002", bankAdNo: "BANK002"
-  },
-];
-
-// Content Categories with SubCategories
-const contentCategories: ContentCategory[] = [
-  {
-    id: 1, name: "Electrical Goods",
-    subCategories: [
-      { id: 11, name: "Fan", parentId: 1 },
-      { id: 12, name: "Switch Boards", parentId: 1 },
-      { id: 13, name: "Wires", parentId: 1 },
-      { id: 14, name: "Light/LED", parentId: 1 },
-    ]
-  },
-  {
-    id: 2, name: "Electronics",
-    subCategories: [
-      { id: 21, name: "Mobile Phones", parentId: 2 },
-      { id: 22, name: "Laptops", parentId: 2 },
-      { id: 23, name: "TV/Monitors", parentId: 2 },
-    ]
-  },
-  {
-    id: 3, name: "Automobile Parts",
-    subCategories: [
-      { id: 31, name: "Engine Parts", parentId: 3 },
-      { id: 32, name: "Tyres", parentId: 3 },
-      { id: 33, name: "Batteries", parentId: 3 },
-    ]
-  },
-  {
-    id: 4, name: "Chemicals/Paints",
-    subCategories: [
-      { id: 41, name: "Industrial Chemicals", parentId: 4 },
-      { id: 42, name: "Paints", parentId: 4 },
-    ]
-  },
-  {
-    id: 5, name: "Textiles/Clothes",
-    subCategories: [
-      { id: 51, name: "Readymade Garments", parentId: 5 },
-      { id: 52, name: "Fabrics", parentId: 5 },
-    ]
-  },
-  {
-    id: 6, name: "General Cargo",
-    subCategories: [
-      { id: 61, name: "General Goods", parentId: 6 },
-      { id: 62, name: "Consumer Goods", parentId: 6 },
-    ]
-  },
-];
-
-// Packing Types with Weight Limits
-const packingTypes: PackingType[] = [
-  { id: 1, name: "BOX", minWeight: 0, maxWeight: 30, defaultWeight: 0 },
-  { id: 2, name: "CARTON", minWeight: 0, maxWeight: 50, defaultWeight: 0 },
-  { id: 3, name: "WOODEN BOX", minWeight: 0, maxWeight: 40, defaultWeight: 0 },
-  { id: 4, name: "PALLET", minWeight: 0, maxWeight: 200, defaultWeight: 0 },
-  { id: 5, name: "BAG", minWeight: 0, maxWeight: 50, defaultWeight: 0 },
-  { id: 6, name: "BORI", minWeight: 0, maxWeight: 60, defaultWeight: 0 },
-  { id: 7, name: "BORA", minWeight: 0, maxWeight: 80, defaultWeight: 0 },
-  { id: 8, name: "DRUM", minWeight: 0, maxWeight: 200, defaultWeight: 0 },
-  { id: 9, name: "LOOSE", minWeight: 0, maxWeight: 1000, defaultWeight: 0 },
-];
-
 const bookingTypeOptions = [
   { value: "TOPAY", label: "TO PAY" },
   { value: "PREPAID", label: "PREPAID" },
@@ -292,7 +211,7 @@ const serviceProductOptions = [
 
 const deliveryTypeOptions = [
   { value: "GODOWN", label: "GODOWN" },
-  { value: "DOOR_DELIVERY", label: "DOOR DELIVERY" },
+  { value: "DOOR_DELIVERY", label: "DOOR_DELIVERY" },
   { value: "PICKUP", label: "PICKUP" },
 ];
 
@@ -319,23 +238,24 @@ const cancelledReasonOptions = [
   "Vehicle Unavailable", "Route Not Available", "Other"
 ];
 
-const branchOptions = [
-  "DELHI", "MUMBAI", "BANGALORE", "CHENNAI", "KOLKATA", 
-  "AHMEDABAD", "PUNE", "HYDERABAD", "LUCKNOW", "JAIPUR"
-];
-
 const idTypeOptions = ["Self", "GST Number", "Adhaar Number", "PAN Number"];
 
 export default function BookingComputerizedGRL() {
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [currentEditId, setCurrentEditId] = useState<number | null>(null);
+  const [currentEditId, setCurrentEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "report">("report");
   const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState<BookingRecord | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
+
+  // Static data from API
+  const [contentCategories, setContentCategories] = useState<any[]>([]);
+  const [packingTypes, setPackingTypes] = useState<any[]>([]);
+  const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientData[]>([]);
 
   // Collapsible sections state
   const [isConsignorAddressOpen, setIsConsignorAddressOpen] = useState(false);
@@ -346,13 +266,10 @@ export default function BookingComputerizedGRL() {
   const [isNewConsigneeDialogOpen, setIsNewConsigneeDialogOpen] = useState(false);
   const [newClientData, setNewClientData] = useState<Partial<ClientData>>({});
 
-  // Clients Data
-  const [clients, setClients] = useState<ClientData[]>(sampleClients);
-
   // Consignor Selection
   const [consignorIdType, setConsignorIdType] = useState<string>("");
   const [consignorIdValue, setConsignorIdValue] = useState<string>("");
-  const [consignorId, setConsignorId] = useState<number>(0);
+  const [consignorId, setConsignorId] = useState<string>("");
   const [consignorName, setConsignorName] = useState<string>("");
   const [consignorGst, setConsignorGst] = useState<string>("");
   const [consignorAdhaar, setConsignorAdhaar] = useState<string>("");
@@ -369,7 +286,7 @@ export default function BookingComputerizedGRL() {
   // Consignee Selection
   const [consigneeIdType, setConsigneeIdType] = useState<string>("");
   const [consigneeIdValue, setConsigneeIdValue] = useState<string>("");
-  const [consigneeId, setConsigneeId] = useState<number>(0);
+  const [consigneeId, setConsigneeId] = useState<string>("");
   const [consigneeName, setConsigneeName] = useState<string>("");
   const [consigneeGst, setConsigneeGst] = useState<string>("");
   const [consigneeAdhaar, setConsigneeAdhaar] = useState<string>("");
@@ -405,12 +322,12 @@ export default function BookingComputerizedGRL() {
 
   // Goods Items
   const [goodsItems, setGoodsItems] = useState<GoodsItem[]>([
-    { id: 1, noOfPckgs: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true },
+    { id: Date.now(), noOfPckgs: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true },
   ]);
 
   // Invoices
   const [invoices, setInvoices] = useState<InvoiceItem[]>([
-    { id: 1, invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" },
+    { id: Date.now(), invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" },
   ]);
 
   // Remarks
@@ -441,31 +358,86 @@ export default function BookingComputerizedGRL() {
   const [cancelledSearchResults, setCancelledSearchResults] = useState<BookingRecord[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [cancelledCurrentPage, setCancelledCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [cancelledTotalPages, setCancelledTotalPages] = useState<number>(1);
   const itemsPerPage: number = 10;
 
-  // Sample Data
-  const [savedRecords, setSavedRecords] = useState<BookingRecord[]>([]);
+  // Stats
+  const [stats, setStats] = useState({ active: { count: 0, totalFreight: 0 }, cancelled: { count: 0, totalFreight: 0 } });
 
+  // Load static data on mount
   useEffect(() => {
-    filterActiveRecords();
-    filterCancelledRecords();
+    loadStaticData();
+    loadBookings();
+    loadStats();
+    loadClients();
   }, []);
 
+  // Calculate totals whenever goods items change
   useEffect(() => {
     calculateTotals();
   }, [goodsItems]);
 
-  const filterActiveRecords = () => {
-    setSearchResults(savedRecords.filter(r => r.status === "active"));
+  const loadStaticData = async () => {
+    try {
+      const [categoriesRes, packingRes, branchesRes] = await Promise.all([
+        getContentCategories(),
+        getPackingTypes(),
+        getBranches()
+      ]);
+      setContentCategories(categoriesRes.data || []);
+      setPackingTypes(packingRes.data || []);
+      setBranchOptions(branchesRes.data || []);
+    } catch (error) {
+      console.error('Error loading static data:', error);
+      toast.error('Failed to load static data');
+    }
   };
 
-  const filterCancelledRecords = () => {
-    setCancelledSearchResults(savedRecords.filter(r => r.status === "cancelled"));
+  const loadClients = async () => {
+    try {
+      const response = await getClients({ limit: 100 });
+      setClients(response.data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
   };
 
-  const generateGrNo = (): string => {
-    const count = savedRecords.filter(r => r.status === "active").length + 1;
-    return `GR${String(count).padStart(6, "0")}`;
+  const loadBookings = async () => {
+    setLoading(true);
+    try {
+      const response = await getBookings({ status: 'active', limit: 100 });
+      setSearchResults(response.data || []);
+      setTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      toast.error('Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCancelledBookings = async () => {
+    setLoading(true);
+    try {
+      const response = await getBookings({ status: 'cancelled', limit: 100 });
+      setCancelledSearchResults(response.data || []);
+      setCancelledTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
+    } catch (error) {
+      console.error('Error loading cancelled bookings:', error);
+      toast.error('Failed to load cancelled bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await getBookingStats();
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
   };
 
   const validatePackageWeight = (item: GoodsItem): { isValid: boolean; error?: string } => {
@@ -510,7 +482,7 @@ export default function BookingComputerizedGRL() {
         }
         if (field === "contentSubCategory") {
           const category = contentCategories.find(c => c.id === Number(item.contentCategory));
-          const subCategory = category?.subCategories.find(s => s.id === Number(value));
+          const subCategory = category?.subCategories?.find((s: any) => s.id === Number(value));
           updated.content = subCategory?.name || "";
         }
         
@@ -522,7 +494,6 @@ export default function BookingComputerizedGRL() {
       }
       return item;
     }));
-    setTimeout(calculateTotals, 0);
   };
 
   const addGoodsRow = () => {
@@ -530,17 +501,19 @@ export default function BookingComputerizedGRL() {
       id: Date.now(), noOfPckgs: 0, contentCategory: "", contentSubCategory: "", 
       content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true 
     }]);
+    toast.success("New goods row added");
   };
 
   const removeGoodsRow = (id: number) => {
     if (goodsItems.length > 1) {
       setGoodsItems(goodsItems.filter(item => item.id !== id));
-      setTimeout(calculateTotals, 0);
+      toast.success("Goods row removed");
     }
   };
 
   const addInvoiceRow = () => {
     setInvoices([...invoices, { id: Date.now(), invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" }]);
+    toast.success("New invoice row added");
   };
 
   const updateInvoice = (id: number, field: keyof InvoiceItem, value: any) => {
@@ -550,26 +523,17 @@ export default function BookingComputerizedGRL() {
   const removeInvoice = (id: number) => {
     if (invoices.length > 1) {
       setInvoices(invoices.filter(inv => inv.id !== id));
+      toast.success("Invoice row removed");
     }
   };
 
-  const searchClient = (idType: string, idValue: string): ClientData | undefined => {
-    if (!idValue || idType === "Self") return undefined;
-    switch (idType) {
-      case "GST Number": return clients.find(c => c.gstNumber === idValue);
-      case "Adhaar Number": return clients.find(c => c.adhaarNumber === idValue);
-      case "PAN Number": return clients.find(c => c.panNumber === idValue);
-      default: return undefined;
-    }
-  };
-
-  const handleConsignorSearch = () => {
+  const handleConsignorSearch = async () => {
     if (!consignorIdType) {
-      alert("Please select ID type");
+      toast.error("Please select ID type");
       return;
     }
     if (consignorIdType === "Self") {
-      setConsignorId(0);
+      setConsignorId("self");
       setConsignorName("Self");
       setConsignorGst("");
       setConsignorAdhaar("");
@@ -582,42 +546,50 @@ export default function BookingComputerizedGRL() {
       setConsignorState("");
       setConsignorIec("");
       setConsignorBankAd("");
-      alert("Self selected - No ID required");
+      toast.success("Self selected - No ID required");
       return;
     }
     if (!consignorIdValue) {
-      alert("Please enter ID value");
+      toast.error("Please enter ID value");
       return;
     }
-    const client = searchClient(consignorIdType, consignorIdValue);
-    if (client) {
-      setConsignorId(client.id);
-      setConsignorName(client.name);
-      setConsignorGst(client.gstNumber);
-      setConsignorAdhaar(client.adhaarNumber);
-      setConsignorPan(client.panNumber);
-      setConsignorMobile(client.mobile);
-      setConsignorEmail(client.email);
-      setConsignorDealerCode(client.dealerCode);
-      setConsignorAddress(client.address);
-      setConsignorCity(client.city);
-      setConsignorState(client.state);
-      setConsignorIec(client.iecCode);
-      setConsignorBankAd(client.bankAdNo);
-      alert(`Consignor "${client.name}" loaded successfully!`);
-    } else {
-      alert("Client not found. Please add new client.");
+    
+    try {
+      const response = await searchClient(consignorIdType, consignorIdValue);
+      if (response.data) {
+        const client = response.data;
+        setConsignorId(client._id || "");
+        setConsignorName(client.name);
+        setConsignorGst(client.gstNumber || "");
+        setConsignorAdhaar(client.adhaarNumber || "");
+        setConsignorPan(client.panNumber || "");
+        setConsignorMobile(client.mobile || "");
+        setConsignorEmail(client.email || "");
+        setConsignorDealerCode(client.dealerCode || "");
+        setConsignorAddress(client.address || "");
+        setConsignorCity(client.city || "");
+        setConsignorState(client.state || "");
+        setConsignorIec(client.iecCode || "");
+        setConsignorBankAd(client.bankAdNo || "");
+        toast.success(`Consignor "${client.name}" loaded successfully!`);
+      } else {
+        toast.error("Client not found. Please add new client.");
+        setIsNewConsignorDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error("Error searching client");
       setIsNewConsignorDialogOpen(true);
     }
   };
 
-  const handleConsigneeSearch = () => {
+  const handleConsigneeSearch = async () => {
     if (!consigneeIdType) {
-      alert("Please select ID type");
+      toast.error("Please select ID type");
       return;
     }
     if (consigneeIdType === "Self") {
-      setConsigneeId(0);
+      setConsigneeId("self");
       setConsigneeName("Self");
       setConsigneeGst("");
       setConsigneeAdhaar("");
@@ -630,104 +602,120 @@ export default function BookingComputerizedGRL() {
       setConsigneeState("");
       setConsigneeIec("");
       setConsigneeEximCode("");
-      alert("Self selected - No ID required");
+      toast.success("Self selected - No ID required");
       return;
     }
     if (!consigneeIdValue) {
-      alert("Please enter ID value");
+      toast.error("Please enter ID value");
       return;
     }
-    const client = searchClient(consigneeIdType, consigneeIdValue);
-    if (client) {
-      setConsigneeId(client.id);
-      setConsigneeName(client.name);
-      setConsigneeGst(client.gstNumber);
-      setConsigneeAdhaar(client.adhaarNumber);
-      setConsigneePan(client.panNumber);
-      setConsigneeMobile(client.mobile);
-      setConsigneeEmail(client.email);
-      setConsigneeDealerCode(client.dealerCode);
-      setConsigneeAddress(client.address);
-      setConsigneeCity(client.city);
-      setConsigneeState(client.state);
-      setConsigneeIec(client.iecCode);
-      alert(`Consignee "${client.name}" loaded successfully!`);
-    } else {
-      alert("Client not found. Please add new client.");
+    
+    try {
+      const response = await searchClient(consigneeIdType, consigneeIdValue);
+      if (response.data) {
+        const client = response.data;
+        setConsigneeId(client._id || "");
+        setConsigneeName(client.name);
+        setConsigneeGst(client.gstNumber || "");
+        setConsigneeAdhaar(client.adhaarNumber || "");
+        setConsigneePan(client.panNumber || "");
+        setConsigneeMobile(client.mobile || "");
+        setConsigneeEmail(client.email || "");
+        setConsigneeDealerCode(client.dealerCode || "");
+        setConsigneeAddress(client.address || "");
+        setConsigneeCity(client.city || "");
+        setConsigneeState(client.state || "");
+        setConsigneeIec(client.iecCode || "");
+        toast.success(`Consignee "${client.name}" loaded successfully!`);
+      } else {
+        toast.error("Client not found. Please add new client.");
+        setIsNewConsigneeDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error("Error searching client");
       setIsNewConsigneeDialogOpen(true);
     }
   };
 
-  const addNewClient = (type: "consignor" | "consignee") => {
+  const addNewClient = async (type: "consignor" | "consignee") => {
     if (!newClientData.name) {
-      alert("Please enter client name");
+      toast.error("Please enter client name");
       return;
     }
-    const newClient: ClientData = {
-      id: clients.length + 1,
-      name: newClientData.name || "",
-      gstNumber: newClientData.gstNumber || "",
-      adhaarNumber: newClientData.adhaarNumber || "",
-      panNumber: newClientData.panNumber || "",
-      address: newClientData.address || "",
-      city: newClientData.city || "",
-      state: newClientData.state || "",
-      mobile: newClientData.mobile || "",
-      email: newClientData.email || "",
-      dealerCode: newClientData.dealerCode || "",
-      iecCode: newClientData.iecCode || "",
-      bankAdNo: newClientData.bankAdNo || "",
-    };
-    const updatedClients = [...clients, newClient];
-    setClients(updatedClients);
-
-    if (type === "consignor") {
-      setConsignorId(newClient.id);
-      setConsignorName(newClient.name);
-      setConsignorGst(newClient.gstNumber);
-      setConsignorAdhaar(newClient.adhaarNumber);
-      setConsignorPan(newClient.panNumber);
-      setConsignorMobile(newClient.mobile);
-      setConsignorEmail(newClient.email);
-      setConsignorDealerCode(newClient.dealerCode);
-      setConsignorAddress(newClient.address);
-      setConsignorCity(newClient.city);
-      setConsignorState(newClient.state);
-      setConsignorIec(newClient.iecCode);
-      setConsignorBankAd(newClient.bankAdNo);
-      setIsNewConsignorDialogOpen(false);
-      alert(`Consignor "${newClient.name}" added successfully!`);
-    } else {
-      setConsigneeId(newClient.id);
-      setConsigneeName(newClient.name);
-      setConsigneeGst(newClient.gstNumber);
-      setConsigneeAdhaar(newClient.adhaarNumber);
-      setConsigneePan(newClient.panNumber);
-      setConsigneeMobile(newClient.mobile);
-      setConsigneeEmail(newClient.email);
-      setConsigneeDealerCode(newClient.dealerCode);
-      setConsigneeAddress(newClient.address);
-      setConsigneeCity(newClient.city);
-      setConsigneeState(newClient.state);
-      setConsigneeIec(newClient.iecCode);
-      setIsNewConsigneeDialogOpen(false);
-      alert(`Consignee "${newClient.name}" added successfully!`);
+    
+    try {
+      const response = await createClient({
+        name: newClientData.name,
+        gstNumber: newClientData.gstNumber || "",
+        adhaarNumber: newClientData.adhaarNumber || "",
+        panNumber: newClientData.panNumber || "",
+        address: newClientData.address || "",
+        city: newClientData.city || "",
+        state: newClientData.state || "",
+        mobile: newClientData.mobile || "",
+        email: newClientData.email || "",
+        dealerCode: newClientData.dealerCode || "",
+        iecCode: newClientData.iecCode || "",
+        bankAdNo: newClientData.bankAdNo || "",
+      });
+      
+      const newClient = response.data;
+      await loadClients();
+      
+      if (type === "consignor") {
+        setConsignorId(newClient._id || "");
+        setConsignorName(newClient.name);
+        setConsignorGst(newClient.gstNumber);
+        setConsignorAdhaar(newClient.adhaarNumber);
+        setConsignorPan(newClient.panNumber);
+        setConsignorMobile(newClient.mobile);
+        setConsignorEmail(newClient.email);
+        setConsignorDealerCode(newClient.dealerCode);
+        setConsignorAddress(newClient.address);
+        setConsignorCity(newClient.city);
+        setConsignorState(newClient.state);
+        setConsignorIec(newClient.iecCode);
+        setConsignorBankAd(newClient.bankAdNo);
+        setIsNewConsignorDialogOpen(false);
+        toast.success(`Consignor "${newClient.name}" added successfully!`);
+      } else {
+        setConsigneeId(newClient._id || "");
+        setConsigneeName(newClient.name);
+        setConsigneeGst(newClient.gstNumber);
+        setConsigneeAdhaar(newClient.adhaarNumber);
+        setConsigneePan(newClient.panNumber);
+        setConsigneeMobile(newClient.mobile);
+        setConsigneeEmail(newClient.email);
+        setConsigneeDealerCode(newClient.dealerCode);
+        setConsigneeAddress(newClient.address);
+        setConsigneeCity(newClient.city);
+        setConsigneeState(newClient.state);
+        setConsigneeIec(newClient.iecCode);
+        setIsNewConsigneeDialogOpen(false);
+        toast.success(`Consignee "${newClient.name}" added successfully!`);
+      }
+      setNewClientData({});
+    } catch (error: any) {
+      console.error('Add client error:', error);
+      toast.error(error.response?.data?.message || "Failed to add client");
     }
-    setNewClientData({});
   };
 
   const handlePrint = () => {
-    alert("Print functionality will be implemented");
+    window.print();
+    toast.success("Print dialog opened");
   };
 
   const handleClear = () => {
     if (confirm("Are you sure you want to clear all form data?")) {
       resetForm();
+      toast.success("Form cleared");
     }
   };
 
   const resetForm = () => {
-    setGrNo(generateGrNo());
+    setGrNo("");
     setBookingFrom("");
     setBookingDate(new Date());
     setDestination("");
@@ -748,7 +736,7 @@ export default function BookingComputerizedGRL() {
     
     setConsignorIdType("");
     setConsignorIdValue("");
-    setConsignorId(0);
+    setConsignorId("");
     setConsignorName("");
     setConsignorGst("");
     setConsignorAdhaar("");
@@ -764,7 +752,7 @@ export default function BookingComputerizedGRL() {
     
     setConsigneeIdType("");
     setConsigneeIdValue("");
-    setConsigneeId(0);
+    setConsigneeId("");
     setConsigneeName("");
     setConsigneeGst("");
     setConsigneeAdhaar("");
@@ -778,8 +766,8 @@ export default function BookingComputerizedGRL() {
     setConsigneeIec("");
     setConsigneeEximCode("");
     
-    setGoodsItems([{ id: 1, noOfPckgs: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true }]);
-    setInvoices([{ id: 1, invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" }]);
+    setGoodsItems([{ id: Date.now(), noOfPckgs: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true }]);
+    setInvoices([{ id: Date.now(), invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" }]);
     setRemarks("");
     setRoRemarks("");
     setGpRemarks("");
@@ -799,104 +787,237 @@ export default function BookingComputerizedGRL() {
     setIsConsigneeAddressOpen(false);
   };
 
-  const handleSave = () => {
-    if (!bookingFrom) { alert("Please enter Booking From"); return; }
-    if (!destination) { alert("Please enter Destination"); return; }
-    if (!consignorName) { alert("Please select Consignor"); return; }
-    if (!consigneeName) { alert("Please select Consignee"); return; }
+  const handleSave = async () => {
+    console.log("=== SAVE BUTTON CLICKED ===");
+    
+    // Validation
+    if (!bookingFrom) { 
+      toast.error("Please enter Booking From"); 
+      return; 
+    }
+    if (!destination) { 
+      toast.error("Please enter Destination"); 
+      return; 
+    }
+    if (!consignorName) { 
+      toast.error("Please select Consignor"); 
+      return; 
+    }
+    if (!consigneeName) { 
+      toast.error("Please select Consignee"); 
+      return; 
+    }
     
     const hasWeightError = goodsItems.some(item => !item.isWeightValid);
     if (hasWeightError) {
-      alert("Please fix weight validation errors before saving");
+      toast.error("Please fix weight validation errors before saving");
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const newRecord: BookingRecord = {
-        id: currentEditId || Date.now(),
-        grNo, bookingFrom, bookingDate, destination, pickupFrom, deliveryPoint,
-        bookingType, collectionAt,
-        consignorId, consignorName, consignorGst, consignorAdhaar, consignorPan,
-        consignorMobile, consignorEmail, consignorDealerCode, consignorAddress,
-        consignorCity, consignorState, consignorIec, consignorBankAd,
-        consigneeId, consigneeName, consigneeGst, consigneeAdhaar, consigneePan,
-        consigneeMobile, consigneeEmail, consigneeDealerCode, consigneeAddress,
-        consigneeCity, consigneeState, consigneeIec, consigneeEximCode,
-        pvtMarkaSealNo, serviceProduct, deliveryType, loadType, mkExecutive, freightOn,
-        manualRates, ncv, printAfterSave, ccAttached,
-        totalPckgs, totalActualWeight, totalChargeWeight, totalFreight,
-        remarks, roRemarks, gpRemarks, billNo, supplementaryBillNo,
-        insuranceCoveredBy, insuranceNo, insuranceDate, insuranceCompany,
-        goodsItems, invoices, status: "active",
-        createdAt: editMode && currentEditId ? savedRecords.find(r => r.id === currentEditId)?.createdAt || new Date() : new Date(),
-        updatedAt: new Date(),
-      };
+    
+    const bookingData = {
+      bookingFrom, 
+      bookingDate, 
+      destination, 
+      pickupFrom, 
+      deliveryPoint,
+      bookingType, 
+      collectionAt,
+      consignorId: consignorId === "self" ? "" : consignorId,
+      consignorName, 
+      consignorGst, 
+      consignorAdhaar, 
+      consignorPan,
+      consignorMobile, 
+      consignorEmail, 
+      consignorDealerCode, 
+      consignorAddress,
+      consignorCity, 
+      consignorState, 
+      consignorIec, 
+      consignorBankAd,
+      consigneeId: consigneeId === "self" ? "" : consigneeId,
+      consigneeName, 
+      consigneeGst, 
+      consigneeAdhaar, 
+      consigneePan,
+      consigneeMobile, 
+      consigneeEmail, 
+      consigneeDealerCode, 
+      consigneeAddress,
+      consigneeCity, 
+      consigneeState, 
+      consigneeIec, 
+      consigneeEximCode,
+      pvtMarkaSealNo, 
+      serviceProduct, 
+      deliveryType, 
+      loadType, 
+      mkExecutive, 
+      freightOn,
+      manualRates, 
+      ncv, 
+      printAfterSave, 
+      ccAttached,
+      totalPckgs, 
+      totalActualWeight, 
+      totalChargeWeight, 
+      totalFreight,
+      remarks, 
+      roRemarks, 
+      gpRemarks, 
+      billNo, 
+      supplementaryBillNo,
+      insuranceCoveredBy, 
+      insuranceNo, 
+      insuranceDate, 
+      insuranceCompany,
+      goodsItems: goodsItems.map(({ id, ...rest }) => rest),
+      invoices: invoices.map(({ id, ...rest }) => ({ 
+        ...rest, 
+        date: rest.date, 
+        ewayBillDate: rest.ewayBillDate 
+      })),
+    };
 
-      const updatedRecords = editMode && currentEditId
-        ? savedRecords.map(r => r.id === currentEditId ? newRecord : r)
-        : [...savedRecords, newRecord];
+    console.log("Sending booking data:", JSON.stringify(bookingData, null, 2));
+
+    try {
+      let response;
+      if (editMode && currentEditId) {
+        response = await updateBooking(currentEditId, bookingData);
+        toast.success("Booking updated successfully!");
+      } else {
+        response = await createBooking(bookingData);
+        toast.success(`Booking created successfully! GR No: ${response.data.grNo}`);
+      }
       
-      setSavedRecords(updatedRecords);
-      filterActiveRecords();
-      filterCancelledRecords();
+      await loadBookings();
+      await loadStats();
       
       if (printAfterSave) handlePrint();
-      alert(editMode ? "Record updated!" : "Record saved!");
       resetForm();
       setIsBookingModalOpen(false);
+    } catch (error: any) {
+      console.error('Save error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to save booking. Check console for details.");
+      }
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
-  const handleCancelBooking = () => {
-    if (!cancelledReason) { alert("Please select cancellation reason"); return; }
+  const handleCancelBooking = async () => {
+    if (!cancelledReason) { 
+      toast.error("Please select cancellation reason"); 
+      return; 
+    }
     if (cancellingBooking) {
-      const updatedRecords = savedRecords.map(record => 
-        record.id === cancellingBooking.id 
-          ? { ...record, status: "cancelled" as const, cancelledDate: new Date(), cancelledReason, updatedAt: new Date() }
-          : record
-      );
-      setSavedRecords(updatedRecords);
-      filterActiveRecords();
-      filterCancelledRecords();
-      alert(`Booking ${cancellingBooking.grNo} cancelled!`);
-      setIsCancelledDialogOpen(false);
-      setCancellingBooking(null);
-      setCancelledReason("");
+      setLoading(true);
+      try {
+        await cancelBooking(cancellingBooking._id!, cancelledReason);
+        toast.success(`Booking ${cancellingBooking.grNo} cancelled!`);
+        await loadBookings();
+        await loadCancelledBookings();
+        await loadStats();
+        setIsCancelledDialogOpen(false);
+        setCancellingBooking(null);
+        setCancelledReason("");
+      } catch (error: any) {
+        console.error('Cancel error:', error);
+        toast.error(error.response?.data?.message || "Failed to cancel booking");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleRestoreBooking = (record: BookingRecord) => {
+  const handleRestoreBooking = async (record: BookingRecord) => {
     if (confirm(`Restore booking ${record.grNo}?`)) {
-      const updatedRecords = savedRecords.map(r => 
-        r.id === record.id ? { ...r, status: "active" as const, cancelledDate: undefined, cancelledReason: undefined, updatedAt: new Date() } : r
-      );
-      setSavedRecords(updatedRecords);
-      filterActiveRecords();
-      filterCancelledRecords();
-      alert(`Booking ${record.grNo} restored!`);
+      setLoading(true);
+      try {
+        await restoreBooking(record._id!);
+        toast.success(`Booking ${record.grNo} restored!`);
+        await loadBookings();
+        await loadCancelledBookings();
+        await loadStats();
+      } catch (error: any) {
+        console.error('Restore error:', error);
+        toast.error(error.response?.data?.message || "Failed to restore booking");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSearch = () => {
-    let results = savedRecords.filter(r => r.status === "active");
-    if (searchGrNo) results = results.filter(r => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
-    if (searchFromDate) results = results.filter(r => r.bookingDate >= searchFromDate);
-    if (searchToDate) results = results.filter(r => r.bookingDate <= searchToDate);
-    if (searchBranch !== "all") results = results.filter(r => r.bookingFrom === searchBranch);
-    setSearchResults(results);
-    setCurrentPage(1);
+  const handleDelete = async (id: string) => {
+    if (confirm("Permanently delete this booking? This action cannot be undone.")) {
+      setLoading(true);
+      try {
+        await deleteBooking(id);
+        toast.success("Booking deleted permanently!");
+        await loadBookings();
+        await loadCancelledBookings();
+        await loadStats();
+      } catch (error: any) {
+        console.error('Delete error:', error);
+        toast.error(error.response?.data?.message || "Failed to delete booking");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
-  const handleCancelledSearch = () => {
-    let results = savedRecords.filter(r => r.status === "cancelled");
-    if (searchGrNo) results = results.filter(r => r.grNo.toLowerCase().includes(searchGrNo.toLowerCase()));
-    if (searchFromDate) results = results.filter(r => r.bookingDate >= searchFromDate);
-    if (searchToDate) results = results.filter(r => r.bookingDate <= searchToDate);
-    if (searchBranch !== "all") results = results.filter(r => r.bookingFrom === searchBranch);
-    setCancelledSearchResults(results);
-    setCancelledCurrentPage(1);
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      const filters: any = { status: 'active', limit: 100 };
+      if (searchGrNo) filters.grNo = searchGrNo;
+      if (searchFromDate) filters.fromDate = searchFromDate.toISOString();
+      if (searchToDate) filters.toDate = searchToDate.toISOString();
+      if (searchBranch !== "all") filters.branch = searchBranch;
+      
+      const response = await getBookings(filters);
+      setSearchResults(response.data || []);
+      setTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
+      setCurrentPage(1);
+      toast.success(`Found ${response.data?.length || 0} bookings`);
+    } catch (error: any) {
+      console.error('Search error:', error);
+      toast.error(error.response?.data?.message || "Search failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelledSearch = async () => {
+    setLoading(true);
+    try {
+      const filters: any = { status: 'cancelled', limit: 100 };
+      if (searchGrNo) filters.grNo = searchGrNo;
+      if (searchFromDate) filters.fromDate = searchFromDate.toISOString();
+      if (searchToDate) filters.toDate = searchToDate.toISOString();
+      if (searchBranch !== "all") filters.branch = searchBranch;
+      
+      const response = await getBookings(filters);
+      setCancelledSearchResults(response.data || []);
+      setCancelledTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
+      setCancelledCurrentPage(1);
+      toast.success(`Found ${response.data?.length || 0} cancelled bookings`);
+    } catch (error: any) {
+      console.error('Search error:', error);
+      toast.error(error.response?.data?.message || "Search failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClearSearch = () => {
@@ -904,16 +1025,17 @@ export default function BookingComputerizedGRL() {
     setSearchFromDate(new Date());
     setSearchToDate(new Date());
     setSearchBranch("all");
-    filterActiveRecords();
-    filterCancelledRecords();
+    loadBookings();
+    loadCancelledBookings();
+    toast.success("Search filters cleared");
   };
 
   const handleEdit = (record: BookingRecord) => {
     setEditMode(true);
-    setCurrentEditId(record.id);
+    setCurrentEditId(record._id!);
     setGrNo(record.grNo);
     setBookingFrom(record.bookingFrom);
-    setBookingDate(record.bookingDate);
+    setBookingDate(new Date(record.bookingDate));
     setDestination(record.destination);
     setPickupFrom(record.pickupFrom);
     setDeliveryPoint(record.deliveryPoint);
@@ -930,7 +1052,7 @@ export default function BookingComputerizedGRL() {
     setPrintAfterSave(record.printAfterSave);
     setCcAttached(record.ccAttached);
     
-    setConsignorId(record.consignorId);
+    setConsignorId(String(record.consignorId));
     setConsignorName(record.consignorName);
     setConsignorGst(record.consignorGst);
     setConsignorAdhaar(record.consignorAdhaar);
@@ -944,7 +1066,7 @@ export default function BookingComputerizedGRL() {
     setConsignorIec(record.consignorIec);
     setConsignorBankAd(record.consignorBankAd);
     
-    setConsigneeId(record.consigneeId);
+    setConsigneeId(String(record.consigneeId));
     setConsigneeName(record.consigneeName);
     setConsigneeGst(record.consigneeGst);
     setConsigneeAdhaar(record.consigneeAdhaar);
@@ -958,8 +1080,8 @@ export default function BookingComputerizedGRL() {
     setConsigneeIec(record.consigneeIec);
     setConsigneeEximCode(record.consigneeEximCode);
     
-    setGoodsItems(record.goodsItems);
-    setInvoices(record.invoices);
+    setGoodsItems(record.goodsItems.map((item, idx) => ({ ...item, id: Date.now() + idx })));
+    setInvoices(record.invoices.map((inv, idx) => ({ ...inv, id: Date.now() + idx })));
     setRemarks(record.remarks);
     setRoRemarks(record.roRemarks);
     setGpRemarks(record.gpRemarks);
@@ -967,7 +1089,7 @@ export default function BookingComputerizedGRL() {
     setSupplementaryBillNo(record.supplementaryBillNo);
     setInsuranceCoveredBy(record.insuranceCoveredBy);
     setInsuranceNo(record.insuranceNo);
-    setInsuranceDate(record.insuranceDate);
+    setInsuranceDate(new Date(record.insuranceDate));
     setInsuranceCompany(record.insuranceCompany);
     setTotalPckgs(record.totalPckgs);
     setTotalActualWeight(record.totalActualWeight);
@@ -976,19 +1098,11 @@ export default function BookingComputerizedGRL() {
     setIsBookingModalOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Permanently delete?")) {
-      setSavedRecords(savedRecords.filter(r => r.id !== id));
-      filterActiveRecords();
-      filterCancelledRecords();
-    }
-  };
-
   const openAddModal = () => {
     resetForm();
     setEditMode(false);
     setCurrentEditId(null);
-    setGrNo(generateGrNo());
+    setGrNo("");
     setIsBookingModalOpen(true);
   };
 
@@ -999,22 +1113,17 @@ export default function BookingComputerizedGRL() {
   };
 
   const activeStats = {
-    total: searchResults.length,
-    totalFreight: searchResults.reduce((sum, r) => sum + r.totalFreight, 0),
+    total: stats.active.count,
+    totalFreight: stats.active.totalFreight,
   };
 
   const cancelledStats = {
-    total: cancelledSearchResults.length,
-    totalFreight: cancelledSearchResults.reduce((sum, r) => sum + r.totalFreight, 0),
+    total: stats.cancelled.count,
+    totalFreight: stats.cancelled.totalFreight,
   };
 
-  const totalPages = Math.ceil(searchResults.length / itemsPerPage);
   const paginatedResults = searchResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-
-  const cancelledTotalPages = Math.ceil(cancelledSearchResults.length / itemsPerPage);
   const paginatedCancelledResults = cancelledSearchResults.slice((cancelledCurrentPage - 1) * itemsPerPage, cancelledCurrentPage * itemsPerPage);
-  const goToCancelledPage = (page: number) => setCancelledCurrentPage(Math.max(1, Math.min(page, cancelledTotalPages)));
 
   return (
     <div className="space-y-4 p-4 md:p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -1027,39 +1136,239 @@ export default function BookingComputerizedGRL() {
               <h1 className="text-xl md:text-2xl font-bold text-gray-800">BOOKING COMPUTERIZED GRL</h1>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-              <span>🏢 Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD</span>
+              <span>🏢 Company: GOLDEN ROADWAYS &amp; LOGISTICS PVT LTD</span>
               <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
               <span>📍 Branch: CORPORATE OFFICE</span>
               <span>📅 Financial Year: 2026-2027</span>
             </div>
           </div>
-          <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700"><Plus className="mr-2 h-4 w-4" />New Booking</Button>
+          <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" />New Booking
+          </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <div className="flex border-b bg-white rounded-t-lg">
-        <button onClick={() => { setMainTab("active"); filterActiveRecords(); }} className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg", mainTab === "active" ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100")}>Active Bookings</button>
-        <button onClick={() => { setMainTab("cancelled"); filterCancelledRecords(); }} className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg", mainTab === "cancelled" ? "bg-red-600 text-white" : "text-gray-600 hover:bg-gray-100")}>Cancelled Bookings</button>
+        <button 
+          onClick={() => { setMainTab("active"); loadBookings(); }} 
+          className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg transition-colors", 
+            mainTab === "active" ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100")}
+        >
+          Active Bookings
+        </button>
+        <button 
+          onClick={() => { setMainTab("cancelled"); loadCancelledBookings(); }} 
+          className={cn("px-6 py-2.5 text-sm font-medium rounded-t-lg transition-colors", 
+            mainTab === "cancelled" ? "bg-red-600 text-white" : "text-gray-600 hover:bg-gray-100")}
+        >
+          Cancelled Bookings
+        </button>
       </div>
 
       {/* Active Tab Content */}
       {mainTab === "active" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Active</p><p className="text-2xl font-bold">{activeStats.total}</p></div><FileText className="h-8 w-8 opacity-80" /></div></CardContent></Card>
-            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Freight</p><p className="text-2xl font-bold">₹{activeStats.totalFreight.toLocaleString()}</p></div><DollarSign className="h-8 w-8 opacity-80" /></div></CardContent></Card>
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Total Active</p>
+                    <p className="text-2xl font-bold">{activeStats.total}</p>
+                  </div>
+                  <FileText className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Total Freight</p>
+                    <p className="text-2xl font-bold">₹{activeStats.totalFreight.toLocaleString()}</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <Card><CardHeader><CardTitle className="text-sm"><Search className="h-4 w-4 inline mr-1" />Search Active Bookings</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3"><div><Label className="text-sm">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label className="text-sm">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label className="text-sm">GR No.</Label><Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} placeholder="Enter GR Number" className="h-9 text-sm" /></div><div><Label className="text-sm">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Branches" /></SelectTrigger><SelectContent><SelectItem value="all">All Branches</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div className="flex gap-2 items-end"><Button onClick={handleSearch} className="h-9 text-sm bg-blue-600"><Search className="h-4 w-4 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm"><RefreshCw className="h-4 w-4" /></Button></div></div></CardContent></Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                <Search className="h-4 w-4 inline mr-1" />Search Active Bookings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <Label className="text-sm">From Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(searchFromDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">To Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(searchToDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">GR No.</Label>
+                  <Input 
+                    value={searchGrNo} 
+                    onChange={(e) => setSearchGrNo(e.target.value)} 
+                    placeholder="Enter GR Number" 
+                    className="h-9 text-sm" 
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Branch</Label>
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 items-end">
+                  <Button onClick={handleSearch} className="h-9 text-sm bg-blue-600" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+                    Search
+                  </Button>
+                  <Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="flex justify-end gap-2"><Button onClick={() => setViewMode("report")} variant={viewMode === "report" ? "default" : "outline"} size="sm" className="h-8 text-sm"><Table className="h-4 w-4 mr-1" />Report</Button><Button onClick={() => setViewMode("grid")} variant={viewMode === "grid" ? "default" : "outline"} size="sm" className="h-8 text-sm"><Grid3x3 className="h-4 w-4 mr-1" />Grid</Button></div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setViewMode("report")} variant={viewMode === "report" ? "default" : "outline"} size="sm" className="h-8 text-sm">
+              <FileText className="h-4 w-4 mr-1" />Report
+            </Button>
+            <Button onClick={() => setViewMode("grid")} variant={viewMode === "grid" ? "default" : "outline"} size="sm" className="h-8 text-sm">
+              <Package className="h-4 w-4 mr-1" />Grid
+            </Button>
+          </div>
 
-          {viewMode === "report" && searchResults.length > 0 && (
-            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-sm p-3">#</TableHead><TableHead className="text-sm p-3">GR No.</TableHead><TableHead className="text-sm p-3">Date</TableHead><TableHead className="text-sm p-3">From</TableHead><TableHead className="text-sm p-3">To</TableHead><TableHead className="text-sm p-3">Consignor</TableHead><TableHead className="text-sm p-3">Consignee</TableHead><TableHead className="text-sm p-3 text-right">Freight</TableHead><TableHead className="text-sm p-3 text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((r, idx) => (<TableRow key={r.id}><TableCell className="text-sm p-3">{(currentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-sm p-3 font-mono font-bold"><Badge className="bg-blue-50">{r.grNo}</Badge></TableCell><TableCell className="text-sm p-3">{format(r.bookingDate, "dd-MM-yyyy")}</TableCell><TableCell className="text-sm p-3">{r.bookingFrom}</TableCell><TableCell className="text-sm p-3">{r.destination}</TableCell><TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consignorName}</TableCell><TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consigneeName}</TableCell><TableCell className="text-sm p-3 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-sm p-3 text-center"><div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => handleEdit(r)} className="h-8 w-8 p-0 text-blue-500"><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="sm" onClick={() => openCancelDialog(r)} className="h-8 w-8 p-0 text-orange-500"><X className="h-4 w-4" /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-8 w-8 p-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></div></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
-          )}
-
-          {searchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><FileText className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No active bookings</p></CardContent></Card>)}
+          {loading ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Loader2 className="h-12 w-12 mx-auto text-blue-500 animate-spin" />
+                <p className="text-gray-500 mt-2">Loading bookings...</p>
+              </CardContent>
+            </Card>
+          ) : viewMode === "report" && searchResults.length > 0 ? (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-sm p-3">#</TableHead>
+                        <TableHead className="text-sm p-3">GR No.</TableHead>
+                        <TableHead className="text-sm p-3">Date</TableHead>
+                        <TableHead className="text-sm p-3">From</TableHead>
+                        <TableHead className="text-sm p-3">To</TableHead>
+                        <TableHead className="text-sm p-3">Consignor</TableHead>
+                        <TableHead className="text-sm p-3">Consignee</TableHead>
+                        <TableHead className="text-sm p-3 text-right">Freight</TableHead>
+                        <TableHead className="text-sm p-3 text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedResults.map((r, idx) => (
+                        <TableRow key={r._id} className="hover:bg-gray-50">
+                          <TableCell className="text-sm p-3">{(currentPage-1)*itemsPerPage+idx+1}</TableCell>
+                          <TableCell className="text-sm p-3 font-mono font-bold">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">{r.grNo}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm p-3">{format(new Date(r.bookingDate), "dd-MM-yyyy")}</TableCell>
+                          <TableCell className="text-sm p-3">{r.bookingFrom}</TableCell>
+                          <TableCell className="text-sm p-3">{r.destination}</TableCell>
+                          <TableCell className="text-sm p-3 truncate max-w-[150px]" title={r.consignorName}>
+                            {r.consignorName}
+                          </TableCell>
+                          <TableCell className="text-sm p-3 truncate max-w-[150px]" title={r.consigneeName}>
+                            {r.consigneeName}
+                          </TableCell>
+                          <TableCell className="text-sm p-3 text-right font-semibold">₹{r.totalFreight.toLocaleString()}</TableCell>
+                          <TableCell className="text-sm p-3 text-center">
+                            <div className="flex gap-1 justify-center">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleEdit(r)} 
+                                className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => openCancelDialog(r)} 
+                                className="h-8 w-8 p-0 text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleDelete(r._id!)} 
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center gap-2 p-4 border-t">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}>
+                      Previous
+                    </Button>
+                    <span className="px-4 py-2 text-sm">Page {currentPage} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : searchResults.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-gray-400" />
+                <p className="text-gray-500 mt-2">No active bookings found</p>
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       )}
 
@@ -1067,26 +1376,212 @@ export default function BookingComputerizedGRL() {
       {mainTab === "cancelled" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Cancelled</p><p className="text-2xl font-bold">{cancelledStats.total}</p></div><X className="h-8 w-8 opacity-80" /></div></CardContent></Card>
-            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Freight Lost</p><p className="text-2xl font-bold">₹{cancelledStats.totalFreight.toLocaleString()}</p></div><DollarSign className="h-8 w-8 opacity-80" /></div></CardContent></Card>
+            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Total Cancelled</p>
+                    <p className="text-2xl font-bold">{cancelledStats.total}</p>
+                  </div>
+                  <X className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+              <CardContent className="p-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Freight Lost</p>
+                    <p className="text-2xl font-bold">₹{cancelledStats.totalFreight.toLocaleString()}</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <Card><CardHeader><CardTitle className="text-sm"><Search className="h-4 w-4 inline mr-1" />Search Cancelled</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3"><div><Label className="text-sm">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label className="text-sm">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label className="text-sm">GR No.</Label><Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} className="h-9 text-sm" /></div><div><Label className="text-sm">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Branches" /></SelectTrigger><SelectContent><SelectItem value="all">All Branches</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div className="flex gap-2 items-end"><Button onClick={handleCancelledSearch} className="h-9 text-sm bg-red-600"><Search className="h-4 w-4 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm"><RefreshCw className="h-4 w-4" /></Button></div></div></CardContent></Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                <Search className="h-4 w-4 inline mr-1" />Search Cancelled Bookings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <Label className="text-sm">From Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(searchFromDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">To Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(searchToDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">GR No.</Label>
+                  <Input value={searchGrNo} onChange={(e) => setSearchGrNo(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Branch</Label>
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 items-end">
+                  <Button onClick={handleCancelledSearch} className="h-9 text-sm bg-red-600" disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+                    Search
+                  </Button>
+                  <Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {viewMode === "report" && cancelledSearchResults.length > 0 && (
-            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="text-sm p-3">#</TableHead><TableHead className="text-sm p-3">GR No.</TableHead><TableHead className="text-sm p-3">Date</TableHead><TableHead className="text-sm p-3">From</TableHead><TableHead className="text-sm p-3">To</TableHead><TableHead className="text-sm p-3">Consignor</TableHead><TableHead className="text-sm p-3">Consignee</TableHead><TableHead className="text-sm p-3 text-right">Freight</TableHead><TableHead className="text-sm p-3">Cancel Date</TableHead><TableHead className="text-sm p-3">Reason</TableHead><TableHead className="text-sm p-3 text-center">Actions</TableHead></TableRow></TableHeader><TableBody>{paginatedCancelledResults.map((r, idx) => (<TableRow key={r.id} className="bg-red-50/30"><TableCell className="text-sm p-3">{(cancelledCurrentPage-1)*itemsPerPage+idx+1}</TableCell><TableCell className="text-sm p-3"><Badge className="bg-red-50 text-red-700">{r.grNo}</Badge></TableCell><TableCell className="text-sm p-3">{format(r.bookingDate, "dd-MM-yyyy")}</TableCell><TableCell className="text-sm p-3">{r.bookingFrom}</TableCell><TableCell className="text-sm p-3">{r.destination}</TableCell><TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consignorName}</TableCell><TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consigneeName}</TableCell><TableCell className="text-sm p-3 text-right">₹{r.totalFreight.toLocaleString()}</TableCell><TableCell className="text-sm p-3">{r.cancelledDate ? format(r.cancelledDate, "dd-MM-yyyy") : "-"}</TableCell><TableCell className="text-sm p-3 truncate max-w-[150px]">{r.cancelledReason}</TableCell><TableCell className="text-sm p-3 text-center"><Button variant="ghost" size="sm" onClick={() => handleRestoreBooking(r)} className="h-8 w-8 p-0 text-green-500"><RefreshCw className="h-4 w-4" /></Button></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
-          )}
-
-          {cancelledSearchResults.length === 0 && (<Card><CardContent className="py-12 text-center"><X className="h-12 w-12 mx-auto text-gray-400" /><p className="text-gray-500">No cancelled bookings</p></CardContent></Card>)}
+          {loading ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Loader2 className="h-12 w-12 mx-auto text-red-500 animate-spin" />
+                <p className="text-gray-500 mt-2">Loading cancelled bookings...</p>
+              </CardContent>
+            </Card>
+          ) : viewMode === "report" && cancelledSearchResults.length > 0 ? (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-sm p-3">#</TableHead>
+                        <TableHead className="text-sm p-3">GR No.</TableHead>
+                        <TableHead className="text-sm p-3">Date</TableHead>
+                        <TableHead className="text-sm p-3">From</TableHead>
+                        <TableHead className="text-sm p-3">To</TableHead>
+                        <TableHead className="text-sm p-3">Consignor</TableHead>
+                        <TableHead className="text-sm p-3">Consignee</TableHead>
+                        <TableHead className="text-sm p-3 text-right">Freight</TableHead>
+                        <TableHead className="text-sm p-3">Cancel Date</TableHead>
+                        <TableHead className="text-sm p-3">Reason</TableHead>
+                        <TableHead className="text-sm p-3 text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedCancelledResults.map((r, idx) => (
+                        <TableRow key={r._id} className="bg-red-50/30 hover:bg-red-50">
+                          <TableCell className="text-sm p-3">{(cancelledCurrentPage-1)*itemsPerPage+idx+1}</TableCell>
+                          <TableCell className="text-sm p-3">
+                            <Badge variant="secondary" className="bg-red-100 text-red-700">{r.grNo}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm p-3">{format(new Date(r.bookingDate), "dd-MM-yyyy")}</TableCell>
+                          <TableCell className="text-sm p-3">{r.bookingFrom}</TableCell>
+                          <TableCell className="text-sm p-3">{r.destination}</TableCell>
+                          <TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consignorName}</TableCell>
+                          <TableCell className="text-sm p-3 truncate max-w-[150px]">{r.consigneeName}</TableCell>
+                          <TableCell className="text-sm p-3 text-right">₹{r.totalFreight.toLocaleString()}</TableCell>
+                          <TableCell className="text-sm p-3">{r.cancelledDate ? format(new Date(r.cancelledDate), "dd-MM-yyyy") : "-"}</TableCell>
+                          <TableCell className="text-sm p-3 truncate max-w-[150px]" title={r.cancelledReason}>
+                            {r.cancelledReason}
+                          </TableCell>
+                          <TableCell className="text-sm p-3 text-center">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleRestoreBooking(r)} 
+                              className="h-8 w-8 p-0 text-green-500 hover:text-green-700 hover:bg-green-50"
+                              title="Restore Booking"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {cancelledTotalPages > 1 && (
+                  <div className="flex justify-center gap-2 p-4 border-t">
+                    <Button variant="outline" size="sm" onClick={() => setCancelledCurrentPage(prev => Math.max(1, prev - 1))} disabled={cancelledCurrentPage === 1}>
+                      Previous
+                    </Button>
+                    <span className="px-4 py-2 text-sm">Page {cancelledCurrentPage} of {cancelledTotalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setCancelledCurrentPage(prev => Math.min(cancelledTotalPages, prev + 1))} disabled={cancelledCurrentPage === cancelledTotalPages}>
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : cancelledSearchResults.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <X className="h-12 w-12 mx-auto text-gray-400" />
+                <p className="text-gray-500 mt-2">No cancelled bookings found</p>
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       )}
 
       {/* Cancel Dialog */}
       <Dialog open={isCancelledDialogOpen} onOpenChange={setIsCancelledDialogOpen}>
-        <DialogContent className="z-[9999]"><DialogHeader><DialogTitle className="text-red-600 flex items-center gap-2"><X className="h-5 w-5" />Cancel Booking</DialogTitle><DialogDescription>Cancel {cancellingBooking?.grNo}?</DialogDescription></DialogHeader><div><Label>Cancellation Reason *</Label><Select value={cancelledReason} onValueChange={setCancelledReason}><SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger><SelectContent>{cancelledReasonOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><DialogFooter><Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>No, Keep</Button><Button variant="destructive" onClick={handleCancelBooking}>Yes, Cancel</Button></DialogFooter></DialogContent>
+        <DialogContent className="z-[9999]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <X className="h-5 w-5" />Cancel Booking
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel {cancellingBooking?.grNo}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-sm font-semibold">Cancellation Reason *</Label>
+            <Select value={cancelledReason} onValueChange={setCancelledReason}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select cancellation reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {cancelledReasonOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelledDialogOpen(false)}>No, Keep</Button>
+            <Button variant="destructive" onClick={handleCancelBooking} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Yes, Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
-      {/* New Consignor Dialog - Fixed z-index */}
+      {/* New Consignor Dialog */}
       <Dialog open={isNewConsignorDialogOpen} onOpenChange={setIsNewConsignorDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader>
@@ -1109,12 +1604,15 @@ export default function BookingComputerizedGRL() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewConsignorDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => addNewClient("consignor")} className="bg-blue-600">Add Consignor</Button>
+            <Button onClick={() => addNewClient("consignor")} className="bg-blue-600" disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Consignor
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* New Consignee Dialog - Fixed z-index */}
+      {/* New Consignee Dialog */}
       <Dialog open={isNewConsigneeDialogOpen} onOpenChange={setIsNewConsigneeDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader>
@@ -1136,12 +1634,15 @@ export default function BookingComputerizedGRL() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewConsigneeDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => addNewClient("consignee")} className="bg-blue-600">Add Consignee</Button>
+            <Button onClick={() => addNewClient("consignee")} className="bg-blue-600" disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Consignee
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Main Booking Modal - Fixed for Select dropdown */}
+      {/* Main Booking Modal */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="w-[95vw] max-w-6xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
@@ -1152,44 +1653,139 @@ export default function BookingComputerizedGRL() {
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 justify-end sticky top-0 bg-white py-2 z-10 border-b">
-              <Button variant="outline" size="sm" className="h-8 text-sm"><PlusCircle className="mr-1 h-4 w-4" /> Add More...</Button>
-              <Button variant="outline" size="sm" className="h-8 text-sm"><Calculator className="mr-1 h-4 w-4" /> Manual Rates</Button>
-              <Button onClick={calculateTotals} size="sm" className="h-8 text-sm bg-green-600"><Calculator className="mr-1 h-4 w-4" /> Calculate Freight</Button>
+              <Button variant="outline" size="sm" className="h-8 text-sm" onClick={addGoodsRow}>
+                <PlusCircle className="mr-1 h-4 w-4" /> Add Goods
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-sm">
+                <Calculator className="mr-1 h-4 w-4" /> Manual Rates
+              </Button>
+              <Button onClick={calculateTotals} size="sm" className="h-8 text-sm bg-green-600">
+                <Calculator className="mr-1 h-4 w-4" /> Calculate Freight
+              </Button>
             </div>
 
             {/* Basic Information */}
             <div className="border rounded-lg p-4">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-600"><FileText className="h-5 w-5" /> Basic Information</h3>
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-600">
+                <FileText className="h-5 w-5" /> Basic Information
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div><Label className="text-sm">GR #</Label><Input value={grNo} readOnly className="h-9 text-sm bg-gray-50" /></div>
-                <div><Label className="text-sm">Booking From <span className="text-red-500">*</span></Label><Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Booking Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(bookingDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={bookingDate} onSelect={(d) => d && setBookingDate(d)} /></PopoverContent></Popover></div>
-                <div><Label className="text-sm">Destination <span className="text-red-500">*</span></Label><Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Pickup From</Label><Input value={pickupFrom} onChange={(e) => setPickupFrom(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Delivery Point</Label><Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Booking Type <span className="text-red-500">*</span></Label><Select value={bookingType} onValueChange={setBookingType}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{bookingTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label className="text-sm">Collection At <span className="text-red-500">*</span></Label><Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Pvt Marka/Seal No</Label><Input value={pvtMarkaSealNo} onChange={(e) => setPvtMarkaSealNo(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Service/Product <span className="text-red-500">*</span></Label><Select value={serviceProduct} onValueChange={setServiceProduct}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{serviceProductOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label className="text-sm">Delivery Type <span className="text-red-500">*</span></Label><Select value={deliveryType} onValueChange={setDeliveryType}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{deliveryTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label className="text-sm">Load Type <span className="text-red-500">*</span></Label><Select value={loadType} onValueChange={setLoadType}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{loadTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label className="text-sm">MKT. Executive</Label><Input value={mkExecutive} onChange={(e) => setMkExecutive(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Freight On</Label><Select value={freightOn} onValueChange={setFreightOn}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
-                <div className="flex items-center"><label className="flex items-center gap-2"><input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="h-4 w-4 rounded" /><span className="text-sm">Manual Rates</span></label></div>
+                <div>
+                  <Label className="text-sm">GR #</Label>
+                  <Input value={grNo} readOnly className="h-9 text-sm bg-gray-50" placeholder="Auto-generated" />
+                </div>
+                <div>
+                  <Label className="text-sm">Booking From <span className="text-red-500">*</span></Label>
+                  <Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-9 text-sm" placeholder="Enter source branch" />
+                </div>
+                <div>
+                  <Label className="text-sm">Booking Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(bookingDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={bookingDate} onSelect={(d) => d && setBookingDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-sm">Destination <span className="text-red-500">*</span></Label>
+                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-9 text-sm" placeholder="Enter destination" />
+                </div>
+                <div>
+                  <Label className="text-sm">Pickup From</Label>
+                  <Input value={pickupFrom} onChange={(e) => setPickupFrom(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Delivery Point</Label>
+                  <Input value={deliveryPoint} onChange={(e) => setDeliveryPoint(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Booking Type <span className="text-red-500">*</span></Label>
+                  <Select value={bookingType} onValueChange={setBookingType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{bookingTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Collection At <span className="text-red-500">*</span></Label>
+                  <Input value={collectionAt} onChange={(e) => setCollectionAt(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Pvt Marka/Seal No</Label>
+                  <Input value={pvtMarkaSealNo} onChange={(e) => setPvtMarkaSealNo(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Service/Product <span className="text-red-500">*</span></Label>
+                  <Select value={serviceProduct} onValueChange={setServiceProduct}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{serviceProductOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Delivery Type <span className="text-red-500">*</span></Label>
+                  <Select value={deliveryType} onValueChange={setDeliveryType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{deliveryTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Load Type <span className="text-red-500">*</span></Label>
+                  <Select value={loadType} onValueChange={setLoadType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{loadTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">MKT. Executive</Label>
+                  <Input value={mkExecutive} onChange={(e) => setMkExecutive(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-sm">Freight On</Label>
+                  <Select value={freightOn} onValueChange={setFreightOn}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="h-4 w-4 rounded" />
+                    <span className="text-sm">Manual Rates</span>
+                  </label>
+                </div>
               </div>
             </div>
 
-            {/* Consignor Selection Section */}
+            {/* Consignor Section */}
             <div className="border rounded-lg p-4 bg-blue-50/30">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700"><Building className="h-5 w-5" />Consignor Details</h3>
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                <Building className="h-5 w-5" />Consignor Details
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div><Label className="text-sm">Select ID Type</Label><Select value={consignorIdType} onValueChange={setConsignorIdType}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-                {consignorIdType !== "Self" && (
-                  <div><Label className="text-sm">Enter ID Value</Label><Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" /></div>
+                <div>
+                  <Label className="text-sm">Select ID Type</Label>
+                  <Select value={consignorIdType} onValueChange={setConsignorIdType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                {consignorIdType !== "Self" && consignorIdType !== "" && (
+                  <div>
+                    <Label className="text-sm">Enter ID Value</Label>
+                    <Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                  </div>
                 )}
-                <div className="flex items-end"><Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600"><Search className="h-4 w-4 mr-1" />Search / Add</Button></div>
+                <div className="flex items-end">
+                  <Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600">
+                    <Search className="h-4 w-4 mr-1" />Search / Add
+                  </Button>
+                </div>
               </div>
-              {consignorName && consignorIdType !== "Self" && (
+              {consignorName && consignorIdType !== "Self" && consignorName !== "Self" && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
                   <div><strong>Name:</strong> {consignorName}</div>
                   <div><strong>Mobile:</strong> {consignorMobile}</div>
@@ -1200,7 +1796,6 @@ export default function BookingComputerizedGRL() {
                 <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
               )}
               
-              {/* Collapsible Address Section for Consignor */}
               <button
                 onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
                 className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
@@ -1220,17 +1815,32 @@ export default function BookingComputerizedGRL() {
               )}
             </div>
 
-            {/* Consignee Selection Section */}
+            {/* Consignee Section */}
             <div className="border rounded-lg p-4 bg-green-50/30">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700"><Users className="h-5 w-5" />Consignee Details</h3>
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700">
+                <Users className="h-5 w-5" />Consignee Details
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div><Label className="text-sm">Select ID Type</Label><Select value={consigneeIdType} onValueChange={setConsigneeIdType}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent></Select></div>
-                {consigneeIdType !== "Self" && (
-                  <div><Label className="text-sm">Enter ID Value</Label><Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" /></div>
+                <div>
+                  <Label className="text-sm">Select ID Type</Label>
+                  <Select value={consigneeIdType} onValueChange={setConsigneeIdType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                {consigneeIdType !== "Self" && consigneeIdType !== "" && (
+                  <div>
+                    <Label className="text-sm">Enter ID Value</Label>
+                    <Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                  </div>
                 )}
-                <div className="flex items-end"><Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600"><Search className="h-4 w-4 mr-1" />Search / Add</Button></div>
+                <div className="flex items-end">
+                  <Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600">
+                    <Search className="h-4 w-4 mr-1" />Search / Add
+                  </Button>
+                </div>
               </div>
-              {consigneeName && consigneeIdType !== "Self" && (
+              {consigneeName && consigneeIdType !== "Self" && consigneeName !== "Self" && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
                   <div><strong>Name:</strong> {consigneeName}</div>
                   <div><strong>Mobile:</strong> {consigneeMobile}</div>
@@ -1241,7 +1851,6 @@ export default function BookingComputerizedGRL() {
                 <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
               )}
               
-              {/* Collapsible Address Section for Consignee */}
               <button
                 onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
                 className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
@@ -1264,8 +1873,12 @@ export default function BookingComputerizedGRL() {
             {/* Goods Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="text-base font-semibold flex items-center gap-2"><Package className="h-5 w-5" /> GOODS DETAILS</h3>
-                <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm"><Plus className="mr-1 h-4 w-4" />ADD GOODS</Button>
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Package className="h-5 w-5" /> GOODS DETAILS
+                </h3>
+                <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm">
+                  <Plus className="mr-1 h-4 w-4" />ADD GOODS
+                </Button>
               </div>
               <div className="overflow-x-auto p-4">
                 <Table>
@@ -1288,34 +1901,57 @@ export default function BookingComputerizedGRL() {
                       return (
                         <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
                           <TableCell className="text-sm">{idx + 1}</TableCell>
-                          <TableCell><Input type="number" value={item.noOfPckgs} onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} className="h-8 w-24 text-sm" /></TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              value={item.noOfPckgs} 
+                              onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
+                              className="h-8 w-24 text-sm" 
+                            />
+                          </TableCell>
                           <TableCell>
                             <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
                               <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                              <SelectContent>{contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}</SelectContent>
+                              <SelectContent>
+                                {contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
+                              </SelectContent>
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Select value={item.contentSubCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} disabled={!item.contentCategory}>
+                            <Select 
+                              value={item.contentSubCategory} 
+                              onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
+                              disabled={!item.contentCategory}
+                            >
                               <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
                               <SelectContent>
-                                {selectedCategory?.subCategories.map(sub => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
+                                {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
                               </SelectContent>
                             </Select>
                           </TableCell>
                           <TableCell>
                             <Select value={item.packing} onValueChange={(val) => updateGoodsItem(item.id, "packing", val)}>
                               <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
-                              <SelectContent>{packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}</SelectContent>
+                              <SelectContent>
+                                {packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}
+                              </SelectContent>
                             </Select>
                           </TableCell>
-                          <TableCell><Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" /></TableCell>
-                          <TableCell><Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" /></TableCell>
+                          <TableCell>
+                            <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                          </TableCell>
+                          <TableCell>
+                            <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                          </TableCell>
                           <TableCell>
                             {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
-                            {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm">✓ Valid</span>}
+                            {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm flex items-center gap-1"><CheckCircle className="h-4 w-4" />Valid</span>}
                           </TableCell>
-                          <TableCell><Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -1333,10 +1969,17 @@ export default function BookingComputerizedGRL() {
             {/* Invoices Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="text-base font-semibold flex items-center gap-2"><FileText className="h-5 w-5" /> INVOICES</h3>
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <FileText className="h-5 w-5" /> INVOICES
+                </h3>
                 <div className="flex gap-3 items-center">
-                  <label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" /><span className="text-sm">NCV</span></label>
-                  <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm"><Plus className="mr-1 h-4 w-4" />ADD INVOICE</Button>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" />
+                    <span className="text-sm">NCV</span>
+                  </label>
+                  <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm">
+                    <Plus className="mr-1 h-4 w-4" />ADD INVOICE
+                  </Button>
                 </div>
               </div>
               <div className="overflow-x-auto p-4">
@@ -1358,12 +2001,40 @@ export default function BookingComputerizedGRL() {
                       <TableRow key={inv.id}>
                         <TableCell className="text-sm">{idx + 1}</TableCell>
                         <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                        <TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-sm"><CalendarIcon className="mr-1 h-4 w-4" />{format(inv.date, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} /></PopoverContent></Popover></TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                <CalendarIcon className="mr-1 h-4 w-4" />
+                                {format(inv.date, "dd-MM-yyyy")}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="z-[10000]">
+                              <Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} />
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
                         <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-8 w-24 text-sm" /></TableCell>
                         <TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                        <TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-sm"><CalendarIcon className="mr-1 h-4 w-4" />{format(inv.ewayBillDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} /></PopoverContent></Popover></TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                <CalendarIcon className="mr-1 h-4 w-4" />
+                                {format(inv.ewayBillDate, "dd-MM-yyyy")}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="z-[10000]">
+                              <Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} />
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
                         <TableCell><Input value={inv.validUpto} onChange={(e) => updateInvoice(inv.id, "validUpto", e.target.value)} className="h-8 w-24 text-sm" placeholder="Valid upto" /></TableCell>
-                        <TableCell><Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1373,7 +2044,9 @@ export default function BookingComputerizedGRL() {
 
             {/* Remarks Section */}
             <div className="border rounded-lg p-4">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Remarks & Billing</h3>
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" /> Remarks & Billing
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" /></div>
                 <div><Label className="text-sm">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" /></div>
@@ -1385,11 +2058,32 @@ export default function BookingComputerizedGRL() {
 
             {/* Insurance Section */}
             <div className="border rounded-lg p-4">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2"><Shield className="h-5 w-5" /> Insurance Details</h3>
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <Shield className="h-5 w-5" /> Insurance Details
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div><Label className="text-sm">Insurance Covered By</Label><Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent></Select></div>
+                <div>
+                  <Label className="text-sm">Insurance Covered By</Label>
+                  <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
                 <div><Label className="text-sm">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Insurance Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm"><CalendarIcon className="mr-2 h-4 w-4" />{format(insuranceDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} /></PopoverContent></Popover></div>
+                <div>
+                  <Label className="text-sm">Insurance Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(insuranceDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" /></div>
               </div>
             </div>
@@ -1398,14 +2092,29 @@ export default function BookingComputerizedGRL() {
           {/* Footer Buttons */}
           <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex flex-wrap justify-between items-center gap-3 shrink-0">
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} className="h-4 w-4 rounded" /><span className="text-sm">Print After Save</span></label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={ccAttached} onChange={(e) => setCcAttached(e.target.checked)} className="h-4 w-4 rounded" /><span className="text-sm">CC Attached</span></label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} className="h-4 w-4 rounded" />
+                <span className="text-sm">Print After Save</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={ccAttached} onChange={(e) => setCcAttached(e.target.checked)} className="h-4 w-4 rounded" />
+                <span className="text-sm">CC Attached</span>
+              </label>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handlePrint} className="h-9 text-sm"><Printer className="mr-1 h-4 w-4" /> Print</Button>
-              <Button variant="outline" onClick={handleClear} className="h-9 text-sm"><RefreshCw className="mr-1 h-4 w-4" /> Clear</Button>
-              <Button variant="outline" onClick={() => setIsBookingModalOpen(false)} className="h-9 text-sm"><X className="mr-1 h-4 w-4" /> Cancel</Button>
-              <Button onClick={handleSave} disabled={loading} className="h-9 text-sm bg-blue-600 hover:bg-blue-700"><Save className="mr-1 h-4 w-4" />{editMode ? "Update" : "Save"}</Button>
+              <Button variant="outline" onClick={handlePrint} className="h-9 text-sm">
+                <Printer className="mr-1 h-4 w-4" /> Print
+              </Button>
+              <Button variant="outline" onClick={handleClear} className="h-9 text-sm">
+                <RefreshCw className="mr-1 h-4 w-4" /> Clear
+              </Button>
+              <Button variant="outline" onClick={() => setIsBookingModalOpen(false)} className="h-9 text-sm">
+                <X className="mr-1 h-4 w-4" /> Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={loading} className="h-9 text-sm bg-blue-600 hover:bg-blue-700">
+                {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+                {editMode ? "Update" : "Save"}
+              </Button>
             </div>
           </div>
         </DialogContent>

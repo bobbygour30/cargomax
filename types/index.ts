@@ -1,6 +1,8 @@
 // types/index.ts
+// types/index.ts - Update Employee interface
 export interface Employee {
-  id: string;
+  _id?: string;        // MongoDB ID
+  id?: string;         // For compatibility
   employeeId: string;
   firstName: string;
   lastName: string;
@@ -10,21 +12,18 @@ export interface Employee {
   gender: 'Male' | 'Female' | 'Other';
   maritalStatus: 'Single' | 'Married' | 'Divorced' | 'Widowed';
   nationality: string;
-  profilePicture?: string; // Optional is fine
-  
+  profilePicture?: string;
   hireDate: string;
   confirmationDate?: string;
   terminationDate?: string;
   employmentStatus: 'Active' | 'On Leave' | 'Terminated' | 'Resigned' | 'Retired';
   employmentType: 'Permanent' | 'Contract' | 'Intern' | 'Temporary' | 'Consultant';
-  
   departmentId: string;
   departmentName: string;
   designationId: string;
   designation: string;
   reportingTo?: string;
   managerName?: string;
-  
   address?: {
     street: string;
     city: string;
@@ -32,7 +31,6 @@ export interface Employee {
     country: string;
     zipCode: string;
   };
-  
   emergencyContact?: {
     name: string;
     relationship: string;
