@@ -35,7 +35,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -112,6 +111,13 @@ interface InvoiceItem {
   validUpto: string;
 }
 
+interface ExtraCharge {
+  id: number;
+  name: string;
+  rate: number;
+  amount: number;
+}
+
 interface ClientData {
   _id?: string;
   id?: number;
@@ -182,7 +188,6 @@ interface BookingRecord {
   totalFreight: number;
   remarks: string;
   roRemarks: string;
-  gpRemarks: string;
   billNo: string;
   supplementaryBillNo: string;
   insuranceCoveredBy: string;
@@ -241,17 +246,52 @@ const cancelledReasonOptions = [
 
 const idTypeOptions = ["Self", "GST Number", "Adhaar Number", "PAN Number"];
 
+// Extra charges configuration
+const EXTRA_CHARGES = [
+  { id: 1, name: "PF CHARGE", defaultRate: 0 },
+  { id: 2, name: "DOCKET CHARGE", defaultRate: 100 },
+  { id: 3, name: "HAMALI CHARGE", defaultRate: 0 },
+  { id: 4, name: "GREEN TAX CHARGE", defaultRate: 0 },
+  { id: 5, name: "DOOR DELIVERY", defaultRate: 0 },
+  { id: 6, name: "OTHER CHARGES", defaultRate: 0 },
+];
+
+const gstPaidByOptions = [
+  { value: "CONSIGNOR", label: "CONSIGNOR" },
+  { value: "CONSIGNEE", label: "CONSIGNEE" },
+  { value: "THIRD_PARTY", label: "THIRD PARTY" },
+];
+
 export default function BookingComputerizedGRL() {
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<string | null>(null);
-  const [activeFormTab, setActiveFormTab] = useState<string>("consignor");
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "report">("report");
   const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState<BookingRecord | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
+
+  // Freight calculation states
+  const [freightRate, setFreightRate] = useState<number>(0);
+  const [calculatedFreight, setCalculatedFreight] = useState<number>(0);
+  const [extraCharges, setExtraCharges] = useState<ExtraCharge[]>(() =>
+    EXTRA_CHARGES.map(charge => ({
+      ...charge,
+      rate: charge.defaultRate,
+      amount: charge.defaultRate
+    }))
+  );
+  const [gstPaidBy, setGstPaidBy] = useState<string>("CONSIGNEE");
+  const [gstRate, setGstRate] = useState<number>(0);
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  
+  // Calculation totals
+  const [subTotal, setSubTotal] = useState<number>(0);
+  const [gstAmount, setGstAmount] = useState<number>(0);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [balanceAmount, setBalanceAmount] = useState<number>(0);
 
   // Static data from API
   const [contentCategories, setContentCategories] = useState<any[]>([]);
@@ -273,15 +313,15 @@ export default function BookingComputerizedGRL() {
   const [consignorIdValue, setConsignorIdValue] = useState<string>("");
   const [consignorId, setConsignorId] = useState<string>("");
   const [consignorName, setConsignorName] = useState<string>("");
+  const [consignorMobile, setConsignorMobile] = useState<string>("");
   const [consignorGst, setConsignorGst] = useState<string>("");
   const [consignorAdhaar, setConsignorAdhaar] = useState<string>("");
   const [consignorPan, setConsignorPan] = useState<string>("");
-  const [consignorMobile, setConsignorMobile] = useState<string>("");
-  const [consignorEmail, setConsignorEmail] = useState<string>("");
   const [consignorDealerCode, setConsignorDealerCode] = useState<string>("");
   const [consignorAddress, setConsignorAddress] = useState<string>("");
   const [consignorCity, setConsignorCity] = useState<string>("");
   const [consignorState, setConsignorState] = useState<string>("");
+  const [consignorEmail, setConsignorEmail] = useState<string>("");
   const [consignorIec, setConsignorIec] = useState<string>("");
   const [consignorBankAd, setConsignorBankAd] = useState<string>("");
 
@@ -290,15 +330,15 @@ export default function BookingComputerizedGRL() {
   const [consigneeIdValue, setConsigneeIdValue] = useState<string>("");
   const [consigneeId, setConsigneeId] = useState<string>("");
   const [consigneeName, setConsigneeName] = useState<string>("");
+  const [consigneeMobile, setConsigneeMobile] = useState<string>("");
   const [consigneeGst, setConsigneeGst] = useState<string>("");
   const [consigneeAdhaar, setConsigneeAdhaar] = useState<string>("");
   const [consigneePan, setConsigneePan] = useState<string>("");
-  const [consigneeMobile, setConsigneeMobile] = useState<string>("");
-  const [consigneeEmail, setConsigneeEmail] = useState<string>("");
   const [consigneeDealerCode, setConsigneeDealerCode] = useState<string>("");
   const [consigneeAddress, setConsigneeAddress] = useState<string>("");
   const [consigneeCity, setConsigneeCity] = useState<string>("");
   const [consigneeState, setConsigneeState] = useState<string>("");
+  const [consigneeEmail, setConsigneeEmail] = useState<string>("");
   const [consigneeIec, setConsigneeIec] = useState<string>("");
   const [consigneeEximCode, setConsigneeEximCode] = useState<string>("");
 
@@ -335,7 +375,6 @@ export default function BookingComputerizedGRL() {
   // Remarks
   const [remarks, setRemarks] = useState<string>("");
   const [roRemarks, setRoRemarks] = useState<string>("");
-  const [gpRemarks, setGpRemarks] = useState<string>("");
   const [billNo, setBillNo] = useState<string>("");
   const [supplementaryBillNo, setSupplementaryBillNo] = useState<string>("");
 
@@ -367,6 +406,56 @@ export default function BookingComputerizedGRL() {
   // Stats
   const [stats, setStats] = useState({ active: { count: 0, totalFreight: 0 }, cancelled: { count: 0, totalFreight: 0 } });
 
+  // Calculate all freight and charges
+  const calculateAllTotals = () => {
+    // 1. Calculate freight based on charge weight and rate
+    let freight = 0;
+    if (freightOn === "CHARGE WEIGHT") {
+      freight = totalChargeWeight * freightRate;
+    } else if (freightOn === "ACTUAL WEIGHT") {
+      freight = totalActualWeight * freightRate;
+    } else if (freightOn === "PER PACKAGE") {
+      freight = totalPckgs * freightRate;
+    }
+    
+    setCalculatedFreight(freight);
+    setTotalFreight(freight);
+    
+    // 2. Calculate extra charges total
+    const extraChargesTotal = extraCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+    
+    // 3. Calculate subtotal (Freight + Extra Charges)
+    const subtotal = freight + extraChargesTotal;
+    setSubTotal(subtotal);
+    
+    // 4. Calculate GST
+    const gst = (subtotal * gstRate) / 100;
+    setGstAmount(gst);
+    
+    // 5. Calculate total
+    const total = subtotal + gst;
+    setTotalAmount(total);
+    
+    // 6. Calculate balance
+    const balance = total - advanceAmount;
+    setBalanceAmount(balance > 0 ? balance : 0);
+  };
+
+  // Update extra charge amount when rate changes
+  const updateExtraCharge = (id: number, rate: number) => {
+    setExtraCharges(prev => 
+      prev.map(charge => 
+        charge.id === id ? { ...charge, rate, amount: rate } : charge
+      )
+    );
+  };
+
+  // Clear freight (reset rate to 0)
+  const handleClearFreight = () => {
+    setFreightRate(0);
+    toast.success("Freight rate cleared");
+  };
+
   // Load static data on mount
   useEffect(() => {
     loadStaticData();
@@ -379,6 +468,13 @@ export default function BookingComputerizedGRL() {
   useEffect(() => {
     calculateTotals();
   }, [goodsItems]);
+
+  // Recalculate all freight calculations when dependencies change
+  useEffect(() => {
+    if (manualRates) {
+      calculateAllTotals();
+    }
+  }, [totalChargeWeight, totalActualWeight, totalPckgs, freightRate, freightOn, extraCharges, gstRate, advanceAmount, manualRates]);
 
   const loadStaticData = async () => {
     try {
@@ -470,7 +566,6 @@ export default function BookingComputerizedGRL() {
     setTotalPckgs(pckgs);
     setTotalActualWeight(actWeight);
     setTotalChargeWeight(chgWeight);
-    setTotalFreight(chgWeight * 5);
   };
 
   const updateGoodsItem = (id: number, field: keyof GoodsItem, value: any) => {
@@ -541,15 +636,15 @@ export default function BookingComputerizedGRL() {
     if (consignorIdType === "Self") {
       setConsignorId("self");
       setConsignorName("Self");
+      setConsignorMobile("");
       setConsignorGst("");
       setConsignorAdhaar("");
       setConsignorPan("");
-      setConsignorMobile("");
-      setConsignorEmail("");
       setConsignorDealerCode("");
       setConsignorAddress("");
       setConsignorCity("");
       setConsignorState("");
+      setConsignorEmail("");
       setConsignorIec("");
       setConsignorBankAd("");
       toast.success("Self selected - No ID required");
@@ -566,15 +661,15 @@ export default function BookingComputerizedGRL() {
         const client = response.data;
         setConsignorId(client._id || "");
         setConsignorName(client.name);
+        setConsignorMobile(client.mobile || "");
         setConsignorGst(client.gstNumber || "");
         setConsignorAdhaar(client.adhaarNumber || "");
         setConsignorPan(client.panNumber || "");
-        setConsignorMobile(client.mobile || "");
-        setConsignorEmail(client.email || "");
         setConsignorDealerCode(client.dealerCode || "");
         setConsignorAddress(client.address || "");
         setConsignorCity(client.city || "");
         setConsignorState(client.state || "");
+        setConsignorEmail(client.email || "");
         setConsignorIec(client.iecCode || "");
         setConsignorBankAd(client.bankAdNo || "");
         toast.success(`Consignor "${client.name}" loaded successfully!`);
@@ -589,6 +684,10 @@ export default function BookingComputerizedGRL() {
     }
   };
 
+  const handleConsignorAdd = () => {
+    setIsNewConsignorDialogOpen(true);
+  };
+
   const handleConsigneeSearch = async () => {
     if (!consigneeIdType) {
       toast.error("Please select ID type");
@@ -597,15 +696,15 @@ export default function BookingComputerizedGRL() {
     if (consigneeIdType === "Self") {
       setConsigneeId("self");
       setConsigneeName("Self");
+      setConsigneeMobile("");
       setConsigneeGst("");
       setConsigneeAdhaar("");
       setConsigneePan("");
-      setConsigneeMobile("");
-      setConsigneeEmail("");
       setConsigneeDealerCode("");
       setConsigneeAddress("");
       setConsigneeCity("");
       setConsigneeState("");
+      setConsigneeEmail("");
       setConsigneeIec("");
       setConsigneeEximCode("");
       toast.success("Self selected - No ID required");
@@ -622,15 +721,15 @@ export default function BookingComputerizedGRL() {
         const client = response.data;
         setConsigneeId(client._id || "");
         setConsigneeName(client.name);
+        setConsigneeMobile(client.mobile || "");
         setConsigneeGst(client.gstNumber || "");
         setConsigneeAdhaar(client.adhaarNumber || "");
         setConsigneePan(client.panNumber || "");
-        setConsigneeMobile(client.mobile || "");
-        setConsigneeEmail(client.email || "");
         setConsigneeDealerCode(client.dealerCode || "");
         setConsigneeAddress(client.address || "");
         setConsigneeCity(client.city || "");
         setConsigneeState(client.state || "");
+        setConsigneeEmail(client.email || "");
         setConsigneeIec(client.iecCode || "");
         toast.success(`Consignee "${client.name}" loaded successfully!`);
       } else {
@@ -644,6 +743,10 @@ export default function BookingComputerizedGRL() {
     }
   };
 
+  const handleConsigneeAdd = () => {
+    setIsNewConsigneeDialogOpen(true);
+  };
+
   const addNewClient = async (type: "consignor" | "consignee") => {
     if (!newClientData.name) {
       toast.error("Please enter client name");
@@ -653,13 +756,13 @@ export default function BookingComputerizedGRL() {
     try {
       const response = await createClient({
         name: newClientData.name,
+        mobile: newClientData.mobile || "",
         gstNumber: newClientData.gstNumber || "",
         adhaarNumber: newClientData.adhaarNumber || "",
         panNumber: newClientData.panNumber || "",
         address: newClientData.address || "",
         city: newClientData.city || "",
         state: newClientData.state || "",
-        mobile: newClientData.mobile || "",
         email: newClientData.email || "",
         dealerCode: newClientData.dealerCode || "",
         iecCode: newClientData.iecCode || "",
@@ -672,15 +775,15 @@ export default function BookingComputerizedGRL() {
       if (type === "consignor") {
         setConsignorId(newClient._id || "");
         setConsignorName(newClient.name);
+        setConsignorMobile(newClient.mobile || "");
         setConsignorGst(newClient.gstNumber);
         setConsignorAdhaar(newClient.adhaarNumber);
         setConsignorPan(newClient.panNumber);
-        setConsignorMobile(newClient.mobile);
-        setConsignorEmail(newClient.email);
         setConsignorDealerCode(newClient.dealerCode);
         setConsignorAddress(newClient.address);
         setConsignorCity(newClient.city);
         setConsignorState(newClient.state);
+        setConsignorEmail(newClient.email);
         setConsignorIec(newClient.iecCode);
         setConsignorBankAd(newClient.bankAdNo);
         setIsNewConsignorDialogOpen(false);
@@ -688,15 +791,15 @@ export default function BookingComputerizedGRL() {
       } else {
         setConsigneeId(newClient._id || "");
         setConsigneeName(newClient.name);
+        setConsigneeMobile(newClient.mobile || "");
         setConsigneeGst(newClient.gstNumber);
         setConsigneeAdhaar(newClient.adhaarNumber);
         setConsigneePan(newClient.panNumber);
-        setConsigneeMobile(newClient.mobile);
-        setConsigneeEmail(newClient.email);
         setConsigneeDealerCode(newClient.dealerCode);
         setConsigneeAddress(newClient.address);
         setConsigneeCity(newClient.city);
         setConsigneeState(newClient.state);
+        setConsigneeEmail(newClient.email);
         setConsigneeIec(newClient.iecCode);
         setIsNewConsigneeDialogOpen(false);
         toast.success(`Consignee "${newClient.name}" added successfully!`);
@@ -740,19 +843,35 @@ export default function BookingComputerizedGRL() {
     setPrintAfterSave(false);
     setCcAttached(false);
     
+    // Reset freight calculation states
+    setFreightRate(0);
+    setCalculatedFreight(0);
+    setGstRate(0);
+    setAdvanceAmount(0);
+    setGstPaidBy("CONSIGNEE");
+    setExtraCharges(EXTRA_CHARGES.map(charge => ({
+      ...charge,
+      rate: charge.defaultRate,
+      amount: charge.defaultRate
+    })));
+    setSubTotal(0);
+    setGstAmount(0);
+    setTotalAmount(0);
+    setBalanceAmount(0);
+    
     setConsignorIdType("");
     setConsignorIdValue("");
     setConsignorId("");
     setConsignorName("");
+    setConsignorMobile("");
     setConsignorGst("");
     setConsignorAdhaar("");
     setConsignorPan("");
-    setConsignorMobile("");
-    setConsignorEmail("");
     setConsignorDealerCode("");
     setConsignorAddress("");
     setConsignorCity("");
     setConsignorState("");
+    setConsignorEmail("");
     setConsignorIec("");
     setConsignorBankAd("");
     
@@ -760,15 +879,15 @@ export default function BookingComputerizedGRL() {
     setConsigneeIdValue("");
     setConsigneeId("");
     setConsigneeName("");
+    setConsigneeMobile("");
     setConsigneeGst("");
     setConsigneeAdhaar("");
     setConsigneePan("");
-    setConsigneeMobile("");
-    setConsigneeEmail("");
     setConsigneeDealerCode("");
     setConsigneeAddress("");
     setConsigneeCity("");
     setConsigneeState("");
+    setConsigneeEmail("");
     setConsigneeIec("");
     setConsigneeEximCode("");
     
@@ -776,7 +895,6 @@ export default function BookingComputerizedGRL() {
     setInvoices([{ id: Date.now(), invoiceNo: "", date: new Date(), value: "0", ewayBillNo: "", ewayBillDate: new Date(), validUpto: "" }]);
     setRemarks("");
     setRoRemarks("");
-    setGpRemarks("");
     setBillNo("");
     setSupplementaryBillNo("");
     setInsuranceCoveredBy("");
@@ -789,7 +907,6 @@ export default function BookingComputerizedGRL() {
     setTotalFreight(0);
     setEditMode(false);
     setCurrentEditId(null);
-    setActiveFormTab("consignor");
     setIsConsignorAddressOpen(false);
     setIsConsigneeAddressOpen(false);
   };
@@ -813,6 +930,26 @@ export default function BookingComputerizedGRL() {
       toast.error("Please select Consignee"); 
       return; 
     }
+    if (!bookingType) { 
+      toast.error("Please select Booking Type"); 
+      return; 
+    }
+    if (!collectionAt) { 
+      toast.error("Please enter Collection At"); 
+      return; 
+    }
+    if (!serviceProduct) { 
+      toast.error("Please select Service/Product"); 
+      return; 
+    }
+    if (!deliveryType) { 
+      toast.error("Please select Delivery Type"); 
+      return; 
+    }
+    if (!loadType) { 
+      toast.error("Please select Load Type"); 
+      return; 
+    }
     
     const hasWeightError = goodsItems.some(item => !item.isWeightValid);
     if (hasWeightError) {
@@ -826,41 +963,41 @@ export default function BookingComputerizedGRL() {
       bookingFrom, 
       bookingDate, 
       destination, 
-      pickupFrom, 
-      deliveryPoint,
+      pickupFrom: pickupFrom || "",
+      deliveryPoint: deliveryPoint || "",
       bookingType, 
       collectionAt,
       consignorId: consignorId === "self" ? "" : consignorId,
       consignorName, 
-      consignorGst, 
-      consignorAdhaar, 
-      consignorPan,
-      consignorMobile, 
-      consignorEmail, 
-      consignorDealerCode, 
-      consignorAddress,
-      consignorCity, 
-      consignorState, 
-      consignorIec, 
-      consignorBankAd,
+      consignorMobile: consignorMobile || "",
+      consignorGst: consignorGst || "",
+      consignorAdhaar: consignorAdhaar || "",
+      consignorPan: consignorPan || "",
+      consignorDealerCode: consignorDealerCode || "",
+      consignorAddress: consignorAddress || "",
+      consignorCity: consignorCity || "",
+      consignorState: consignorState || "",
+      consignorEmail: consignorEmail || "",
+      consignorIec: consignorIec || "",
+      consignorBankAd: consignorBankAd || "",
       consigneeId: consigneeId === "self" ? "" : consigneeId,
       consigneeName, 
-      consigneeGst, 
-      consigneeAdhaar, 
-      consigneePan,
-      consigneeMobile, 
-      consigneeEmail, 
-      consigneeDealerCode, 
-      consigneeAddress,
-      consigneeCity, 
-      consigneeState, 
-      consigneeIec, 
-      consigneeEximCode,
-      pvtMarkaSealNo, 
+      consigneeMobile: consigneeMobile || "",
+      consigneeGst: consigneeGst || "",
+      consigneeAdhaar: consigneeAdhaar || "",
+      consigneePan: consigneePan || "",
+      consigneeDealerCode: consigneeDealerCode || "",
+      consigneeAddress: consigneeAddress || "",
+      consigneeCity: consigneeCity || "",
+      consigneeState: consigneeState || "",
+      consigneeEmail: consigneeEmail || "",
+      consigneeIec: consigneeIec || "",
+      consigneeEximCode: consigneeEximCode || "",
+      pvtMarkaSealNo: pvtMarkaSealNo || "",
       serviceProduct, 
       deliveryType, 
       loadType, 
-      mkExecutive, 
+      mkExecutive: mkExecutive || "",
       freightOn,
       manualRates, 
       ncv, 
@@ -869,25 +1006,34 @@ export default function BookingComputerizedGRL() {
       totalPckgs, 
       totalActualWeight, 
       totalChargeWeight, 
-      totalFreight,
-      remarks, 
-      roRemarks, 
-      gpRemarks, 
-      billNo, 
-      supplementaryBillNo,
-      insuranceCoveredBy, 
-      insuranceNo, 
+      totalFreight: manualRates ? calculatedFreight : totalChargeWeight * 5,
+      remarks: remarks || "",
+      roRemarks: roRemarks || "",
+      billNo: billNo || "",
+      supplementaryBillNo: supplementaryBillNo || "",
+      insuranceCoveredBy: insuranceCoveredBy || "",
+      insuranceNo: insuranceNo || "",
       insuranceDate, 
-      insuranceCompany,
+      insuranceCompany: insuranceCompany || "",
       goodsItems: goodsItems.map(({ id, ...rest }) => rest),
       invoices: invoices.map(({ id, ...rest }) => ({ 
         ...rest, 
         date: rest.date, 
         ewayBillDate: rest.ewayBillDate 
       })),
+      // Freight calculation data (only if manual rates is enabled)
+      ...(manualRates && {
+        freightRate,
+        extraCharges,
+        gstPaidBy,
+        gstRate,
+        advanceAmount,
+        subTotal,
+        gstAmount,
+        totalAmount,
+        balanceAmount,
+      }),
     };
-
-    console.log("Sending booking data:", JSON.stringify(bookingData, null, 2));
 
     try {
       let response;
@@ -907,8 +1053,6 @@ export default function BookingComputerizedGRL() {
       setIsBookingModalOpen(false);
     } catch (error: any) {
       console.error('Save error:', error);
-      console.error('Error response:', error.response?.data);
-      
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else if (error.message) {
@@ -1053,36 +1197,36 @@ export default function BookingComputerizedGRL() {
     setLoadType(record.loadType);
     setMkExecutive(record.mkExecutive);
     setFreightOn(record.freightOn || "CHARGE WEIGHT");
-    setManualRates(record.manualRates);
+    setManualRates(record.manualRates || false);
     setNcv(record.ncv);
     setPrintAfterSave(record.printAfterSave);
     setCcAttached(record.ccAttached);
     
     setConsignorId(String(record.consignorId));
     setConsignorName(record.consignorName);
+    setConsignorMobile(record.consignorMobile || "");
     setConsignorGst(record.consignorGst);
     setConsignorAdhaar(record.consignorAdhaar);
     setConsignorPan(record.consignorPan);
-    setConsignorMobile(record.consignorMobile);
-    setConsignorEmail(record.consignorEmail);
     setConsignorDealerCode(record.consignorDealerCode);
     setConsignorAddress(record.consignorAddress);
     setConsignorCity(record.consignorCity);
     setConsignorState(record.consignorState);
+    setConsignorEmail(record.consignorEmail);
     setConsignorIec(record.consignorIec);
     setConsignorBankAd(record.consignorBankAd);
     
     setConsigneeId(String(record.consigneeId));
     setConsigneeName(record.consigneeName);
+    setConsigneeMobile(record.consigneeMobile || "");
     setConsigneeGst(record.consigneeGst);
     setConsigneeAdhaar(record.consigneeAdhaar);
     setConsigneePan(record.consigneePan);
-    setConsigneeMobile(record.consigneeMobile);
-    setConsigneeEmail(record.consigneeEmail);
     setConsigneeDealerCode(record.consigneeDealerCode);
     setConsigneeAddress(record.consigneeAddress);
     setConsigneeCity(record.consigneeCity);
     setConsigneeState(record.consigneeState);
+    setConsigneeEmail(record.consigneeEmail);
     setConsigneeIec(record.consigneeIec);
     setConsigneeEximCode(record.consigneeEximCode);
     
@@ -1090,7 +1234,6 @@ export default function BookingComputerizedGRL() {
     setInvoices(record.invoices.map((inv, idx) => ({ ...inv, id: Date.now() + idx })));
     setRemarks(record.remarks);
     setRoRemarks(record.roRemarks);
-    setGpRemarks(record.gpRemarks);
     setBillNo(record.billNo);
     setSupplementaryBillNo(record.supplementaryBillNo);
     setInsuranceCoveredBy(record.insuranceCoveredBy);
@@ -1102,7 +1245,6 @@ export default function BookingComputerizedGRL() {
     setTotalChargeWeight(record.totalChargeWeight);
     setTotalFreight(record.totalFreight);
     setIsBookingModalOpen(true);
-    setActiveFormTab("consignor");
   };
 
   const openAddModal = () => {
@@ -1597,10 +1739,10 @@ export default function BookingComputerizedGRL() {
           </DialogHeader>
           <div className="space-y-3 py-4">
             <div><Label className="text-sm">Name *</Label><Input value={newClientData.name || ""} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-9 text-sm" /></div>
+            <div><Label className="text-sm">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">GST Number</Label><Input value={newClientData.gstNumber || ""} onChange={(e) => setNewClientData({...newClientData, gstNumber: e.target.value})} className="h-9 text-sm uppercase" /></div>
             <div><Label className="text-sm">Adhaar Number</Label><Input value={newClientData.adhaarNumber || ""} onChange={(e) => setNewClientData({...newClientData, adhaarNumber: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">PAN Number</Label><Input value={newClientData.panNumber || ""} onChange={(e) => setNewClientData({...newClientData, panNumber: e.target.value})} className="h-9 text-sm uppercase" /></div>
-            <div><Label className="text-sm">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">Email</Label><Input value={newClientData.email || ""} onChange={(e) => setNewClientData({...newClientData, email: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">Address</Label><Input value={newClientData.address || ""} onChange={(e) => setNewClientData({...newClientData, address: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">City</Label><Input value={newClientData.city || ""} onChange={(e) => setNewClientData({...newClientData, city: e.target.value})} className="h-9 text-sm" /></div>
@@ -1628,10 +1770,10 @@ export default function BookingComputerizedGRL() {
           </DialogHeader>
           <div className="space-y-3 py-4">
             <div><Label className="text-sm">Name *</Label><Input value={newClientData.name || ""} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-9 text-sm" /></div>
+            <div><Label className="text-sm">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">GST Number</Label><Input value={newClientData.gstNumber || ""} onChange={(e) => setNewClientData({...newClientData, gstNumber: e.target.value})} className="h-9 text-sm uppercase" /></div>
             <div><Label className="text-sm">Adhaar Number</Label><Input value={newClientData.adhaarNumber || ""} onChange={(e) => setNewClientData({...newClientData, adhaarNumber: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">PAN Number</Label><Input value={newClientData.panNumber || ""} onChange={(e) => setNewClientData({...newClientData, panNumber: e.target.value})} className="h-9 text-sm uppercase" /></div>
-            <div><Label className="text-sm">Mobile No.</Label><Input value={newClientData.mobile || ""} onChange={(e) => setNewClientData({...newClientData, mobile: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">Email</Label><Input value={newClientData.email || ""} onChange={(e) => setNewClientData({...newClientData, email: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">Address</Label><Input value={newClientData.address || ""} onChange={(e) => setNewClientData({...newClientData, address: e.target.value})} className="h-9 text-sm" /></div>
             <div><Label className="text-sm">City</Label><Input value={newClientData.city || ""} onChange={(e) => setNewClientData({...newClientData, city: e.target.value})} className="h-9 text-sm" /></div>
@@ -1649,7 +1791,7 @@ export default function BookingComputerizedGRL() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Booking Modal */}
+      {/* Main Booking Modal - Single Form Layout */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="w-[95vw] max-w-6xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
@@ -1658,19 +1800,6 @@ export default function BookingComputerizedGRL() {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 justify-end sticky top-0 bg-white py-2 z-10 border-b">
-              <Button variant="outline" size="sm" className="h-8 text-sm" onClick={addGoodsRow}>
-                <PlusCircle className="mr-1 h-4 w-4" /> Add Goods
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-sm">
-                <Calculator className="mr-1 h-4 w-4" /> Manual Rates
-              </Button>
-              <Button onClick={calculateTotals} size="sm" className="h-8 text-sm bg-green-600">
-                <Calculator className="mr-1 h-4 w-4" /> Calculate Freight
-              </Button>
-            </div>
-
             {/* Basic Information */}
             <div className="border rounded-lg p-4">
               <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-600">
@@ -1758,387 +1887,496 @@ export default function BookingComputerizedGRL() {
                     <SelectContent>{freightOnOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+              </div>
+            </div>
+
+            {/* Consignor Details Section */}
+            <div className="border rounded-lg p-4 bg-blue-50/30">
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                <Building className="h-5 w-5" /> Consignor Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <Label className="text-sm">Select ID Type</Label>
+                  <Select value={consignorIdType} onValueChange={setConsignorIdType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                {consignorIdType !== "Self" && consignorIdType !== "" && (
+                  <div>
+                    <Label className="text-sm">Enter ID Value</Label>
+                    <Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                  </div>
+                )}
+                <div className="flex gap-2 items-end">
+                  <Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600">
+                    <Search className="h-4 w-4 mr-1" />Search
+                  </Button>
+                  <Button onClick={handleConsignorAdd} variant="outline" className="h-9 text-sm">
+                    <Plus className="h-4 w-4 mr-1" />Add
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Name and Mobile Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
+                <div>
+                  <Label className="text-sm">Name</Label>
+                  <Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-9 text-sm" readOnly={consignorIdType !== "Self"} />
+                </div>
+                <div>
+                  <Label className="text-sm">Mobile No.</Label>
+                  <Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-9 text-sm" readOnly={consignorIdType !== "Self"} />
+                </div>
+              </div>
+              
+              {consignorName === "Self" && (
+                <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+              )}
+              
+              <button
+                onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
+                className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                {isConsignorAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                {isConsignorAddressOpen ? "Hide Address Details" : "Show Address Details"}
+              </button>
+              {isConsignorAddressOpen && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
+                  <div><Label className="text-sm">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">IEC Code</Label><Input value={consignorIec} onChange={(e) => setConsignorIec(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">Bank AD No.</Label><Input value={consignorBankAd} onChange={(e) => setConsignorBankAd(e.target.value)} className="h-9 text-sm" /></div>
+                </div>
+              )}
+            </div>
+
+            {/* Consignee Details Section */}
+            <div className="border rounded-lg p-4 bg-green-50/30">
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700">
+                <Users className="h-5 w-5" /> Consignee Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <Label className="text-sm">Select ID Type</Label>
+                  <Select value={consigneeIdType} onValueChange={setConsigneeIdType}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                {consigneeIdType !== "Self" && consigneeIdType !== "" && (
+                  <div>
+                    <Label className="text-sm">Enter ID Value</Label>
+                    <Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                  </div>
+                )}
+                <div className="flex gap-2 items-end">
+                  <Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600">
+                    <Search className="h-4 w-4 mr-1" />Search
+                  </Button>
+                  <Button onClick={handleConsigneeAdd} variant="outline" className="h-9 text-sm">
+                    <Plus className="h-4 w-4 mr-1" />Add
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Name and Mobile Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
+                <div>
+                  <Label className="text-sm">Name</Label>
+                  <Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-9 text-sm" readOnly={consigneeIdType !== "Self"} />
+                </div>
+                <div>
+                  <Label className="text-sm">Mobile No.</Label>
+                  <Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-9 text-sm" readOnly={consigneeIdType !== "Self"} />
+                </div>
+              </div>
+              
+              {consigneeName === "Self" && (
+                <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+              )}
+              
+              <button
+                onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
+                className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
+              >
+                {isConsigneeAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                {isConsigneeAddressOpen ? "Hide Address Details" : "Show Address Details"}
+              </button>
+              {isConsigneeAddressOpen && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
+                  <div><Label className="text-sm">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">IEC Code</Label><Input value={consigneeIec} onChange={(e) => setConsigneeIec(e.target.value)} className="h-9 text-sm" /></div>
+                  <div><Label className="text-sm">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-9 text-sm" /></div>
+                </div>
+              )}
+            </div>
+
+            {/* Goods Details Section */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Package className="h-5 w-5" /> GOODS DETAILS
+                </h3>
+                <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm">
+                  <Plus className="mr-1 h-4 w-4" />ADD GOODS
+                </Button>
+              </div>
+              <div className="overflow-x-auto p-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="text-sm w-12">#</TableHead>
+                      <TableHead className="text-sm">No Of Pckgs</TableHead>
+                      <TableHead className="text-sm">Content Category</TableHead>
+                      <TableHead className="text-sm">Content (Sub)</TableHead>
+                      <TableHead className="text-sm">Packing</TableHead>
+                      <TableHead className="text-sm">Actual Weight</TableHead>
+                      <TableHead className="text-sm">Charge Weight</TableHead>
+                      <TableHead className="text-sm">Status</TableHead>
+                      <TableHead className="text-sm w-12">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {goodsItems.map((item, idx) => {
+                      const selectedCategory = contentCategories.find(c => c.id === Number(item.contentCategory));
+                      return (
+                        <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
+                          <TableCell className="text-sm">{idx + 1}</TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              value={item.noOfPckgs} 
+                              onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
+                              className="h-8 w-24 text-sm" 
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
+                              <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                              <SelectContent>
+                                {contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select 
+                              value={item.contentSubCategory} 
+                              onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
+                              disabled={!item.contentCategory}
+                            >
+                              <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
+                              <SelectContent>
+                                {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={item.packing} onValueChange={(val) => updateGoodsItem(item.id, "packing", val)}>
+                              <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                          </TableCell>
+                          <TableCell>
+                            <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                          </TableCell>
+                          <TableCell>
+                            {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
+                            {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm flex items-center gap-1"><CheckCircle className="h-4 w-4" />Valid</span>}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Totals Bar with Manual Rates Checkbox */}
+              <div className="p-3 bg-gray-50 flex flex-wrap gap-4 justify-between items-center border-t">
+                <div className="flex flex-wrap gap-4 items-center">
+                  <span className="text-sm font-medium">Total Pckgs: <strong className="text-blue-600">{totalPckgs}</strong></span>
+                  <span className="text-sm font-medium">Total Actual Weight: <strong className="text-blue-600">{totalActualWeight.toFixed(2)} kg</strong></span>
+                  <span className="text-sm font-medium">Total Charge Weight: <strong className="text-blue-600">{totalChargeWeight.toFixed(2)} kg</strong></span>
+                  {!manualRates && (
+                    <span className="text-sm font-medium">Total Freight: <strong className="text-green-600">₹{(totalChargeWeight * 5).toFixed(2)}</strong></span>
+                  )}
+                </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={manualRates} onChange={(e) => setManualRates(e.target.checked)} className="h-4 w-4 rounded" />
-                    <span className="text-sm">Manual Rates</span>
+                    <span className="text-sm font-medium">Manual Rates</span>
                   </label>
                 </div>
               </div>
             </div>
 
-            {/* Tabs Section */}
-            <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-gray-100 rounded-lg">
-                <TabsTrigger value="consignor" className="text-sm py-2"><Building className="h-4 w-4 mr-1" />Consignor</TabsTrigger>
-                <TabsTrigger value="consignee" className="text-sm py-2"><Users className="h-4 w-4 mr-1" />Consignee</TabsTrigger>
-                <TabsTrigger value="remarks" className="text-sm py-2"><MessageSquare className="h-4 w-4 mr-1" />Remarks</TabsTrigger>
-                <TabsTrigger value="goods" className="text-sm py-2"><Package className="h-4 w-4 mr-1" />Goods</TabsTrigger>
-                <TabsTrigger value="insurance" className="text-sm py-2"><Shield className="h-4 w-4 mr-1" />Insurance</TabsTrigger>
-              </TabsList>
-
-              {/* Consignor Tab */}
-              <TabsContent value="consignor" className="mt-4">
-                <div className="border rounded-lg p-4 bg-blue-50/30">
-                  <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700">
-                    <Building className="h-5 w-5" />Consignor Details
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-sm">Select ID Type</Label>
-                      <Select value={consignorIdType} onValueChange={setConsignorIdType}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                        <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    {consignorIdType !== "Self" && consignorIdType !== "" && (
-                      <div>
-                        <Label className="text-sm">Enter ID Value</Label>
-                        <Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
-                      </div>
-                    )}
-                    <div className="flex items-end">
-                      <Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600">
-                        <Search className="h-4 w-4 mr-1" />Search / Add
-                      </Button>
-                    </div>
-                  </div>
-                  {consignorName && consignorIdType !== "Self" && consignorName !== "Self" && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
-                      <div><strong>Name:</strong> {consignorName}</div>
-                      <div><strong>Mobile:</strong> {consignorMobile}</div>
-                      <div><strong>Email:</strong> {consignorEmail || "-"}</div>
-                    </div>
-                  )}
-                  {consignorName === "Self" && (
-                    <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
-                  )}
-                  
-                  <button
-                    onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
-                    className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    {isConsignorAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                    {isConsignorAddressOpen ? "Hide Address Details" : "Show Address Details"}
-                  </button>
-                  {isConsignorAddressOpen && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
-                      <div><Label className="text-sm">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">IEC Code</Label><Input value={consignorIec} onChange={(e) => setConsignorIec(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">Bank AD No.</Label><Input value={consignorBankAd} onChange={(e) => setConsignorBankAd(e.target.value)} className="h-9 text-sm" /></div>
-                    </div>
-                  )}
+            {/* Invoices Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <FileText className="h-5 w-5" /> INVOICES
+                </h3>
+                <div className="flex gap-3 items-center">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" />
+                    <span className="text-sm">NCV</span>
+                  </label>
+                  <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm">
+                    <Plus className="mr-1 h-4 w-4" />ADD INVOICE
+                  </Button>
                 </div>
-              </TabsContent>
-
-              {/* Consignee Tab */}
-              <TabsContent value="consignee" className="mt-4">
-                <div className="border rounded-lg p-4 bg-green-50/30">
-                  <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700">
-                    <Users className="h-5 w-5" />Consignee Details
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-sm">Select ID Type</Label>
-                      <Select value={consigneeIdType} onValueChange={setConsigneeIdType}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                        <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    {consigneeIdType !== "Self" && consigneeIdType !== "" && (
-                      <div>
-                        <Label className="text-sm">Enter ID Value</Label>
-                        <Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
-                      </div>
-                    )}
-                    <div className="flex items-end">
-                      <Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600">
-                        <Search className="h-4 w-4 mr-1" />Search / Add
-                      </Button>
-                    </div>
-                  </div>
-                  {consigneeName && consigneeIdType !== "Self" && consigneeName !== "Self" && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
-                      <div><strong>Name:</strong> {consigneeName}</div>
-                      <div><strong>Mobile:</strong> {consigneeMobile}</div>
-                      <div><strong>Email:</strong> {consigneeEmail || "-"}</div>
-                    </div>
-                  )}
-                  {consigneeName === "Self" && (
-                    <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
-                  )}
-                  
-                  <button
-                    onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
-                    className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
-                  >
-                    {isConsigneeAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                    {isConsigneeAddressOpen ? "Hide Address Details" : "Show Address Details"}
-                  </button>
-                  {isConsigneeAddressOpen && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
-                      <div><Label className="text-sm">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">IEC Code</Label><Input value={consigneeIec} onChange={(e) => setConsigneeIec(e.target.value)} className="h-9 text-sm" /></div>
-                      <div><Label className="text-sm">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-9 text-sm" /></div>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Remarks Tab */}
-              <TabsContent value="remarks" className="mt-4">
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-semibold mb-3">REMARKS & BILLING</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" placeholder="General remarks" /></div>
-                    <div><Label className="text-sm">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" placeholder="RO remarks" /></div>
-                    <div><Label className="text-sm">GP Remarks</Label><Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={2} className="text-sm" placeholder="GP remarks" /></div>
-                    <div><Label className="text-sm">Bill No</Label><Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="h-9 text-sm" placeholder="Bill number" /></div>
-                    <div><Label className="text-sm">Supplementary Bill No</Label><Input value={supplementaryBillNo} onChange={(e) => setSupplementaryBillNo(e.target.value)} className="h-9 text-sm" placeholder="Supplementary bill number" /></div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Goods Tab */}
-              <TabsContent value="goods" className="mt-4">
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                    <h3 className="text-base font-semibold flex items-center gap-2">
-                      <Package className="h-5 w-5" /> GOODS DETAILS
-                    </h3>
-                    <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm">
-                      <Plus className="mr-1 h-4 w-4" />ADD GOODS
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto p-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-sm w-12">#</TableHead>
-                          <TableHead className="text-sm">No Of Pckgs</TableHead>
-                          <TableHead className="text-sm">Content Category</TableHead>
-                          <TableHead className="text-sm">Content (Sub)</TableHead>
-                          <TableHead className="text-sm">Packing</TableHead>
-                          <TableHead className="text-sm">Actual Weight</TableHead>
-                          <TableHead className="text-sm">Charge Weight</TableHead>
-                          <TableHead className="text-sm">Status</TableHead>
-                          <TableHead className="text-sm w-12">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {goodsItems.map((item, idx) => {
-                          const selectedCategory = contentCategories.find(c => c.id === Number(item.contentCategory));
-                          return (
-                            <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
-                              <TableCell className="text-sm">{idx + 1}</TableCell>
-                              <TableCell>
-                                <Input 
-                                  type="number" 
-                                  value={item.noOfPckgs} 
-                                  onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
-                                  className="h-8 w-24 text-sm" 
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
-                                  <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                                  <SelectContent>
-                                    {contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select 
-                                  value={item.contentSubCategory} 
-                                  onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
-                                  disabled={!item.contentCategory}
-                                >
-                                  <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
-                                  <SelectContent>
-                                    {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select value={item.packing} onValueChange={(val) => updateGoodsItem(item.id, "packing", val)}>
-                                  <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
-                              </TableCell>
-                              <TableCell>
-                                <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
-                              </TableCell>
-                              <TableCell>
-                                {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
-                                {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm flex items-center gap-1"><CheckCircle className="h-4 w-4" />Valid</span>}
-                              </TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <div className="p-3 bg-gray-50 flex flex-wrap gap-4 justify-end border-t">
-                    <span className="text-sm font-medium">Total Pckgs: <strong className="text-blue-600">{totalPckgs}</strong></span>
-                    <span className="text-sm font-medium">Total Actual Weight: <strong className="text-blue-600">{totalActualWeight.toFixed(2)} kg</strong></span>
-                    <span className="text-sm font-medium">Total Charge Weight: <strong className="text-blue-600">{totalChargeWeight.toFixed(2)} kg</strong></span>
-                    <span className="text-sm font-medium">Total Freight: <strong className="text-green-600">₹{totalFreight.toFixed(2)}</strong></span>
-                  </div>
-                </div>
-
-                {/* Invoices Table */}
-                <div className="border rounded-lg overflow-hidden mt-4">
-                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                    <h3 className="text-base font-semibold flex items-center gap-2">
-                      <FileText className="h-5 w-5" /> INVOICES
-                    </h3>
-                    <div className="flex gap-3 items-center">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" />
-                        <span className="text-sm">NCV</span>
-                      </label>
-                      <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm">
-                        <Plus className="mr-1 h-4 w-4" />ADD INVOICE
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto p-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-sm w-12">S#</TableHead>
-                          <TableHead className="text-sm">Invoice #</TableHead>
-                          <TableHead className="text-sm">Date</TableHead>
-                          <TableHead className="text-sm">Value</TableHead>
-                          <TableHead className="text-sm">Eway Bill #</TableHead>
-                          <TableHead className="text-sm">Eway Date</TableHead>
-                          <TableHead className="text-sm">Valid Upto</TableHead>
-                          <TableHead className="text-sm w-12">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {invoices.map((inv, idx) => (
-                          <TableRow key={inv.id}>
-                            <TableCell className="text-sm">{idx + 1}</TableCell>
-                            <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                            <TableCell>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className="h-8 w-28 text-sm justify-start">
-                                    <CalendarIcon className="mr-1 h-4 w-4" />
-                                    {format(inv.date, "dd-MM-yyyy")}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="z-[10000]">
-                                  <Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} />
-                                </PopoverContent>
-                              </Popover>
-                            </TableCell>
-                            <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-8 w-24 text-sm" /></TableCell>
-                            <TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                            <TableCell>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className="h-8 w-28 text-sm justify-start">
-                                    <CalendarIcon className="mr-1 h-4 w-4" />
-                                    {format(inv.ewayBillDate, "dd-MM-yyyy")}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="z-[10000]">
-                                  <Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} />
-                                </PopoverContent>
-                              </Popover>
-                            </TableCell>
-                            <TableCell><Input value={inv.validUpto} onChange={(e) => updateInvoice(inv.id, "validUpto", e.target.value)} className="h-8 w-24 text-sm" placeholder="Valid upto" /></TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500">
-                                <Trash2 className="h-4 w-4" />
+              </div>
+              <div className="overflow-x-auto p-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead className="text-sm w-12">S#</TableHead>
+                      <TableHead className="text-sm">Invoice #</TableHead>
+                      <TableHead className="text-sm">Date</TableHead>
+                      <TableHead className="text-sm">Value</TableHead>
+                      <TableHead className="text-sm">Eway Bill #</TableHead>
+                      <TableHead className="text-sm">Eway Date</TableHead>
+                      <TableHead className="text-sm">Valid Upto</TableHead>
+                      <TableHead className="text-sm w-12">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((inv, idx) => (
+                      <TableRow key={inv.id}>
+                        <TableCell className="text-sm">{idx + 1}</TableCell>
+                        <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                <CalendarIcon className="mr-1 h-4 w-4" />
+                                {format(inv.date, "dd-MM-yyyy")}
                               </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="z-[10000]">
+                              <Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} />
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                        <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-8 w-24 text-sm" /></TableCell>
+                        <TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                <CalendarIcon className="mr-1 h-4 w-4" />
+                                {format(inv.ewayBillDate, "dd-MM-yyyy")}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="z-[10000]">
+                              <Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} />
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                        <TableCell><Input value={inv.validUpto} onChange={(e) => updateInvoice(inv.id, "validUpto", e.target.value)} className="h-8 w-24 text-sm" placeholder="Valid upto" /></TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Remarks Section */}
+            <div className="border rounded-lg p-4">
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" /> Remarks & Billing
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" placeholder="General remarks" /></div>
+                <div><Label className="text-sm">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" placeholder="RO remarks" /></div>
+                <div><Label className="text-sm">Bill No</Label><Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="h-9 text-sm" placeholder="Bill number" /></div>
+                <div><Label className="text-sm">Supplementary Bill No</Label><Input value={supplementaryBillNo} onChange={(e) => setSupplementaryBillNo(e.target.value)} className="h-9 text-sm" placeholder="Supplementary bill number" /></div>
+              </div>
+            </div>
+
+            {/* Insurance Section */}
+            <div className="border rounded-lg p-4">
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <Shield className="h-5 w-5" /> Insurance Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <Label className="text-sm">Insurance Covered By</Label>
+                  <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                    <SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label className="text-sm">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm" placeholder="Insurance number" /></div>
+                <div>
+                  <Label className="text-sm">Insurance Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(insuranceDate, "dd-MM-yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[10000]">
+                      <Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" placeholder="Insurance company name" /></div>
+              </div>
+            </div>
+
+            {/* Manual Rates Section - Compact Side Layout */}
+            {manualRates && (
+              <div className="border rounded-lg p-3 bg-yellow-50/30">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Left Column - Rate and Freight */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Rate (per kg/pkg):</Label>
+                      <Input 
+                        type="number" 
+                        value={freightRate} 
+                        onChange={(e) => setFreightRate(Number(e.target.value))}
+                        className="h-7 text-xs w-28"
+                        step="0.01"
+                      />
+                      <Button onClick={handleClearFreight} variant="outline" size="sm" className="h-7 text-xs px-2">
+                        CLEAR
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Charge Wt:</Label>
+                      <Input type="number" value={totalChargeWeight} readOnly className="h-7 text-xs w-28 bg-gray-50" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Freight:</Label>
+                      <Input type="number" value={calculatedFreight} readOnly className="h-7 text-xs w-28 font-bold text-green-600 bg-green-50" />
+                    </div>
+                  </div>
+
+                  {/* Middle Column - Extra Charges Table */}
+                  <div className="col-span-1">
+                    <Table className="text-xs">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-xs p-1">Charges</TableHead>
+                          <TableHead className="text-xs p-1 text-center w-16">Rate</TableHead>
+                          <TableHead className="text-xs p-1 text-right w-20">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {extraCharges.map((charge) => (
+                          <TableRow key={charge.id} className="text-xs">
+                            <TableCell className="text-xs p-1">{charge.name}</TableCell>
+                            <TableCell className="p-1">
+                              <Input 
+                                type="number" 
+                                value={charge.rate} 
+                                onChange={(e) => updateExtraCharge(charge.id, Number(e.target.value))}
+                                className="h-7 w-20 text-xs"
+                                step="0.01"
+                              />
                             </TableCell>
+                            <TableCell className="text-xs p-1 text-right">₹{charge.amount.toFixed(0)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                </div>
-              </TabsContent>
 
-              {/* Insurance Tab */}
-              <TabsContent value="insurance" className="mt-4">
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-semibold mb-3">INSURANCE DETAILS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-sm">Insurance Covered By</Label>
-                      <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
-                        <SelectTrigger className="h-9 text-sm mt-1"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                        <SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                  {/* Right Column - GST and Totals */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">GST Paid By:</Label>
+                      <Select value={gstPaidBy} onValueChange={setGstPaidBy}>
+                        <SelectTrigger className="h-7 w-32 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {gstPaidByOptions.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>)}
+                        </SelectContent>
                       </Select>
                     </div>
-                    <div><Label className="text-sm">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm mt-1" placeholder="Insurance number" /></div>
-                    <div>
-                      <Label className="text-sm">Insurance Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="h-9 w-full text-sm justify-start mt-1">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(insuranceDate, "dd-MM-yyyy")}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="z-[10000]">
-                          <Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} />
-                        </PopoverContent>
-                      </Popover>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">GST Rate (%):</Label>
+                      <Input type="number" value={gstRate} onChange={(e) => setGstRate(Number(e.target.value))} className="h-7 w-20 text-xs" step="0.01" />
                     </div>
-                    <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm mt-1" placeholder="Insurance company name" /></div>
+                    <div className="border-t pt-1 mt-1">
+                      <div className="flex justify-between text-xs">
+                        <span>SubTotal:</span>
+                        <span className="font-semibold">₹{subTotal.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>GST ({gstRate}%):</span>
+                        <span>₹{gstAmount.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold text-green-600">
+                        <span>Total:</span>
+                        <span>₹{totalAmount.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs mt-1">
+                        <span>Advance:</span>
+                        <Input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="h-7 w-24 text-xs text-right" step="0.01" />
+                      </div>
+                      <div className="flex justify-between text-xs font-bold text-blue-600 border-t pt-1 mt-1">
+                        <span>Balance:</span>
+                        <span>₹{balanceAmount.toFixed(0)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+              </div>
+            )}
 
-          {/* Footer Buttons */}
-          <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex flex-wrap justify-between items-center gap-3 shrink-0">
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} className="h-4 w-4 rounded" />
-                <span className="text-sm">Print After Save</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={ccAttached} onChange={(e) => setCcAttached(e.target.checked)} className="h-4 w-4 rounded" />
-                <span className="text-sm">CC Attached</span>
-              </label>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handlePrint} className="h-9 text-sm">
-                <Printer className="mr-1 h-4 w-4" /> Print
-              </Button>
-              <Button variant="outline" onClick={handleClear} className="h-9 text-sm">
-                <RefreshCw className="mr-1 h-4 w-4" /> Clear
-              </Button>
-              <Button variant="outline" onClick={() => setIsBookingModalOpen(false)} className="h-9 text-sm">
-                <X className="mr-1 h-4 w-4" /> Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={loading} className="h-9 text-sm bg-blue-600 hover:bg-blue-700">
-                {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
-                {editMode ? "Update" : "Save"}
-              </Button>
+            {/* Footer Buttons */}
+            <div className="flex flex-wrap justify-between items-center pt-4 border-t mt-4">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} className="h-4 w-4 rounded" />
+                  <span className="text-sm">Print After Save</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={ccAttached} onChange={(e) => setCcAttached(e.target.checked)} className="h-4 w-4 rounded" />
+                  <span className="text-sm">CC Attached</span>
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handlePrint} className="h-9 text-sm">
+                  <Printer className="mr-1 h-4 w-4" /> Print
+                </Button>
+                <Button variant="outline" onClick={handleClear} className="h-9 text-sm">
+                  <RefreshCw className="mr-1 h-4 w-4" /> Clear
+                </Button>
+                <Button variant="outline" onClick={() => setIsBookingModalOpen(false)} className="h-9 text-sm">
+                  <X className="mr-1 h-4 w-4" /> Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={loading} className="h-9 text-sm bg-blue-600 hover:bg-blue-700">
+                  {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+                  {editMode ? "Update" : "Save"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
