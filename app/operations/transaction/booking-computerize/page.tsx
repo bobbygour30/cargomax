@@ -35,6 +35,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -245,6 +246,7 @@ export default function BookingComputerizedGRL() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<string | null>(null);
+  const [activeFormTab, setActiveFormTab] = useState<string>("consignor");
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "report">("report");
   const [isCancelledDialogOpen, setIsCancelledDialogOpen] = useState(false);
@@ -314,7 +316,7 @@ export default function BookingComputerizedGRL() {
   const [deliveryType, setDeliveryType] = useState<string>("");
   const [loadType, setLoadType] = useState<string>("");
   const [mkExecutive, setMkExecutive] = useState<string>("");
-  const [freightOn, setFreightOn] = useState<string>("");
+  const [freightOn, setFreightOn] = useState<string>("CHARGE WEIGHT");
   const [manualRates, setManualRates] = useState<boolean>(false);
   const [ncv, setNcv] = useState<boolean>(false);
   const [printAfterSave, setPrintAfterSave] = useState<boolean>(false);
@@ -475,6 +477,10 @@ export default function BookingComputerizedGRL() {
     setGoodsItems(goodsItems.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
+        
+        if (field === "actualWeight") {
+          updated.chargeWeight = Number(value);
+        }
         
         if (field === "contentCategory") {
           updated.contentSubCategory = "";
@@ -728,7 +734,7 @@ export default function BookingComputerizedGRL() {
     setDeliveryType("");
     setLoadType("");
     setMkExecutive("");
-    setFreightOn("");
+    setFreightOn("CHARGE WEIGHT");
     setManualRates(false);
     setNcv(false);
     setPrintAfterSave(false);
@@ -783,14 +789,14 @@ export default function BookingComputerizedGRL() {
     setTotalFreight(0);
     setEditMode(false);
     setCurrentEditId(null);
+    setActiveFormTab("consignor");
     setIsConsignorAddressOpen(false);
     setIsConsigneeAddressOpen(false);
   };
 
   const handleSave = async () => {
-    console.log("=== SAVE BUTTON CLICKED ===");
+    console.log("=== COMPUTERIZED BOOKING SAVE BUTTON CLICKED ===");
     
-    // Validation
     if (!bookingFrom) { 
       toast.error("Please enter Booking From"); 
       return; 
@@ -1046,7 +1052,7 @@ export default function BookingComputerizedGRL() {
     setDeliveryType(record.deliveryType);
     setLoadType(record.loadType);
     setMkExecutive(record.mkExecutive);
-    setFreightOn(record.freightOn);
+    setFreightOn(record.freightOn || "CHARGE WEIGHT");
     setManualRates(record.manualRates);
     setNcv(record.ncv);
     setPrintAfterSave(record.printAfterSave);
@@ -1096,6 +1102,7 @@ export default function BookingComputerizedGRL() {
     setTotalChargeWeight(record.totalChargeWeight);
     setTotalFreight(record.totalFreight);
     setIsBookingModalOpen(true);
+    setActiveFormTab("consignor");
   };
 
   const openAddModal = () => {
@@ -1760,333 +1767,350 @@ export default function BookingComputerizedGRL() {
               </div>
             </div>
 
-            {/* Consignor Section */}
-            <div className="border rounded-lg p-4 bg-blue-50/30">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700">
-                <Building className="h-5 w-5" />Consignor Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm">Select ID Type</Label>
-                  <Select value={consignorIdType} onValueChange={setConsignorIdType}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                {consignorIdType !== "Self" && consignorIdType !== "" && (
-                  <div>
-                    <Label className="text-sm">Enter ID Value</Label>
-                    <Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
-                  </div>
-                )}
-                <div className="flex items-end">
-                  <Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600">
-                    <Search className="h-4 w-4 mr-1" />Search / Add
-                  </Button>
-                </div>
-              </div>
-              {consignorName && consignorIdType !== "Self" && consignorName !== "Self" && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
-                  <div><strong>Name:</strong> {consignorName}</div>
-                  <div><strong>Mobile:</strong> {consignorMobile}</div>
-                  <div><strong>Email:</strong> {consignorEmail || "-"}</div>
-                </div>
-              )}
-              {consignorName === "Self" && (
-                <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
-              )}
-              
-              <button
-                onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
-                className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                {isConsignorAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                {isConsignorAddressOpen ? "Hide Address Details" : "Show Address Details"}
-              </button>
-              {isConsignorAddressOpen && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
-                  <div><Label className="text-sm">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">IEC Code</Label><Input value={consignorIec} onChange={(e) => setConsignorIec(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">Bank AD No.</Label><Input value={consignorBankAd} onChange={(e) => setConsignorBankAd(e.target.value)} className="h-9 text-sm" /></div>
-                </div>
-              )}
-            </div>
+            {/* Tabs Section */}
+            <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-gray-100 rounded-lg">
+                <TabsTrigger value="consignor" className="text-sm py-2"><Building className="h-4 w-4 mr-1" />Consignor</TabsTrigger>
+                <TabsTrigger value="consignee" className="text-sm py-2"><Users className="h-4 w-4 mr-1" />Consignee</TabsTrigger>
+                <TabsTrigger value="remarks" className="text-sm py-2"><MessageSquare className="h-4 w-4 mr-1" />Remarks</TabsTrigger>
+                <TabsTrigger value="goods" className="text-sm py-2"><Package className="h-4 w-4 mr-1" />Goods</TabsTrigger>
+                <TabsTrigger value="insurance" className="text-sm py-2"><Shield className="h-4 w-4 mr-1" />Insurance</TabsTrigger>
+              </TabsList>
 
-            {/* Consignee Section */}
-            <div className="border rounded-lg p-4 bg-green-50/30">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700">
-                <Users className="h-5 w-5" />Consignee Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm">Select ID Type</Label>
-                  <Select value={consigneeIdType} onValueChange={setConsigneeIdType}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                {consigneeIdType !== "Self" && consigneeIdType !== "" && (
-                  <div>
-                    <Label className="text-sm">Enter ID Value</Label>
-                    <Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
-                  </div>
-                )}
-                <div className="flex items-end">
-                  <Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600">
-                    <Search className="h-4 w-4 mr-1" />Search / Add
-                  </Button>
-                </div>
-              </div>
-              {consigneeName && consigneeIdType !== "Self" && consigneeName !== "Self" && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
-                  <div><strong>Name:</strong> {consigneeName}</div>
-                  <div><strong>Mobile:</strong> {consigneeMobile}</div>
-                  <div><strong>Email:</strong> {consigneeEmail || "-"}</div>
-                </div>
-              )}
-              {consigneeName === "Self" && (
-                <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
-              )}
-              
-              <button
-                onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
-                className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
-              >
-                {isConsigneeAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                {isConsigneeAddressOpen ? "Hide Address Details" : "Show Address Details"}
-              </button>
-              {isConsigneeAddressOpen && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
-                  <div><Label className="text-sm">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">IEC Code</Label><Input value={consigneeIec} onChange={(e) => setConsigneeIec(e.target.value)} className="h-9 text-sm" /></div>
-                  <div><Label className="text-sm">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-9 text-sm" /></div>
-                </div>
-              )}
-            </div>
-
-            {/* Goods Table */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="text-base font-semibold flex items-center gap-2">
-                  <Package className="h-5 w-5" /> GOODS DETAILS
-                </h3>
-                <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm">
-                  <Plus className="mr-1 h-4 w-4" />ADD GOODS
-                </Button>
-              </div>
-              <div className="overflow-x-auto p-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="text-sm w-12">#</TableHead>
-                      <TableHead className="text-sm">No Of Pckgs</TableHead>
-                      <TableHead className="text-sm">Content Category</TableHead>
-                      <TableHead className="text-sm">Content (Sub)</TableHead>
-                      <TableHead className="text-sm">Packing</TableHead>
-                      <TableHead className="text-sm">Actual Weight</TableHead>
-                      <TableHead className="text-sm">Charge Weight</TableHead>
-                      <TableHead className="text-sm">Status</TableHead>
-                      <TableHead className="text-sm w-12">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {goodsItems.map((item, idx) => {
-                      const selectedCategory = contentCategories.find(c => c.id === Number(item.contentCategory));
-                      return (
-                        <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
-                          <TableCell className="text-sm">{idx + 1}</TableCell>
-                          <TableCell>
-                            <Input 
-                              type="number" 
-                              value={item.noOfPckgs} 
-                              onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
-                              className="h-8 w-24 text-sm" 
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
-                              <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                              <SelectContent>
-                                {contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={item.contentSubCategory} 
-                              onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
-                              disabled={!item.contentCategory}
-                            >
-                              <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
-                              <SelectContent>
-                                {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Select value={item.packing} onValueChange={(val) => updateGoodsItem(item.id, "packing", val)}>
-                              <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
-                          </TableCell>
-                          <TableCell>
-                            {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
-                            {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm flex items-center gap-1"><CheckCircle className="h-4 w-4" />Valid</span>}
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-3 bg-gray-50 flex flex-wrap gap-4 justify-end border-t">
-                <span className="text-sm font-medium">Total Pckgs: <strong className="text-blue-600">{totalPckgs}</strong></span>
-                <span className="text-sm font-medium">Total Actual Weight: <strong className="text-blue-600">{totalActualWeight.toFixed(2)} kg</strong></span>
-                <span className="text-sm font-medium">Total Charge Weight: <strong className="text-blue-600">{totalChargeWeight.toFixed(2)} kg</strong></span>
-                <span className="text-sm font-medium">Total Freight: <strong className="text-green-600">₹{totalFreight.toFixed(2)}</strong></span>
-              </div>
-            </div>
-
-            {/* Invoices Table */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="text-base font-semibold flex items-center gap-2">
-                  <FileText className="h-5 w-5" /> INVOICES
-                </h3>
-                <div className="flex gap-3 items-center">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" />
-                    <span className="text-sm">NCV</span>
-                  </label>
-                  <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm">
-                    <Plus className="mr-1 h-4 w-4" />ADD INVOICE
-                  </Button>
-                </div>
-              </div>
-              <div className="overflow-x-auto p-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="text-sm w-12">S#</TableHead>
-                      <TableHead className="text-sm">Invoice #</TableHead>
-                      <TableHead className="text-sm">Date</TableHead>
-                      <TableHead className="text-sm">Value</TableHead>
-                      <TableHead className="text-sm">Eway Bill #</TableHead>
-                      <TableHead className="text-sm">Eway Date</TableHead>
-                      <TableHead className="text-sm">Valid Upto</TableHead>
-                      <TableHead className="text-sm w-12">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoices.map((inv, idx) => (
-                      <TableRow key={inv.id}>
-                        <TableCell className="text-sm">{idx + 1}</TableCell>
-                        <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                        <TableCell>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
-                                <CalendarIcon className="mr-1 h-4 w-4" />
-                                {format(inv.date, "dd-MM-yyyy")}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="z-[10000]">
-                              <Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} />
-                            </PopoverContent>
-                          </Popover>
-                        </TableCell>
-                        <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-8 w-24 text-sm" /></TableCell>
-                        <TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
-                        <TableCell>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="h-8 w-28 text-sm justify-start">
-                                <CalendarIcon className="mr-1 h-4 w-4" />
-                                {format(inv.ewayBillDate, "dd-MM-yyyy")}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="z-[10000]">
-                              <Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} />
-                            </PopoverContent>
-                          </Popover>
-                        </TableCell>
-                        <TableCell><Input value={inv.validUpto} onChange={(e) => updateInvoice(inv.id, "validUpto", e.target.value)} className="h-8 w-24 text-sm" placeholder="Valid upto" /></TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            {/* Remarks Section */}
-            <div className="border rounded-lg p-4">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" /> Remarks & Billing
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" /></div>
-                <div><Label className="text-sm">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" /></div>
-                <div><Label className="text-sm">GP Remarks</Label><Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={2} className="text-sm" /></div>
-                <div><Label className="text-sm">Bill No</Label><Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="h-9 text-sm" /></div>
-                <div><Label className="text-sm">Supplementary Bill No</Label><Input value={supplementaryBillNo} onChange={(e) => setSupplementaryBillNo(e.target.value)} className="h-9 text-sm" /></div>
-              </div>
-            </div>
-
-            {/* Insurance Section */}
-            <div className="border rounded-lg p-4">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
-                <Shield className="h-5 w-5" /> Insurance Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm">Insurance Covered By</Label>
-                  <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
-                    <SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div><Label className="text-sm">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm" /></div>
-                <div>
-                  <Label className="text-sm">Insurance Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="h-9 w-full text-sm justify-start">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(insuranceDate, "dd-MM-yyyy")}
+              {/* Consignor Tab */}
+              <TabsContent value="consignor" className="mt-4">
+                <div className="border rounded-lg p-4 bg-blue-50/30">
+                  <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                    <Building className="h-5 w-5" />Consignor Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm">Select ID Type</Label>
+                      <Select value={consignorIdType} onValueChange={setConsignorIdType}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                        <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                      </Select>
+                    </div>
+                    {consignorIdType !== "Self" && consignorIdType !== "" && (
+                      <div>
+                        <Label className="text-sm">Enter ID Value</Label>
+                        <Input value={consignorIdValue} onChange={(e) => setConsignorIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                      </div>
+                    )}
+                    <div className="flex items-end">
+                      <Button onClick={handleConsignorSearch} className="h-9 text-sm bg-blue-600">
+                        <Search className="h-4 w-4 mr-1" />Search / Add
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="z-[10000]">
-                      <Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} />
-                    </PopoverContent>
-                  </Popover>
+                    </div>
+                  </div>
+                  {consignorName && consignorIdType !== "Self" && consignorName !== "Self" && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
+                      <div><strong>Name:</strong> {consignorName}</div>
+                      <div><strong>Mobile:</strong> {consignorMobile}</div>
+                      <div><strong>Email:</strong> {consignorEmail || "-"}</div>
+                    </div>
+                  )}
+                  {consignorName === "Self" && (
+                    <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+                  )}
+                  
+                  <button
+                    onClick={() => setIsConsignorAddressOpen(!isConsignorAddressOpen)}
+                    className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    {isConsignorAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                    {isConsignorAddressOpen ? "Hide Address Details" : "Show Address Details"}
+                  </button>
+                  {isConsignorAddressOpen && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
+                      <div><Label className="text-sm">Address</Label><Input value={consignorAddress} onChange={(e) => setConsignorAddress(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">City</Label><Input value={consignorCity} onChange={(e) => setConsignorCity(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">State</Label><Input value={consignorState} onChange={(e) => setConsignorState(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">Dealer Code</Label><Input value={consignorDealerCode} onChange={(e) => setConsignorDealerCode(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">IEC Code</Label><Input value={consignorIec} onChange={(e) => setConsignorIec(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">Bank AD No.</Label><Input value={consignorBankAd} onChange={(e) => setConsignorBankAd(e.target.value)} className="h-9 text-sm" /></div>
+                    </div>
+                  )}
                 </div>
-                <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" /></div>
-              </div>
-            </div>
+              </TabsContent>
+
+              {/* Consignee Tab */}
+              <TabsContent value="consignee" className="mt-4">
+                <div className="border rounded-lg p-4 bg-green-50/30">
+                  <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-green-700">
+                    <Users className="h-5 w-5" />Consignee Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm">Select ID Type</Label>
+                      <Select value={consigneeIdType} onValueChange={setConsigneeIdType}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                        <SelectContent>{idTypeOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}</SelectContent>
+                      </Select>
+                    </div>
+                    {consigneeIdType !== "Self" && consigneeIdType !== "" && (
+                      <div>
+                        <Label className="text-sm">Enter ID Value</Label>
+                        <Input value={consigneeIdValue} onChange={(e) => setConsigneeIdValue(e.target.value)} placeholder="Enter GST/Adhaar/PAN" className="h-9 text-sm" />
+                      </div>
+                    )}
+                    <div className="flex items-end">
+                      <Button onClick={handleConsigneeSearch} className="h-9 text-sm bg-green-600">
+                        <Search className="h-4 w-4 mr-1" />Search / Add
+                      </Button>
+                    </div>
+                  </div>
+                  {consigneeName && consigneeIdType !== "Self" && consigneeName !== "Self" && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-white p-3 rounded border">
+                      <div><strong>Name:</strong> {consigneeName}</div>
+                      <div><strong>Mobile:</strong> {consigneeMobile}</div>
+                      <div><strong>Email:</strong> {consigneeEmail || "-"}</div>
+                    </div>
+                  )}
+                  {consigneeName === "Self" && (
+                    <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">✓ Self (No ID required)</div>
+                  )}
+                  
+                  <button
+                    onClick={() => setIsConsigneeAddressOpen(!isConsigneeAddressOpen)}
+                    className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-800"
+                  >
+                    {isConsigneeAddressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                    {isConsigneeAddressOpen ? "Hide Address Details" : "Show Address Details"}
+                  </button>
+                  {isConsigneeAddressOpen && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded border">
+                      <div><Label className="text-sm">Address</Label><Input value={consigneeAddress} onChange={(e) => setConsigneeAddress(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">City</Label><Input value={consigneeCity} onChange={(e) => setConsigneeCity(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">State</Label><Input value={consigneeState} onChange={(e) => setConsigneeState(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">Dealer Code</Label><Input value={consigneeDealerCode} onChange={(e) => setConsigneeDealerCode(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">IEC Code</Label><Input value={consigneeIec} onChange={(e) => setConsigneeIec(e.target.value)} className="h-9 text-sm" /></div>
+                      <div><Label className="text-sm">Exim Code</Label><Input value={consigneeEximCode} onChange={(e) => setConsigneeEximCode(e.target.value)} className="h-9 text-sm" /></div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Remarks Tab */}
+              <TabsContent value="remarks" className="mt-4">
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-semibold mb-3">REMARKS & BILLING</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="text-sm" placeholder="General remarks" /></div>
+                    <div><Label className="text-sm">RO Remarks</Label><Textarea value={roRemarks} onChange={(e) => setRoRemarks(e.target.value)} rows={2} className="text-sm" placeholder="RO remarks" /></div>
+                    <div><Label className="text-sm">GP Remarks</Label><Textarea value={gpRemarks} onChange={(e) => setGpRemarks(e.target.value)} rows={2} className="text-sm" placeholder="GP remarks" /></div>
+                    <div><Label className="text-sm">Bill No</Label><Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="h-9 text-sm" placeholder="Bill number" /></div>
+                    <div><Label className="text-sm">Supplementary Bill No</Label><Input value={supplementaryBillNo} onChange={(e) => setSupplementaryBillNo(e.target.value)} className="h-9 text-sm" placeholder="Supplementary bill number" /></div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Goods Tab */}
+              <TabsContent value="goods" className="mt-4">
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Package className="h-5 w-5" /> GOODS DETAILS
+                    </h3>
+                    <Button onClick={addGoodsRow} variant="ghost" size="sm" className="h-8 text-sm">
+                      <Plus className="mr-1 h-4 w-4" />ADD GOODS
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-sm w-12">#</TableHead>
+                          <TableHead className="text-sm">No Of Pckgs</TableHead>
+                          <TableHead className="text-sm">Content Category</TableHead>
+                          <TableHead className="text-sm">Content (Sub)</TableHead>
+                          <TableHead className="text-sm">Packing</TableHead>
+                          <TableHead className="text-sm">Actual Weight</TableHead>
+                          <TableHead className="text-sm">Charge Weight</TableHead>
+                          <TableHead className="text-sm">Status</TableHead>
+                          <TableHead className="text-sm w-12">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {goodsItems.map((item, idx) => {
+                          const selectedCategory = contentCategories.find(c => c.id === Number(item.contentCategory));
+                          return (
+                            <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
+                              <TableCell className="text-sm">{idx + 1}</TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  value={item.noOfPckgs} 
+                                  onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
+                                  className="h-8 w-24 text-sm" 
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
+                                  <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                                  <SelectContent>
+                                    {contentCategories.map(cat => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={item.contentSubCategory} 
+                                  onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
+                                  disabled={!item.contentCategory}
+                                >
+                                  <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
+                                  <SelectContent>
+                                    {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={item.packing} onValueChange={(val) => updateGoodsItem(item.id, "packing", val)}>
+                                  <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {packingTypes.map(opt => (<SelectItem key={opt.name} value={opt.name}>{opt.name} ({opt.maxWeight}kg max/pkg)</SelectItem>))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                              </TableCell>
+                              <TableCell>
+                                <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                              </TableCell>
+                              <TableCell>
+                                {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
+                                {item.isWeightValid && item.chargeWeight > 0 && <span className="text-green-500 text-sm flex items-center gap-1"><CheckCircle className="h-4 w-4" />Valid</span>}
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={() => removeGoodsRow(item.id)} disabled={goodsItems.length === 1} className="h-8 w-8 p-0 text-red-500">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="p-3 bg-gray-50 flex flex-wrap gap-4 justify-end border-t">
+                    <span className="text-sm font-medium">Total Pckgs: <strong className="text-blue-600">{totalPckgs}</strong></span>
+                    <span className="text-sm font-medium">Total Actual Weight: <strong className="text-blue-600">{totalActualWeight.toFixed(2)} kg</strong></span>
+                    <span className="text-sm font-medium">Total Charge Weight: <strong className="text-blue-600">{totalChargeWeight.toFixed(2)} kg</strong></span>
+                    <span className="text-sm font-medium">Total Freight: <strong className="text-green-600">₹{totalFreight.toFixed(2)}</strong></span>
+                  </div>
+                </div>
+
+                {/* Invoices Table */}
+                <div className="border rounded-lg overflow-hidden mt-4">
+                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <FileText className="h-5 w-5" /> INVOICES
+                    </h3>
+                    <div className="flex gap-3 items-center">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={ncv} onChange={(e) => setNcv(e.target.checked)} className="h-4 w-4 rounded" />
+                        <span className="text-sm">NCV</span>
+                      </label>
+                      <Button onClick={addInvoiceRow} variant="ghost" size="sm" className="h-8 text-sm">
+                        <Plus className="mr-1 h-4 w-4" />ADD INVOICE
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-sm w-12">S#</TableHead>
+                          <TableHead className="text-sm">Invoice #</TableHead>
+                          <TableHead className="text-sm">Date</TableHead>
+                          <TableHead className="text-sm">Value</TableHead>
+                          <TableHead className="text-sm">Eway Bill #</TableHead>
+                          <TableHead className="text-sm">Eway Date</TableHead>
+                          <TableHead className="text-sm">Valid Upto</TableHead>
+                          <TableHead className="text-sm w-12">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoices.map((inv, idx) => (
+                          <TableRow key={inv.id}>
+                            <TableCell className="text-sm">{idx + 1}</TableCell>
+                            <TableCell><Input value={inv.invoiceNo} onChange={(e) => updateInvoice(inv.id, "invoiceNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
+                            <TableCell>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                    <CalendarIcon className="mr-1 h-4 w-4" />
+                                    {format(inv.date, "dd-MM-yyyy")}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="z-[10000]">
+                                  <Calendar mode="single" selected={inv.date} onSelect={(d) => d && updateInvoice(inv.id, "date", d)} />
+                                </PopoverContent>
+                              </Popover>
+                            </TableCell>
+                            <TableCell><Input value={inv.value} onChange={(e) => updateInvoice(inv.id, "value", e.target.value)} className="h-8 w-24 text-sm" /></TableCell>
+                            <TableCell><Input value={inv.ewayBillNo} onChange={(e) => updateInvoice(inv.id, "ewayBillNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell>
+                            <TableCell>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="h-8 w-28 text-sm justify-start">
+                                    <CalendarIcon className="mr-1 h-4 w-4" />
+                                    {format(inv.ewayBillDate, "dd-MM-yyyy")}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="z-[10000]">
+                                  <Calendar mode="single" selected={inv.ewayBillDate} onSelect={(d) => d && updateInvoice(inv.id, "ewayBillDate", d)} />
+                                </PopoverContent>
+                              </Popover>
+                            </TableCell>
+                            <TableCell><Input value={inv.validUpto} onChange={(e) => updateInvoice(inv.id, "validUpto", e.target.value)} className="h-8 w-24 text-sm" placeholder="Valid upto" /></TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => removeInvoice(inv.id)} disabled={invoices.length === 1} className="h-8 w-8 p-0 text-red-500">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Insurance Tab */}
+              <TabsContent value="insurance" className="mt-4">
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-semibold mb-3">INSURANCE DETAILS</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm">Insurance Covered By</Label>
+                      <Select value={insuranceCoveredBy} onValueChange={setInsuranceCoveredBy}>
+                        <SelectTrigger className="h-9 text-sm mt-1"><SelectValue placeholder="SELECT" /></SelectTrigger>
+                        <SelectContent>{insuranceCoveredByOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label className="text-sm">Insurance #</Label><Input value={insuranceNo} onChange={(e) => setInsuranceNo(e.target.value)} className="h-9 text-sm mt-1" placeholder="Insurance number" /></div>
+                    <div>
+                      <Label className="text-sm">Insurance Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="h-9 w-full text-sm justify-start mt-1">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(insuranceDate, "dd-MM-yyyy")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="z-[10000]">
+                          <Calendar mode="single" selected={insuranceDate} onSelect={(d) => d && setInsuranceDate(d)} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm mt-1" placeholder="Insurance company name" /></div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Footer Buttons */}
