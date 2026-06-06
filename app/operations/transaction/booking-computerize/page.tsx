@@ -2126,6 +2126,109 @@ export default function BookingComputerizedGRL() {
               </div>
             </div>
 
+             {/* Manual Rates Section - Compact Side Layout */}
+            {manualRates && (
+              <div className="border rounded-lg p-3 bg-yellow-50/30">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Left Column - Rate and Freight */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Rate (per kg/pkg):</Label>
+                      <Input 
+                        type="number" 
+                        value={freightRate} 
+                        onChange={(e) => setFreightRate(Number(e.target.value))}
+                        className="h-7 text-xs w-28"
+                        step="0.01"
+                      />
+                      <Button onClick={handleClearFreight} variant="outline" size="sm" className="h-7 text-xs px-2">
+                        CLEAR
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Charge Wt:</Label>
+                      <Input type="number" value={totalChargeWeight} readOnly className="h-7 text-xs w-28 bg-gray-50" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Freight:</Label>
+                      <Input type="number" value={calculatedFreight} readOnly className="h-7 text-xs w-28 font-bold text-green-600 bg-green-50" />
+                    </div>
+                  </div>
+
+                  {/* Middle Column - Extra Charges Table */}
+                  <div className="col-span-1">
+                    <Table className="text-xs">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-xs p-1">Charges</TableHead>
+                          <TableHead className="text-xs p-1 text-center w-16">Rate</TableHead>
+                          <TableHead className="text-xs p-1 text-right w-20">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {extraCharges.map((charge) => (
+                          <TableRow key={charge.id} className="text-xs">
+                            <TableCell className="text-xs p-1">{charge.name}</TableCell>
+                            <TableCell className="p-1">
+                              <Input 
+                                type="number" 
+                                value={charge.rate} 
+                                onChange={(e) => updateExtraCharge(charge.id, Number(e.target.value))}
+                                className="h-7 w-20 text-xs"
+                                step="0.01"
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs p-1 text-right">₹{charge.amount.toFixed(0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Right Column - GST and Totals */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">GST Paid By:</Label>
+                      <Select value={gstPaidBy} onValueChange={setGstPaidBy}>
+                        <SelectTrigger className="h-7 w-32 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {gstPaidByOptions.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">GST Rate (%):</Label>
+                      <Input type="number" value={gstRate} onChange={(e) => setGstRate(Number(e.target.value))} className="h-7 w-20 text-xs" step="0.01" />
+                    </div>
+                    <div className="border-t pt-1 mt-1">
+                      <div className="flex justify-between text-xs">
+                        <span>SubTotal:</span>
+                        <span className="font-semibold">₹{subTotal.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>GST ({gstRate}%):</span>
+                        <span>₹{gstAmount.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold text-green-600">
+                        <span>Total:</span>
+                        <span>₹{totalAmount.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs mt-1">
+                        <span>Advance:</span>
+                        <Input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="h-7 w-24 text-xs text-right" step="0.01" />
+                      </div>
+                      <div className="flex justify-between text-xs font-bold text-blue-600 border-t pt-1 mt-1">
+                        <span>Balance:</span>
+                        <span>₹{balanceAmount.toFixed(0)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Invoices Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
@@ -2247,108 +2350,7 @@ export default function BookingComputerizedGRL() {
               </div>
             </div>
 
-            {/* Manual Rates Section - Compact Side Layout */}
-            {manualRates && (
-              <div className="border rounded-lg p-3 bg-yellow-50/30">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Left Column - Rate and Freight */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs font-medium">Rate (per kg/pkg):</Label>
-                      <Input 
-                        type="number" 
-                        value={freightRate} 
-                        onChange={(e) => setFreightRate(Number(e.target.value))}
-                        className="h-7 text-xs w-28"
-                        step="0.01"
-                      />
-                      <Button onClick={handleClearFreight} variant="outline" size="sm" className="h-7 text-xs px-2">
-                        CLEAR
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs font-medium">Charge Wt:</Label>
-                      <Input type="number" value={totalChargeWeight} readOnly className="h-7 text-xs w-28 bg-gray-50" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs font-medium">Freight:</Label>
-                      <Input type="number" value={calculatedFreight} readOnly className="h-7 text-xs w-28 font-bold text-green-600 bg-green-50" />
-                    </div>
-                  </div>
-
-                  {/* Middle Column - Extra Charges Table */}
-                  <div className="col-span-1">
-                    <Table className="text-xs">
-                      <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-xs p-1">Charges</TableHead>
-                          <TableHead className="text-xs p-1 text-center w-16">Rate</TableHead>
-                          <TableHead className="text-xs p-1 text-right w-20">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {extraCharges.map((charge) => (
-                          <TableRow key={charge.id} className="text-xs">
-                            <TableCell className="text-xs p-1">{charge.name}</TableCell>
-                            <TableCell className="p-1">
-                              <Input 
-                                type="number" 
-                                value={charge.rate} 
-                                onChange={(e) => updateExtraCharge(charge.id, Number(e.target.value))}
-                                className="h-7 w-20 text-xs"
-                                step="0.01"
-                              />
-                            </TableCell>
-                            <TableCell className="text-xs p-1 text-right">₹{charge.amount.toFixed(0)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Right Column - GST and Totals */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">GST Paid By:</Label>
-                      <Select value={gstPaidBy} onValueChange={setGstPaidBy}>
-                        <SelectTrigger className="h-7 w-32 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {gstPaidByOptions.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">GST Rate (%):</Label>
-                      <Input type="number" value={gstRate} onChange={(e) => setGstRate(Number(e.target.value))} className="h-7 w-20 text-xs" step="0.01" />
-                    </div>
-                    <div className="border-t pt-1 mt-1">
-                      <div className="flex justify-between text-xs">
-                        <span>SubTotal:</span>
-                        <span className="font-semibold">₹{subTotal.toFixed(0)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span>GST ({gstRate}%):</span>
-                        <span>₹{gstAmount.toFixed(0)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-bold text-green-600">
-                        <span>Total:</span>
-                        <span>₹{totalAmount.toFixed(0)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs mt-1">
-                        <span>Advance:</span>
-                        <Input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="h-7 w-24 text-xs text-right" step="0.01" />
-                      </div>
-                      <div className="flex justify-between text-xs font-bold text-blue-600 border-t pt-1 mt-1">
-                        <span>Balance:</span>
-                        <span>₹{balanceAmount.toFixed(0)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+           
 
             {/* Footer Buttons */}
             <div className="flex flex-wrap justify-between items-center pt-4 border-t mt-4">
