@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import OverviewPage from "@/components/overview/overviewPage";
 
-export default function Home() {
+export default function Overview() {
   const router = useRouter();
 
   useEffect(() => {
@@ -11,17 +12,15 @@ export default function Home() {
     const selectedBranch = localStorage.getItem("selectedBranch");
 
     if (!isLoggedIn) {
-      router.replace("/auth/login");
+      router.replace("/login");
       return;
     }
 
     if (!selectedBranch) {
-      router.replace("/auth/select-branch");
+      router.replace("/select-branch");
       return;
     }
-
-    router.replace("/dashboard/overview");
   }, [router]);
 
-  return null;
+  return <OverviewPage />;
 }

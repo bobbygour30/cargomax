@@ -236,7 +236,6 @@ export const getContentCategories = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching content categories, using fallback data:', error);
-    // Return fallback data
     return {
       success: true,
       data: [
@@ -329,6 +328,62 @@ export const getBranches = async () => {
   }
 };
 
+// Get to stations for manifest
+export const getToStations = async () => {
+  try {
+    const response = await api.get('/static/to-stations');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching to stations, using fallback data:', error);
+    return {
+      success: true,
+      data: ["U P BORDER A JH UP", "U P BORDER D BR GP", "U P BORDER B BR", "DELHI", "MUMBAI", "BANGALORE"]
+    };
+  }
+};
+
+// Get drivers list
+export const getDrivers = async () => {
+  try {
+    const response = await api.get('/static/drivers');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching drivers, using fallback data:', error);
+    return {
+      success: true,
+      data: ["Rajesh Kumar", "Suresh Singh", "Mahesh Sharma", "Ramesh Gupta", "Satish Verma", "Vikash Singh"]
+    };
+  }
+};
+
+// Get vendors list
+export const getVendors = async () => {
+  try {
+    const response = await api.get('/static/vendors');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching vendors, using fallback data:', error);
+    return {
+      success: true,
+      data: ["TATA MOTORS", "ASHOK LEYLAND", "MAHINDRA", "EICHER", "BHARAT BENZ"]
+    };
+  }
+};
+
+// Get loading persons list
+export const getLoadingPersons = async () => {
+  try {
+    const response = await api.get('/static/loading-persons');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching loading persons, using fallback data:', error);
+    return {
+      success: true,
+      data: ["Mohan Singh", "Ravi Kumar", "Amit Sharma", "Pradeep Verma"]
+    };
+  }
+};
+
 // ==================== MANUAL BOOKING APIs ====================
 
 // Get all manual bookings
@@ -397,6 +452,168 @@ export const getManualBookingStats = async () => {
   return response.data;
 };
 
+// ==================== LONG ROUTE MANIFEST APIs ====================
+
+// Get all long route manifests with filters
+export const getLongRouteManifests = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/long-route-manifests?${params.toString()}`);
+  return response.data;
+};
+
+// Get manifest by ID
+export const getLongRouteManifestById = async (id) => {
+  const response = await api.get(`/long-route-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest by manifest number
+export const getLongRouteManifestByNo = async (manifestNo) => {
+  const response = await api.get(`/long-route-manifests/manifest/${manifestNo}`);
+  return response.data;
+};
+
+// Create new long route manifest
+export const createLongRouteManifest = async (manifestData) => {
+  console.log('Creating long route manifest with data:', manifestData);
+  const response = await api.post('/long-route-manifests', manifestData);
+  console.log('Create manifest response:', response.data);
+  return response.data;
+};
+
+// Update long route manifest
+export const updateLongRouteManifest = async (id, manifestData) => {
+  console.log(`Updating manifest ${id} with data:`, manifestData);
+  const response = await api.put(`/long-route-manifests/${id}`, manifestData);
+  return response.data;
+};
+
+// Update dispatch details (packages and weight)
+export const updateDispatchDetails = async (id, dispatchedPckgs, dispatchedWt) => {
+  console.log(`Updating dispatch details for manifest ${id}:`, { dispatchedPckgs, dispatchedWt });
+  const response = await api.put(`/long-route-manifests/${id}/dispatch`, { dispatchedPckgs, dispatchedWt });
+  return response.data;
+};
+
+// Cancel manifest
+export const cancelLongRouteManifest = async (id, cancelledReason) => {
+  console.log(`Cancelling manifest ${id} with reason:`, cancelledReason);
+  const response = await api.put(`/long-route-manifests/${id}/cancel`, { cancelledReason });
+  return response.data;
+};
+
+// Restore manifest
+export const restoreLongRouteManifest = async (id) => {
+  console.log(`Restoring manifest ${id}`);
+  const response = await api.put(`/long-route-manifests/${id}/restore`);
+  return response.data;
+};
+
+// Delete manifest
+export const deleteLongRouteManifest = async (id) => {
+  console.log(`Deleting manifest ${id}`);
+  const response = await api.delete(`/long-route-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest statistics
+export const getLongRouteManifestStats = async () => {
+  const response = await api.get('/long-route-manifests/stats');
+  return response.data;
+};
+
+// Get stock items for dispatch
+export const getStockItems = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/long-route-manifests/stock?${params.toString()}`);
+  return response.data;
+};
+
+// ==================== LOCAL MANIFEST APIs ====================
+
+// Get all manifests with filters
+export const getManifests = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/local-manifests?${params.toString()}`);
+  return response.data;
+};
+
+// Get manifest by ID
+export const getManifestById = async (id) => {
+  const response = await api.get(`/local-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest by manifest number
+export const getManifestByNo = async (manifestNo) => {
+  const response = await api.get(`/local-manifests/manifest/${manifestNo}`);
+  return response.data;
+};
+
+// Create new manifest
+export const createManifest = async (manifestData) => {
+  console.log('Creating manifest with data:', manifestData);
+  const response = await api.post('/local-manifests', manifestData);
+  console.log('Create manifest response:', response.data);
+  return response.data;
+};
+
+// Update manifest
+export const updateManifest = async (id, manifestData) => {
+  console.log(`Updating manifest ${id} with data:`, manifestData);
+  const response = await api.put(`/local-manifests/${id}`, manifestData);
+  return response.data;
+};
+
+// Update destination
+export const updateDestination = async (id, updateData) => {
+  console.log(`Updating destination for manifest ${id}:`, updateData);
+  const response = await api.put(`/local-manifests/${id}/update-destination`, updateData);
+  return response.data;
+};
+
+// Cancel manifest
+export const cancelManifest = async (id, cancelledReason) => {
+  console.log(`Cancelling manifest ${id} with reason:`, cancelledReason);
+  const response = await api.put(`/local-manifests/${id}/cancel`, { cancelledReason });
+  return response.data;
+};
+
+// Restore manifest
+export const restoreManifest = async (id) => {
+  console.log(`Restoring manifest ${id}`);
+  const response = await api.put(`/local-manifests/${id}/restore`);
+  return response.data;
+};
+
+// Delete manifest
+export const deleteManifest = async (id) => {
+  console.log(`Deleting manifest ${id}`);
+  const response = await api.delete(`/local-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest statistics
+export const getManifestStats = async () => {
+  const response = await api.get('/local-manifests/stats');
+  return response.data;
+};
+
 // ==================== HEALTH CHECK ====================
 
 // Health check endpoint
@@ -408,6 +625,86 @@ export const healthCheck = async () => {
     console.error('Health check failed:', error);
     return { status: 'error', message: error.message };
   }
+};
+
+// ==================== LORRY HIRE CHALLAN APIs ====================
+
+// Get all LHCs with filters
+export const getLHCs = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/lorry-hire-challans?${params.toString()}`);
+  return response.data;
+};
+
+// Get LHC by ID
+export const getLHCById = async (id) => {
+  const response = await api.get(`/lorry-hire-challans/${id}`);
+  return response.data;
+};
+
+// Get LHC by LHC number
+export const getLHCByNo = async (lhcNo) => {
+  const response = await api.get(`/lorry-hire-challans/lhc/${lhcNo}`);
+  return response.data;
+};
+
+// Create new LHC
+export const createLHC = async (lhcData) => {
+  console.log('Creating LHC with data:', lhcData);
+  const response = await api.post('/lorry-hire-challans', lhcData);
+  console.log('Create LHC response:', response.data);
+  return response.data;
+};
+
+// Update LHC
+export const updateLHC = async (id, lhcData) => {
+  console.log(`Updating LHC ${id} with data:`, lhcData);
+  const response = await api.put(`/lorry-hire-challans/${id}`, lhcData);
+  return response.data;
+};
+
+// Cancel LHC
+export const cancelLHC = async (id, cancelledReason) => {
+  console.log(`Cancelling LHC ${id} with reason:`, cancelledReason);
+  const response = await api.put(`/lorry-hire-challans/${id}/cancel`, { cancelledReason });
+  return response.data;
+};
+
+// Restore LHC
+export const restoreLHC = async (id) => {
+  console.log(`Restoring LHC ${id}`);
+  const response = await api.put(`/lorry-hire-challans/${id}/restore`);
+  return response.data;
+};
+
+// Delete LHC
+export const deleteLHC = async (id) => {
+  console.log(`Deleting LHC ${id}`);
+  const response = await api.delete(`/lorry-hire-challans/${id}`);
+  return response.data;
+};
+
+// Get LHC statistics
+export const getLHCStats = async () => {
+  const response = await api.get('/lorry-hire-challans/stats');
+  return response.data;
+};
+
+// Get pending manifests
+export const getPendingManifests = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/lorry-hire-challans/pending-manifests?${params.toString()}`);
+  return response.data;
 };
 
 export default api;

@@ -1289,12 +1289,6 @@ export default function BookingGRLManual() {
               <FileText className="h-5 w-5 text-blue-600" />
               <h1 className="text-xl md:text-2xl font-bold text-gray-800">BOOKING GRL MANUAL</h1>
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-              <span>🏢 Company: GOLDEN ROADWAYS &amp; LOGISTICS PVT LTD</span>
-              <span>👤 Login: MAYANK.GRLOGISTICS@GMAIL.COM</span>
-              <span>📍 Branch: CORPORATE OFFICE</span>
-              <span>📅 Financial Year: 2026-2027</span>
-            </div>
           </div>
           <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="mr-2 h-4 w-4" />New Booking

@@ -1,31 +1,36 @@
-import { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title:
-    "Fleet Status Dashboard | CargoMax - Real-time Vehicle Tracking & Management",
-  description:
-    "Monitor your entire fleet with real-time status updates, vehicle tracking, maintenance schedules, and performance analytics. Track fuel efficiency, maintenance costs, and vehicle locations across your logistics operations.",
-  keywords: [
-    "fleet management",
-    "vehicle tracking",
-    "fleet status dashboard",
-    "maintenance scheduling",
-    "fuel efficiency tracking",
-    "logistics dashboard",
-    "vehicle monitoring",
-    "fleet analytics",
-    "transportation management",
-    "cargo tracking",
-    "fleet optimization",
-    "vehicle maintenance",
-    "real-time tracking",
-    "fleet performance",
-    "logistics software",
-  ],
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { DashboardShell } from "@/components/DashboardShell";
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
-  return <div>{children}</div>;
-};
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
 
-export default DashboardLayout;
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const selectedBranch = localStorage.getItem("selectedBranch");
+
+    console.log("Dashboard Layout - Checking auth...");
+    console.log("isLoggedIn:", isLoggedIn);
+    console.log("selectedBranch:", selectedBranch);
+
+    if (!isLoggedIn) {
+      console.log("No login found, redirecting to /login");
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (!selectedBranch) {
+      console.log("No branch selected, redirecting to /select-branch");
+      router.replace("/auth/select-branch");
+      return;
+    }
+  }, [router]);
+
+  return <DashboardShell>{children}</DashboardShell>;
+}

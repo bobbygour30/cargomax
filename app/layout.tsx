@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DashboardShell } from "@/components/DashboardShell";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,12 +18,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body 
-        className={inter.className} 
-        suppressHydrationWarning={true}   // ← Add this line
+      <body
+        className={inter.className}
+        suppressHydrationWarning={true}
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <DashboardShell>{children}</DashboardShell>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          {children}
         </ThemeProvider>
       </body>
     </html>

@@ -130,7 +130,7 @@ const commonNavGroups: NavGroup[] = [
     title: "Dashboard",
     icon: LayoutDashboard,
     items: [
-      { title: "Overview", icon: LayoutDashboard, href: "/" },
+      { title: "Overview", icon: LayoutDashboard, href: "/dashboard/overview" },
       { title: "Live Shipment Map", icon: Map, href: "/dashboard/map" },
       { title: "Fleet Status", icon: Activity, href: "/dashboard/fleet-status" },
     ],
@@ -225,26 +225,26 @@ const moduleNavGroups: Record<string, NavGroup[]> = {
       title: "Workflow",
       icon: ClipboardList,
       items: [
-        { title: "Booking Computerize GRL", icon: PlusSquare, href: "/operations/transaction/booking-computerize" },
-        { title: "Booking GRL Manual", icon: FileText, href: "/operations/transaction/booking-grl-manual" },
-        { title: "Change Vehicle In Manifest", icon: Truck, href: "/operations/transaction/change-vehicle-in-manifest" },
-        { title: "DDR", icon: FileText, href: "/operations/transaction/ddr" },
-        { title: "DR Charge Update", icon: DollarSign, href: "/operations/transaction/dr-charge-update" },
-        { title: "Gate Pass Entry", icon: Navigation, href: "/operations/transaction/gate-pass" },
-        { title: "Goods Arrival", icon: PackagePlus, href: "/operations/transaction/goods-arrival" },
-        { title: "GR Enquiry", icon: ClipboardList, href: "/operations/transaction/gr-enquiry" },
-        { title: "Local Manifest", icon: Map, href: "/operations/transaction/local-manifest" },
-        { title: "Long Route Manifest GRL", icon: Map, href: "/operations/transaction/long-route-manifest" },
-        { title: "Lorry Hire Challan", icon: Truck, href: "/operations/transaction/lhc" },
-        { title: "Manifest Enquiry", icon: Search, href: "/operations/transaction/manifest-enquiry" },
-        { title: "Pickup Manifest", icon: Map, href: "/operations/transaction/pickup-manifest" },
-        { title: "POD Entry", icon: Receipt, href: "/operations/transaction/pod-entry" },
-        { title: "POD Upload", icon: Upload, href: "/operations/transaction/pod-upload" },
-        { title: "Route Merge Tool", icon: Merge, href: "/operations/transaction/route-merge-tool" },
-        { title: "Trip P&L Calculator (Inside Manifest)", icon: Calculator, href: "/operations/transaction/trip-calculator" },
-        { title: "Market Vehicle Placement Portal", icon: Truck, href: "/operations/transaction/market-vehicle-placement" },
-        { title: "RTO Entry (Reverse Logistics)", icon: RotateCcw, href: "/operations/transaction/rto-entry" },
-        { title: "Detention Entry (Auto-Generated But Viewable)", icon: AlertTriangle, href: "/operations/transaction/detention-entry" },
+        { title: "Booking Computerize GRL", icon: PlusSquare, href: "/dashboard/operations/transaction/booking-computerize" },
+        { title: "Booking GRL Manual", icon: FileText, href: "/dashboard/operations/transaction/booking-grl-manual" },
+        { title: "Change Vehicle In Manifest", icon: Truck, href: "/dashboard/operations/transaction/change-vehicle-in-manifest" },
+        { title: "DDR", icon: FileText, href: "/dashboard/operations/transaction/ddr" },
+        { title: "DR Charge Update", icon: DollarSign, href: "/dashboard/operations/transaction/dr-charge-update" },
+        { title: "Gate Pass Entry", icon: Navigation, href: "/dashboard/operations/transaction/gate-pass" },
+        { title: "Goods Arrival", icon: PackagePlus, href: "/dashboard/operations/transaction/goods-arrival" },
+        { title: "GR Enquiry", icon: ClipboardList, href: "/dashboard/operations/transaction/gr-enquiry" },
+        { title: "Local Manifest", icon: Map, href: "/dashboard/operations/transaction/local-manifest" },
+        { title: "Long Route Manifest GRL", icon: Map, href: "/dashboard/operations/transaction/long-route-manifest" },
+        { title: "Lorry Hire Challan", icon: Truck, href: "/dashboard/operations/transaction/lhc" },
+        { title: "Manifest Enquiry", icon: Search, href: "/dashboard/operations/transaction/manifest-enquiry" },
+        { title: "Pickup Manifest", icon: Map, href: "/dashboard/operations/transaction/pickup-manifest" },
+        { title: "POD Entry", icon: Receipt, href: "/dashboard/operations/transaction/pod-entry" },
+        { title: "POD Upload", icon: Upload, href: "/dashboard/operations/transaction/pod-upload" },
+        { title: "Route Merge Tool", icon: Merge, href: "/dashboard/operations/transaction/route-merge-tool" },
+        { title: "Trip P&L Calculator (Inside Manifest)", icon: Calculator, href: "/dashboard/operations/transaction/trip-calculator" },
+        { title: "Market Vehicle Placement Portal", icon: Truck, href: "/dashboard/operations/transaction/market-vehicle-placement" },
+        { title: "RTO Entry (Reverse Logistics)", icon: RotateCcw, href: "/dashboard/operations/transaction/rto-entry" },
+        { title: "Detention Entry (Auto-Generated But Viewable)", icon: AlertTriangle, href: "/dashboard/operations/transaction/detention-entry" },
       ],
     },
     {
@@ -690,7 +690,7 @@ export function Sidebar({ open, toggleSidebar, selectedModule, onModuleSelect }:
       )}
     >
       <div className="flex justify-between items-center border-b px-4 h-16">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+        <Link href="/dashboard/overview" className="flex items-center gap-2 font-semibold">
           <Truck className="h-6 w-6 text-primary" />
           <span className="text-xl">CargoMax</span>
         </Link>
