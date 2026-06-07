@@ -166,20 +166,7 @@ interface PendingManifest {
   selected: boolean;
 }
 
-// Options
-const branchOptions = [
-  "CORPORATE OFFICE", "DELHI", "MUMBAI", "BANGALORE", "CHENNAI",
-  "KOLKATA", "AHMEDABAD", "PUNE", "HYDERABAD", "AGARTALA"
-];
-
-const despatchTypeOptions = ["Outstation Challan", "Local Challan", "Intercity"];
-const modeTypeOptions = ["Surface", "Air", "Rail", "Sea"];
-const modeNameOptions = ["DL01LA0837", "DL01LAD6175", "DL01LAJ4226", "DL01LAQ0859", "SURFACE"];
-const ownerOptions = ["Rajesh Kumar", "Suresh Singh", "Mahesh Sharma"];
-const vendorOptions = ["TATA MOTORS", "ASHOK LEYLAND", "MAHINDRA", "EICHER"];
-const vehicleTypeOptions = ["MARKET", "OWN", "CONTRACT", "HIRE"];
-const brokerOptions = ["Mohan Broker", "Ravi Broker", "Amit Broker"];
-const routeOptions = ["DELHI-MUMBAI", "MUMBAI-BANGALORE", "DELHI-CHENNAI", "DELHI-KOLKATA"];
+// Options for dropdowns that remain (cancellation reason, TDS type)
 const cancelledReasonOptions = [
   "Customer Request", "Vehicle Issue", "Payment Issue", "Route Cancelled", "Other"
 ];
@@ -195,8 +182,6 @@ const defaultAdditionalCharges: AdditionalCharge[] = [
   { id: 6, name: "CASH DISCOUNT", type: "subtract", amount: 0, tdsApplicable: false, advance: 0, hasChecklist: true },
 ];
 
-const branchPaymentOptions = ["AGARTALA", "DELHI", "MUMBAI", "KOLKATA", "CHENNAI", "BANGALORE", "HYDERABAD", "PUNE"];
-
 export default function LorryHireChallan() {
   const [mainTab, setMainTab] = useState<"active" | "pending" | "cancelled">("active");
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -209,7 +194,7 @@ export default function LorryHireChallan() {
   const [cancellingLHC, setCancellingLHC] = useState<LorryHireChallan | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
 
-  // Form state
+  // Form state - All dropdowns replaced with manual inputs
   const [autoLHC, setAutoLHC] = useState<boolean>(true);
   const [branchName, setBranchName] = useState<string>("");
   const [despatchType, setDespatchType] = useState<string>("");
@@ -254,11 +239,11 @@ export default function LorryHireChallan() {
   const [totalAdvance, setTotalAdvance] = useState<number>(0);
   const [balancePayable, setBalancePayable] = useState<number>(0);
 
-  // Pending Manifest State
+  // Pending Manifest State - All dropdowns replaced with manual inputs
   const [pendingBranch, setPendingBranch] = useState<string>("");
   const [pendingToDate, setPendingToDate] = useState<Date>(new Date());
-  const [pendingModeType, setPendingModeType] = useState<string>("Surface");
-  const [pendingDespatchType, setPendingDespatchType] = useState<string>("Outstation Challan");
+  const [pendingModeType, setPendingModeType] = useState<string>("");
+  const [pendingDespatchType, setPendingDespatchType] = useState<string>("");
   const [pendingManifestFor, setPendingManifestFor] = useState<number>(90);
   const [pendingManifests, setPendingManifests] = useState<PendingManifest[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
@@ -268,7 +253,7 @@ export default function LorryHireChallan() {
   // Search State
   const [searchFromDate, setSearchFromDate] = useState<Date>(new Date());
   const [searchToDate, setSearchToDate] = useState<Date>(new Date());
-  const [searchBranch, setSearchBranch] = useState<string>("all");
+  const [searchBranch, setSearchBranch] = useState<string>("");
   const [searchResults, setSearchResults] = useState<LorryHireChallan[]>([]);
   const [cancelledResults, setCancelledResults] = useState<LorryHireChallan[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -497,7 +482,7 @@ export default function LorryHireChallan() {
 
   const handleSave = async () => {
     if (!branchName) {
-      toast.error("Please select Branch Name");
+      toast.error("Please enter Branch Name");
       return;
     }
     if (!date) {
@@ -572,7 +557,7 @@ export default function LorryHireChallan() {
       const filters: any = { status: "active", limit: 100 };
       if (searchFromDate) filters.fromDate = searchFromDate.toISOString();
       if (searchToDate) filters.toDate = searchToDate.toISOString();
-      if (searchBranch !== "all") filters.branch = searchBranch;
+      if (searchBranch) filters.branch = searchBranch;
 
       const response = await getLHCs(filters);
       setSearchResults(response.data || []);
@@ -592,7 +577,7 @@ export default function LorryHireChallan() {
       const filters: any = { status: "cancelled", limit: 100 };
       if (searchFromDate) filters.fromDate = searchFromDate.toISOString();
       if (searchToDate) filters.toDate = searchToDate.toISOString();
-      if (searchBranch !== "all") filters.branch = searchBranch;
+      if (searchBranch) filters.branch = searchBranch;
 
       const response = await getLHCs(filters);
       setCancelledResults(response.data || []);
@@ -609,7 +594,7 @@ export default function LorryHireChallan() {
   const handleClearSearch = () => {
     setSearchFromDate(new Date());
     setSearchToDate(new Date());
-    setSearchBranch("all");
+    setSearchBranch("");
     loadLHCs();
     loadCancelledLHCs();
     toast.success("Search filters cleared");
@@ -623,8 +608,8 @@ export default function LorryHireChallan() {
   const handleClearPendingSearch = () => {
     setPendingBranch("");
     setPendingToDate(new Date());
-    setPendingModeType("Surface");
-    setPendingDespatchType("Outstation Challan");
+    setPendingModeType("");
+    setPendingDespatchType("");
     setPendingManifestFor(90);
     setPendingManifests([]);
     setSelectAll(false);
@@ -832,7 +817,7 @@ export default function LorryHireChallan() {
           <Card><CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Search className="h-4 w-4" />Search LHC</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div><Label className="text-xs">From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div>
             <div><Label className="text-xs">To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="h-9 w-full text-sm justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div>
-            <div><Label className="text-xs">Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Branches" /></SelectTrigger><SelectContent><SelectItem value="all">All Branches</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label className="text-xs">Branch</Label><Input value={searchBranch} onChange={(e) => setSearchBranch(e.target.value)} placeholder="Enter branch name" className="h-9 text-sm" /></div>
             <div className="flex gap-2"><Button onClick={handleSearch} className="h-9 text-sm bg-blue-600"><Search className="h-4 w-4 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm"><RefreshCw className="h-4 w-4" /></Button></div>
           </div></CardContent></Card>
 
@@ -848,11 +833,11 @@ export default function LorryHireChallan() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Pending</p><p className="text-2xl font-bold">{pendingStats.total}</p></div><Clock className="h-8 w-8 opacity-80" /></div></CardContent></Card><Card className="bg-gradient-to-r from-green-500 to-green-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Selected Items</p><p className="text-2xl font-bold">{pendingStats.selected}</p></div><Check className="h-8 w-8 opacity-80" /></div></CardContent></Card></div>
 
           <Card><CardHeader><CardTitle className="text-sm"><Search className="h-4 w-4 inline mr-1" />Search Pending Manifests</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-            <div><Label>Branch</Label><Select value={pendingBranch} onValueChange={setPendingBranch}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent><SelectItem value="">Select</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Branch</Label><Input value={pendingBranch} onChange={(e) => setPendingBranch(e.target.value)} placeholder="Enter branch name" className="h-9 text-sm" /></div>
             <div><Label>To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(pendingToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={pendingToDate} onSelect={(d) => d && setPendingToDate(d)} /></PopoverContent></Popover></div>
-            <div><Label>Mode Type</Label><Select value={pendingModeType} onValueChange={setPendingModeType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{modeTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Despatch Type</Label><Select value={pendingDespatchType} onValueChange={setPendingDespatchType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{despatchTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Manifest For (Days)</Label><Input type="number" value={pendingManifestFor} onChange={(e) => setPendingManifestFor(Number(e.target.value))} /></div>
+            <div><Label>Mode Type</Label><Input value={pendingModeType} onChange={(e) => setPendingModeType(e.target.value)} placeholder="Enter mode type" className="h-9 text-sm" /></div>
+            <div><Label>Despatch Type</Label><Input value={pendingDespatchType} onChange={(e) => setPendingDespatchType(e.target.value)} placeholder="Enter despatch type" className="h-9 text-sm" /></div>
+            <div><Label>Manifest For (Days)</Label><Input type="number" value={pendingManifestFor} onChange={(e) => setPendingManifestFor(Number(e.target.value))} className="h-9 text-sm" /></div>
             <div className="flex gap-2"><Button onClick={handlePendingSearch} className="bg-yellow-600"><Search className="h-4 w-4 mr-1" />Show</Button><Button onClick={handleClearPendingSearch} variant="outline"><RefreshCw className="h-4 w-4" /></Button></div>
           </div></CardContent></Card>
 
@@ -866,7 +851,7 @@ export default function LorryHireChallan() {
       {mainTab === "cancelled" && (
         <>
           <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white"><CardContent className="p-4"><div className="flex justify-between"><div><p className="text-sm">Total Cancelled LHC</p><p className="text-2xl font-bold">{cancelledStats.total}</p></div><X className="h-8 w-8 opacity-80" /></div></CardContent></Card>
-          <Card><CardHeader><CardTitle className="text-sm"><Search className="h-4 w-4 inline mr-1" />Search Cancelled LHC</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"><div><Label>From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label>To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label>Branch</Label><Select value={searchBranch} onValueChange={setSearchBranch}><SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger><SelectContent><SelectItem value="all">All Branches</SelectItem>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div className="flex gap-2"><Button onClick={handleCancelSearch} className="bg-red-600"><Search className="h-4 w-4 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline"><RefreshCw className="h-4 w-4" /></Button></div></div></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-sm"><Search className="h-4 w-4 inline mr-1" />Search Cancelled LHC</CardTitle></CardHeader><CardContent><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"><div><Label>From Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchFromDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchFromDate} onSelect={(d) => d && setSearchFromDate(d)} /></PopoverContent></Popover></div><div><Label>To Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(searchToDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={searchToDate} onSelect={(d) => d && setSearchToDate(d)} /></PopoverContent></Popover></div><div><Label>Branch</Label><Input value={searchBranch} onChange={(e) => setSearchBranch(e.target.value)} placeholder="Enter branch name" className="h-9 text-sm" /></div><div className="flex gap-2"><Button onClick={handleCancelSearch} className="bg-red-600"><Search className="h-4 w-4 mr-1" />Search</Button><Button onClick={handleClearSearch} variant="outline"><RefreshCw className="h-4 w-4" /></Button></div></div></CardContent></Card>
           <Card><CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead>#</TableHead><TableHead>LHC #</TableHead><TableHead>Date</TableHead><TableHead>Branch</TableHead><TableHead>Route</TableHead><TableHead className="text-center">Status</TableHead><TableHead className="text-center">Actions</TableHead></TableRow></TableHeader><TableBody>
             {loading ? <TableRow><TableCell colSpan={7} className="text-center py-12"><Loader2 className="h-8 w-8 mx-auto animate-spin" /><p>Loading...</p></TableCell></TableRow> : paginatedCancelledResults.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-12"><X className="h-12 w-12 mx-auto opacity-30" /><p>No cancelled records found</p></TableCell></TableRow> : paginatedCancelledResults.map((record, idx) => (<TableRow key={record._id} className="bg-red-50/30"><TableCell>{(cancelledPage-1)*itemsPerPage+idx+1}</TableCell><TableCell><Badge variant="outline" className="bg-red-50 text-red-700">{record.lhcNo}</Badge></TableCell><TableCell>{format(new Date(record.date), "dd-MM-yyyy")}</TableCell><TableCell>{record.branchName}</TableCell><TableCell>{record.route}</TableCell><TableCell className="text-center"><Badge className="bg-red-100 text-red-700">Cancelled</Badge></TableCell><TableCell className="text-center"><div className="flex gap-1 justify-center"><Button variant="ghost" size="sm" onClick={() => handleRestoreLHC(record)}><RefreshCw className="h-4 w-4 text-green-500" /></Button><Button variant="ghost" size="sm" onClick={() => handleDelete(record._id!, record.lhcNo)}><Trash2 className="h-4 w-4 text-red-500" /></Button></div></TableCell></TableRow>))}
           </TableBody></Table></div>{totalCancelledPages > 1 && <div className="flex justify-center gap-2 p-4"><Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledPage-1)} disabled={cancelledPage===1}>Previous</Button><span className="px-4 py-2 text-sm">Page {cancelledPage} of {totalCancelledPages}</span><Button variant="outline" size="sm" onClick={() => goToCancelledPage(cancelledPage+1)} disabled={cancelledPage===totalCancelledPages}>Next</Button></div>}</CardContent></Card>
@@ -882,62 +867,62 @@ export default function LorryHireChallan() {
           <DialogHeader className="sticky top-0 bg-white z-10 pb-3 border-b"><DialogTitle className="text-xl flex items-center gap-2">{editMode ? <><Edit className="h-5 w-5 text-blue-600" /> Edit Lorry Hire Challan</> : <><Plus className="h-5 w-5 text-blue-600" /> Create New Lorry Hire Challan</>}</DialogTitle><DialogDescription>Fill in all LHC details below.</DialogDescription></DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Basic Information */}
+            {/* Basic Information - All manual inputs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div><Label>Branch Name <span className="text-red-500">*</span></Label><Select value={branchName} onValueChange={setBranchName}><SelectTrigger><SelectValue placeholder="SELECT BRANCH" /></SelectTrigger><SelectContent>{branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Despatch Type</Label><Select value={despatchType} onValueChange={setDespatchType}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{despatchTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label>Branch Name <span className="text-red-500">*</span></Label><Input value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="Enter branch name" className="h-9 text-sm" /></div>
+              <div><Label>Despatch Type</Label><Input value={despatchType} onChange={(e) => setDespatchType(e.target.value)} placeholder="Enter despatch type" className="h-9 text-sm" /></div>
               <div><Label>LHC #</Label><div className="flex gap-2"><Input value={lhcNo} onChange={(e) => setLhcNo(e.target.value)} readOnly={autoLHC} className={cn("flex-1", autoLHC && "bg-gray-50")} placeholder={autoLHC ? "Auto-generated" : "Enter LHC No"} /><div className="flex items-center gap-2"><input type="checkbox" checked={autoLHC} onChange={(e) => setAutoLHC(e.target.checked)} className="h-4 w-4 rounded" id="auto" /><Label htmlFor="auto" className="text-sm cursor-pointer">Auto</Label></div></div></div>
               <div><Label>Date <span className="text-red-500">*</span></Label><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start"><CalendarIcon className="mr-2 h-4 w-4" />{format(date, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} /></PopoverContent></Popover></div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div><Label>Mode Type</Label><Select value={modeType} onValueChange={setModeType}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{modeTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Mode Name</Label><Select value={modeName} onValueChange={setModeName}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{modeNameOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Owner</Label><Select value={owner} onValueChange={setOwner}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{ownerOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Vendor</Label><Select value={vendor} onValueChange={setVendor}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{vendorOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label>Mode Type</Label><Input value={modeType} onChange={(e) => setModeType(e.target.value)} placeholder="Enter mode type" className="h-9 text-sm" /></div>
+              <div><Label>Mode Name</Label><Input value={modeName} onChange={(e) => setModeName(e.target.value)} placeholder="Enter mode name" className="h-9 text-sm" /></div>
+              <div><Label>Owner</Label><Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Enter owner name" className="h-9 text-sm" /></div>
+              <div><Label>Vendor</Label><Input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="Enter vendor name" className="h-9 text-sm" /></div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div><Label>Vehicle Type</Label><Select value={vehicleType} onValueChange={setVehicleType}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{vehicleTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Broker</Label><Select value={broker} onValueChange={setBroker}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{brokerOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>Route</Label><Select value={route} onValueChange={setRoute}><SelectTrigger><SelectValue placeholder="SELECT" /></SelectTrigger><SelectContent>{routeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div>
-              <div><Label>PAN</Label><Input value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} placeholder="Enter PAN" className="uppercase" /></div>
+              <div><Label>Vehicle Type</Label><Input value={vehicleType} onChange={(e) => setVehicleType(e.target.value)} placeholder="Enter vehicle type" className="h-9 text-sm" /></div>
+              <div><Label>Broker</Label><Input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="Enter broker name" className="h-9 text-sm" /></div>
+              <div><Label>Route</Label><Input value={route} onChange={(e) => setRoute(e.target.value)} placeholder="Enter route" className="h-9 text-sm" /></div>
+              <div><Label>PAN</Label><Input value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} placeholder="Enter PAN" className="uppercase h-9 text-sm" /></div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><Label>Empty Lorry Weight (kg)</Label><Input type="number" value={emptyLorryWeight} onChange={(e) => setEmptyLorryWeight(Number(e.target.value))} /></div>
-              <div><Label>Dharam Kanta Weight (kg)</Label><Input type="number" value={dharamKantaWeight} onChange={(e) => setDharamKantaWeight(Number(e.target.value))} /></div>
+              <div><Label>Empty Lorry Weight (kg)</Label><Input type="number" value={emptyLorryWeight} onChange={(e) => setEmptyLorryWeight(Number(e.target.value))} className="h-9 text-sm" /></div>
+              <div><Label>Dharam Kanta Weight (kg)</Label><Input type="number" value={dharamKantaWeight} onChange={(e) => setDharamKantaWeight(Number(e.target.value))} className="h-9 text-sm" /></div>
             </div>
 
-            <div><Label>Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} placeholder="Enter remarks..." /></div>
+            <div><Label>Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} placeholder="Enter remarks..." className="text-sm" /></div>
 
             {/* Items Table */}
             <div className="rounded-md border">
               <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center"><h3 className="font-semibold">Challan Details</h3><Button onClick={addItemRow} variant="ghost" size="sm"><PlusCircle className="mr-1 h-4 w-4" /> Add Row</Button></div>
               <div className="overflow-x-auto p-4"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead className="w-12">#</TableHead><TableHead>Challan#</TableHead><TableHead>Challan Date</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Pckgs</TableHead><TableHead>Chargeable Wt</TableHead><TableHead>Rate</TableHead><TableHead>Amount</TableHead><TableHead className="w-8">Action</TableHead></TableRow></TableHeader><TableBody>
-                {items.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell><Input value={item.challanNo} onChange={(e) => updateItem(item.id, "challanNo", e.target.value)} className="h-8 w-28" /></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28"><CalendarIcon className="mr-1 h-3 w-3" />{format(item.challanDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={item.challanDate} onSelect={(d) => d && updateItem(item.id, "challanDate", d)} /></PopoverContent></Popover></TableCell><TableCell><Input value={item.from} onChange={(e) => updateItem(item.id, "from", e.target.value)} className="h-8 w-24" /></TableCell><TableCell><Input value={item.to} onChange={(e) => updateItem(item.id, "to", e.target.value)} className="h-8 w-24" /></TableCell><TableCell><Input type="number" value={item.pckgs} onChange={(e) => updateItem(item.id, "pckgs", Number(e.target.value))} className="h-8 w-20" /></TableCell><TableCell><Input type="number" value={item.chargeableWeight} onChange={(e) => updateItem(item.id, "chargeableWeight", Number(e.target.value))} className="h-8 w-24" step="0.01" /></TableCell><TableCell><Input type="number" value={item.rate} onChange={(e) => updateItem(item.id, "rate", Number(e.target.value))} className="h-8 w-20" /></TableCell><TableCell className="font-mono">₹{item.calcAmount.toFixed(2)}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeItem(item.id)} className="h-8 w-8 p-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}
+                {items.map((item, idx) => (<TableRow key={item.id}><TableCell>{idx+1}</TableCell><TableCell><Input value={item.challanNo} onChange={(e) => updateItem(item.id, "challanNo", e.target.value)} className="h-8 w-28 text-sm" /></TableCell><TableCell><Popover><PopoverTrigger asChild><Button variant="outline" className="h-8 w-28 text-sm"><CalendarIcon className="mr-1 h-3 w-3" />{format(item.challanDate, "dd-MM-yyyy")}</Button></PopoverTrigger><PopoverContent><Calendar mode="single" selected={item.challanDate} onSelect={(d) => d && updateItem(item.id, "challanDate", d)} /></PopoverContent></Popover></TableCell><TableCell><Input value={item.from} onChange={(e) => updateItem(item.id, "from", e.target.value)} className="h-8 w-24 text-sm" /></TableCell><TableCell><Input value={item.to} onChange={(e) => updateItem(item.id, "to", e.target.value)} className="h-8 w-24 text-sm" /></TableCell><TableCell><Input type="number" value={item.pckgs} onChange={(e) => updateItem(item.id, "pckgs", Number(e.target.value))} className="h-8 w-20 text-sm" /></TableCell><TableCell><Input type="number" value={item.chargeableWeight} onChange={(e) => updateItem(item.id, "chargeableWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" /></TableCell><TableCell><Input type="number" value={item.rate} onChange={(e) => updateItem(item.id, "rate", Number(e.target.value))} className="h-8 w-20 text-sm" /></TableCell><TableCell className="font-mono text-sm">₹{item.calcAmount.toFixed(2)}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeItem(item.id)} className="h-8 w-8 p-0 text-red-500"><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>))}
               </TableBody></Table></div>
             </div>
 
-            <div className="flex justify-end items-center gap-3"><div><Label className="font-semibold">Hire Freight</Label><Input type="number" value={hireFreight} onChange={(e) => setHireFreight(Number(e.target.value))} className="h-9 w-48 text-right font-bold" /></div><Button onClick={updateHireFreight} variant="outline"><Calculator className="mr-1 h-4 w-4" /> Recalculate</Button></div>
+            <div className="flex justify-end items-center gap-3"><div><Label className="font-semibold">Hire Freight</Label><Input type="number" value={hireFreight} onChange={(e) => setHireFreight(Number(e.target.value))} className="h-9 w-48 text-right font-bold text-sm" /></div><Button onClick={updateHireFreight} variant="outline" size="sm"><Calculator className="mr-1 h-4 w-4" /> Recalculate</Button></div>
 
             {/* Additional Charges Table */}
             <div className="rounded-md border">
               <div className="bg-gray-50 px-4 py-3 border-b"><h3 className="font-semibold">Additional Charges</h3></div>
               <div className="overflow-x-auto p-4"><Table><TableHeader><TableRow className="bg-gray-50"><TableHead>#</TableHead><TableHead>Particulars</TableHead><TableHead className="w-24">Address(+/-)</TableHead><TableHead>Amount</TableHead><TableHead className="w-24">TDS Applicable</TableHead><TableHead>Advance</TableHead><TableHead className="w-24">Check List</TableHead></TableRow></TableHeader><TableBody>
-                {additionalCharges.map((charge, idx) => (<TableRow key={charge.id}><TableCell>{idx+1}</TableCell><TableCell>{charge.name}</TableCell><TableCell><Select value={charge.type} onValueChange={(val) => updateAdditionalCharge(charge.id, "type", val as "add" | "subtract")}><SelectTrigger className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="add">+</SelectItem><SelectItem value="subtract">-</SelectItem></SelectContent></Select></TableCell><TableCell><Input type="number" value={charge.amount} onChange={(e) => updateAdditionalCharge(charge.id, "amount", Number(e.target.value))} className="h-8 w-32 text-right" /></TableCell><TableCell className="text-center"><input type="checkbox" checked={charge.tdsApplicable} onChange={(e) => updateAdditionalCharge(charge.id, "tdsApplicable", e.target.checked)} className="h-4 w-4" /></TableCell><TableCell><Input type="number" value={charge.advance} onChange={(e) => updateAdditionalCharge(charge.id, "advance", Number(e.target.value))} className="h-8 w-32 text-right" /></TableCell><TableCell className="text-center">{charge.hasChecklist && <input type="checkbox" className="h-4 w-4" />}</TableCell></TableRow>))}
+                {additionalCharges.map((charge, idx) => (<TableRow key={charge.id}><TableCell>{idx+1}</TableCell><TableCell>{charge.name}</TableCell><TableCell><Select value={charge.type} onValueChange={(val) => updateAdditionalCharge(charge.id, "type", val as "add" | "subtract")}><SelectTrigger className="h-8 w-20 text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="add">+</SelectItem><SelectItem value="subtract">-</SelectItem></SelectContent></Select></TableCell><TableCell><Input type="number" value={charge.amount} onChange={(e) => updateAdditionalCharge(charge.id, "amount", Number(e.target.value))} className="h-8 w-32 text-right text-sm" /></TableCell><TableCell className="text-center"><input type="checkbox" checked={charge.tdsApplicable} onChange={(e) => updateAdditionalCharge(charge.id, "tdsApplicable", e.target.checked)} className="h-4 w-4" /></TableCell><TableCell><Input type="number" value={charge.advance} onChange={(e) => updateAdditionalCharge(charge.id, "advance", Number(e.target.value))} className="h-8 w-32 text-right text-sm" /></TableCell><TableCell className="text-center">{charge.hasChecklist && <input type="checkbox" className="h-4 w-4" />}</TableCell></TableRow>))}
               </TableBody></Table></div>
             </div>
 
             {/* TDS and Advance Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3"><div><Label>TDS Type <span className="text-red-500">*</span></Label><Select value={tdsType} onValueChange={setTdsType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{tdsTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div><Label>TDS%</Label><Input type="number" value={tdsPercentage} onChange={(e) => setTdsPercentage(Number(e.target.value))} /></div><div><Label>Applicable On</Label><Input type="number" value={applicableOn} onChange={(e) => setApplicableOn(Number(e.target.value))} /></div><div><Label>Less TDS</Label><Input type="number" value={lessTds} readOnly className="bg-gray-50" /></div></div>
-                <div className="grid grid-cols-3 gap-3"><div><Label>Cash Advance</Label><Input type="number" value={cashAdvance} onChange={(e) => setCashAdvance(Number(e.target.value))} /></div><div><Label>Bank Advance</Label><Input type="number" value={bankAdvance} onChange={(e) => setBankAdvance(Number(e.target.value))} /></div><div><Label>Petro Card Advance</Label><Input type="number" value={petroCardAdvance} onChange={(e) => setPetroCardAdvance(Number(e.target.value))} /></div></div>
+                <div className="grid grid-cols-2 gap-3"><div><Label>TDS Type <span className="text-red-500">*</span></Label><Select value={tdsType} onValueChange={setTdsType}><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger><SelectContent>{tdsTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></div><div><Label>TDS%</Label><Input type="number" value={tdsPercentage} onChange={(e) => setTdsPercentage(Number(e.target.value))} className="h-9 text-sm" /></div><div><Label>Applicable On</Label><Input type="number" value={applicableOn} onChange={(e) => setApplicableOn(Number(e.target.value))} className="h-9 text-sm" /></div><div><Label>Less TDS</Label><Input type="number" value={lessTds} readOnly className="bg-gray-50 h-9 text-sm" /></div></div>
+                <div className="grid grid-cols-3 gap-3"><div><Label>Cash Advance</Label><Input type="number" value={cashAdvance} onChange={(e) => setCashAdvance(Number(e.target.value))} className="h-9 text-sm" /></div><div><Label>Bank Advance</Label><Input type="number" value={bankAdvance} onChange={(e) => setBankAdvance(Number(e.target.value))} className="h-9 text-sm" /></div><div><Label>Petro Card Advance</Label><Input type="number" value={petroCardAdvance} onChange={(e) => setPetroCardAdvance(Number(e.target.value))} className="h-9 text-sm" /></div></div>
               </div>
               <div className="space-y-3">
-                <div><Label>Guarantee Weight (kg)</Label><Input type="number" value={guaranteeWeight} onChange={(e) => setGuaranteeWeight(Number(e.target.value))} /></div>
-                <div className="flex gap-4"><label className="flex items-center gap-2"><input type="checkbox" checked={lhcNotForPayment} onChange={(e) => setLhcNotForPayment(e.target.checked)} className="h-4 w-4 rounded" /><span>LHC Not For Payment</span></label><label className="flex items-center gap-2"><input type="checkbox" checked={issueFuelSlip} onChange={(e) => setIssueFuelSlip(e.target.checked)} className="h-4 w-4 rounded" /><Fuel className="h-4 w-4" /><span>ISSUE FUEL SLIP</span></label></div>
+                <div><Label>Guarantee Weight (kg)</Label><Input type="number" value={guaranteeWeight} onChange={(e) => setGuaranteeWeight(Number(e.target.value))} className="h-9 text-sm" /></div>
+                <div className="flex gap-4"><label className="flex items-center gap-2"><input type="checkbox" checked={lhcNotForPayment} onChange={(e) => setLhcNotForPayment(e.target.checked)} className="h-4 w-4 rounded" /><span className="text-sm">LHC Not For Payment</span></label><label className="flex items-center gap-2"><input type="checkbox" checked={issueFuelSlip} onChange={(e) => setIssueFuelSlip(e.target.checked)} className="h-4 w-4 rounded" /><Fuel className="h-4 w-4" /><span className="text-sm">ISSUE FUEL SLIP</span></label></div>
               </div>
             </div>
 
@@ -945,7 +930,7 @@ export default function LorryHireChallan() {
             <div className="rounded-md border">
               <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center"><h3 className="font-semibold">Balance Payable At</h3><Button onClick={addBalancePayableBranch} variant="ghost" size="sm"><PlusCircle className="mr-1 h-4 w-4" /> ADD MORE...</Button></div>
               <div className="p-4"><Table><TableHeader><TableRow><TableHead>S#</TableHead><TableHead>Branch</TableHead><TableHead>Amount</TableHead><TableHead className="w-8">Action</TableHead></TableRow></TableHeader><TableBody>
-                {balancePayableBranches.map((branch, idx) => (<TableRow key={branch.id}><TableCell>{idx+1}</TableCell><TableCell><Select value={branch.branch} onValueChange={(val) => updateBalancePayableBranch(branch.id, "branch", val)}><SelectTrigger><SelectValue placeholder="SELECT BRANCH" /></SelectTrigger><SelectContent>{branchPaymentOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><Input type="number" value={branch.amount} onChange={(e) => updateBalancePayableBranch(branch.id, "amount", Number(e.target.value))} className="w-40 text-right" /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeBalancePayableBranch(branch.id)} disabled={balancePayableBranches.length === 1}><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell></TableRow>))}
+                {balancePayableBranches.map((branch, idx) => (<TableRow key={branch.id}><TableCell>{idx+1}</TableCell><TableCell><Input value={branch.branch} onChange={(e) => updateBalancePayableBranch(branch.id, "branch", e.target.value)} placeholder="Enter branch name" className="h-8 text-sm" /></TableCell><TableCell><Input type="number" value={branch.amount} onChange={(e) => updateBalancePayableBranch(branch.id, "amount", Number(e.target.value))} className="w-40 text-right h-8 text-sm" /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => removeBalancePayableBranch(branch.id)} disabled={balancePayableBranches.length === 1} className="h-8 w-8 p-0"><Trash2 className="h-4 w-4 text-red-500" /></Button></TableCell></TableRow>))}
               </TableBody></Table></div>
               <div className="p-4 bg-gray-50 border-t flex justify-between items-center"><span className="font-bold">Balance Payable</span><span className="text-xl font-bold text-blue-600">₹{balancePayable.toFixed(2)}</span></div>
               <div className="p-4 bg-gray-100 border-t flex justify-between items-center"><span className="font-bold">Total:</span><span className="text-xl font-bold text-green-600">₹{(hireFreight + totalAdditionalCharges).toFixed(2)}</span><span className="font-bold">Amount:</span><span className="text-xl font-bold text-orange-600">₹{balancePayable.toFixed(2)}</span></div>
@@ -953,9 +938,9 @@ export default function LorryHireChallan() {
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-white pt-3 border-t gap-2">
-            <Button variant="outline" onClick={handlePrint}><Printer className="mr-1 h-4 w-4" /> Print</Button>
-            <Button variant="outline" onClick={() => setIsEntryModalOpen(false)}><X className="mr-1 h-4 w-4" /> Cancel</Button>
-            <Button onClick={handleSave} disabled={loading} className="bg-blue-600"><Save className="mr-1 h-4 w-4" />{editMode ? "Update" : "Save"}</Button>
+            <Button variant="outline" onClick={handlePrint} size="sm"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+            <Button variant="outline" onClick={() => setIsEntryModalOpen(false)} size="sm"><X className="mr-1 h-4 w-4" /> Cancel</Button>
+            <Button onClick={handleSave} disabled={loading} className="bg-blue-600" size="sm"><Save className="mr-1 h-4 w-4" />{editMode ? "Update" : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
