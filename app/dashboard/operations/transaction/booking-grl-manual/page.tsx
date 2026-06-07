@@ -1128,26 +1128,55 @@ export default function BookingGRLManual() {
     }
   };
 
-  const handleSearch = async () => {
-    setLoading(true);
-    try {
-      const filters: any = { status: 'active', limit: 100 };
-      if (searchGrNo) filters.grNo = searchGrNo;
-      if (searchFromDate) filters.fromDate = searchFromDate.toISOString();
-      if (searchToDate) filters.toDate = searchToDate.toISOString();
-      if (searchBranch !== "all") filters.branch = searchBranch;
-      
-      const response = await getManualBookings(filters);
-      setSearchResults(response.data || []);
-      setCurrentPage(1);
-      toast.success(`Found ${response.data?.length || 0} bookings`);
-    } catch (error: any) {
-      console.error('Search error:', error);
-      toast.error(error.response?.data?.message || "Search failed");
-    } finally {
-      setLoading(false);
+const handleSearch = async () => {
+  console.log("=== SEARCH BUTTON CLICKED ===");
+  console.log("Search GR No (raw):", searchGrNo);
+  console.log("Search GR No (type):", typeof searchGrNo);
+  
+  setLoading(true);
+  try {
+    const filters: any = { status: 'active', limit: 100 };
+    
+    // Convert to string and trim
+    if (searchGrNo && searchGrNo.toString().trim() !== '') {
+      filters.grNo = searchGrNo.toString().trim();
+      console.log("Adding GR No filter (string):", filters.grNo);
     }
-  };
+    
+    if (searchFromDate) {
+      filters.fromDate = searchFromDate.toISOString();
+    }
+    
+    if (searchToDate) {
+      filters.toDate = searchToDate.toISOString();
+    }
+    
+    if (searchBranch !== "all") {
+      filters.branch = searchBranch;
+    }
+    
+    console.log("Final filters being sent to API:", JSON.stringify(filters, null, 2));
+    
+    const response = await getManualBookings(filters);
+    console.log("API Response:", response);
+    console.log("Number of results:", response.data?.length);
+    
+    setSearchResults(response.data || []);
+    setCurrentPage(1);
+    
+    if (response.data?.length === 0) {
+      toast.error("No bookings found matching your search criteria");
+    } else {
+      toast.success(`Found ${response.data?.length || 0} bookings`);
+    }
+  } catch (error: any) {
+    console.error('Search error:', error);
+    console.error('Error response:', error.response?.data);
+    toast.error(error.response?.data?.message || "Search failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCancelledSearch = async () => {
     setLoading(true);
