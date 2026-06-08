@@ -12,15 +12,23 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor for debugging and authentication
+// ✅ FIX: Safely get token only on client-side
+const getToken = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token');
+  }
+  return null;
+};
+
+// Request interceptor with safe localStorage access
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('token');
-    
-    // If token exists, add it to headers
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Only access localStorage on client
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
@@ -32,7 +40,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor with safe localStorage access
 api.interceptors.response.use(
   (response) => {
     console.log(`API Response: ${response.status} ${response.config.url}`);
@@ -43,8 +51,8 @@ api.interceptors.response.use(
     console.error('Error Status:', error.response?.status);
     console.error('Error URL:', error.config?.url);
     
-    // Handle 401 Unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
+    // Only handle 401 on client-side
+    if (typeof window !== 'undefined' && error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('isLoggedIn');
@@ -62,7 +70,7 @@ api.interceptors.response.use(
 // Login user
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
-  if (response.data.data.token) {
+  if (typeof window !== 'undefined' && response.data.data.token) {
     localStorage.setItem('token', response.data.data.token);
     localStorage.setItem('user', JSON.stringify(response.data.data));
     localStorage.setItem('isLoggedIn', 'true');
@@ -73,7 +81,7 @@ export const login = async (email, password) => {
 // Select branch after login
 export const selectBranch = async (branch, branchCode) => {
   const response = await api.post('/auth/select-branch', { branch, branchCode });
-  if (response.data.data) {
+  if (typeof window !== 'undefined' && response.data.data) {
     localStorage.setItem('selectedBranch', response.data.data.branch);
     localStorage.setItem('branchCode', response.data.data.branchCode);
   }
@@ -93,22 +101,30 @@ export const logout = async () => {
   } catch (error) {
     console.error('Logout error:', error);
   } finally {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('selectedBranch');
-    localStorage.removeItem('branchCode');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('selectedBranch');
+      localStorage.removeItem('branchCode');
+    }
   }
 };
 
-// Check if user is authenticated
+// ✅ FIX: Check authentication safely
 export const isAuthenticated = () => {
-  return !!localStorage.getItem('token');
+  if (typeof window !== 'undefined') {
+    return !!localStorage.getItem('token');
+  }
+  return false;
 };
 
-// Get auth token
+// ✅ FIX: Get auth token safely
 export const getAuthToken = () => {
-  return localStorage.getItem('token');
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token');
+  }
+  return null;
 };
 
 // ==================== BOOKING APIs ====================
