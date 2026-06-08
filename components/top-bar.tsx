@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Settings,
@@ -14,12 +15,15 @@ import {
   User,
   Search,
   ChevronDown,
-  Network, // Added Network icon
+  Network,
+  LogOut,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ThemeToggle } from "./theme-toggle";
 import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
+import { logout } from "@/services/api";
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -28,17 +32,33 @@ interface TopBarProps {
   onModuleSelect: (module: string) => void;
 }
 
-// Removed Dashboard and Help & Support from topbar modules
+// Modules for the top bar
 const modules = [
   { id: "Operations", name: "Operations", icon: Settings },
   { id: "Accounts", name: "Accounts", icon: DollarSign },
   { id: "Administrator", name: "Administrator", icon: ShieldCheck },
   { id: "Inventory", name: "Inventory", icon: BoxesIcon },
-  { id: "Network", name: "Network", icon: Network }, // Added Network module
+  { id: "Network", name: "Network", icon: Network },
 ];
 
 export function TopBar({ toggleSidebar, sidebarOpen, selectedModule, onModuleSelect }: TopBarProps) {
+  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [userName, setUserName] = useState<string>("Admin User");
+
+  // Get user info from localStorage on mount
+  useState(() => {
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        setUserName(userData.name || userData.email?.split("@")[0] || "Admin User");
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+      }
+    }
+  });
 
   // If selectedModule is Dashboard or Help & Support, default to Operations
   const effectiveSelectedModule = selectedModule === "Dashboard" || selectedModule === "Help & Support" 
@@ -51,6 +71,25 @@ export function TopBar({ toggleSidebar, sidebarOpen, selectedModule, onModuleSel
   if (effectiveSelectedModule !== selectedModule) {
     onModuleSelect(effectiveSelectedModule);
   }
+
+  const handleLogout = async () => {
+    try {
+      // Call logout API
+      await logout();
+      toast.success("Logged out successfully");
+      // Redirect to login page
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still redirect even if API fails
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("selectedBranch");
+      localStorage.removeItem("branchCode");
+      router.push("/auth/login");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background px-4 shadow-sm">
@@ -136,12 +175,37 @@ export function TopBar({ toggleSidebar, sidebarOpen, selectedModule, onModuleSel
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
         </Button>
         
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="h-4 w-4 text-primary" />
+        {/* Profile Dropdown with Logout */}
+        <div className="relative">
+          <div 
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+          >
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-4 w-4 text-primary" />
+            </div>
+            <span className="hidden text-sm font-medium md:inline-block">{userName}</span>
+            <ChevronDown className={cn("hidden h-4 w-4 text-muted-foreground md:block transition-transform", isProfileDropdownOpen && "rotate-180")} />
           </div>
-          <span className="hidden text-sm font-medium md:inline-block">Admin User</span>
-          <ChevronDown className="hidden h-4 w-4 text-muted-foreground md:block" />
+          
+          {isProfileDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsProfileDropdownOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-md border bg-background shadow-lg">
+                <div className="border-b px-4 py-3">
+                  <p className="text-sm font-medium">{userName}</p>
+                  <p className="text-xs text-muted-foreground">Administrator</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

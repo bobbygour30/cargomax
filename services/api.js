@@ -12,9 +12,17 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor for debugging
+// Request interceptor for debugging and authentication
 api.interceptors.request.use(
   (config) => {
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    // If token exists, add it to headers
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -34,9 +42,74 @@ api.interceptors.response.use(
     console.error('API Error:', error.response?.data || error.message);
     console.error('Error Status:', error.response?.status);
     console.error('Error URL:', error.config?.url);
+    
+    // Handle 401 Unauthorized - token expired or invalid
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('selectedBranch');
+      localStorage.removeItem('branchCode');
+      window.location.href = '/auth/login';
+    }
+    
     return Promise.reject(error);
   }
 );
+
+// ==================== AUTH APIs ====================
+
+// Login user
+export const login = async (email, password) => {
+  const response = await api.post('/auth/login', { email, password });
+  if (response.data.data.token) {
+    localStorage.setItem('token', response.data.data.token);
+    localStorage.setItem('user', JSON.stringify(response.data.data));
+    localStorage.setItem('isLoggedIn', 'true');
+  }
+  return response.data;
+};
+
+// Select branch after login
+export const selectBranch = async (branch, branchCode) => {
+  const response = await api.post('/auth/select-branch', { branch, branchCode });
+  if (response.data.data) {
+    localStorage.setItem('selectedBranch', response.data.data.branch);
+    localStorage.setItem('branchCode', response.data.data.branchCode);
+  }
+  return response.data;
+};
+
+// Get current user with branch info
+export const getCurrentUser = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
+};
+
+// Logout user
+export const logout = async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('selectedBranch');
+    localStorage.removeItem('branchCode');
+  }
+};
+
+// Check if user is authenticated
+export const isAuthenticated = () => {
+  return !!localStorage.getItem('token');
+};
+
+// Get auth token
+export const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
 
 // ==================== BOOKING APIs ====================
 
@@ -452,93 +525,6 @@ export const getManualBookingStats = async () => {
   return response.data;
 };
 
-// ==================== LONG ROUTE MANIFEST APIs ====================
-
-// Get all long route manifests with filters
-export const getLongRouteManifests = async (filters = {}) => {
-  const params = new URLSearchParams();
-  Object.keys(filters).forEach(key => {
-    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-      params.append(key, filters[key]);
-    }
-  });
-  const response = await api.get(`/long-route-manifests?${params.toString()}`);
-  return response.data;
-};
-
-// Get manifest by ID
-export const getLongRouteManifestById = async (id) => {
-  const response = await api.get(`/long-route-manifests/${id}`);
-  return response.data;
-};
-
-// Get manifest by manifest number
-export const getLongRouteManifestByNo = async (manifestNo) => {
-  const response = await api.get(`/long-route-manifests/manifest/${manifestNo}`);
-  return response.data;
-};
-
-// Create new long route manifest
-export const createLongRouteManifest = async (manifestData) => {
-  console.log('Creating long route manifest with data:', manifestData);
-  const response = await api.post('/long-route-manifests', manifestData);
-  console.log('Create manifest response:', response.data);
-  return response.data;
-};
-
-// Update long route manifest
-export const updateLongRouteManifest = async (id, manifestData) => {
-  console.log(`Updating manifest ${id} with data:`, manifestData);
-  const response = await api.put(`/long-route-manifests/${id}`, manifestData);
-  return response.data;
-};
-
-// Update dispatch details (packages and weight)
-export const updateDispatchDetails = async (id, dispatchedPckgs, dispatchedWt) => {
-  console.log(`Updating dispatch details for manifest ${id}:`, { dispatchedPckgs, dispatchedWt });
-  const response = await api.put(`/long-route-manifests/${id}/dispatch`, { dispatchedPckgs, dispatchedWt });
-  return response.data;
-};
-
-// Cancel manifest
-export const cancelLongRouteManifest = async (id, cancelledReason) => {
-  console.log(`Cancelling manifest ${id} with reason:`, cancelledReason);
-  const response = await api.put(`/long-route-manifests/${id}/cancel`, { cancelledReason });
-  return response.data;
-};
-
-// Restore manifest
-export const restoreLongRouteManifest = async (id) => {
-  console.log(`Restoring manifest ${id}`);
-  const response = await api.put(`/long-route-manifests/${id}/restore`);
-  return response.data;
-};
-
-// Delete manifest
-export const deleteLongRouteManifest = async (id) => {
-  console.log(`Deleting manifest ${id}`);
-  const response = await api.delete(`/long-route-manifests/${id}`);
-  return response.data;
-};
-
-// Get manifest statistics
-export const getLongRouteManifestStats = async () => {
-  const response = await api.get('/long-route-manifests/stats');
-  return response.data;
-};
-
-// Get stock items for dispatch
-export const getStockItems = async (filters = {}) => {
-  const params = new URLSearchParams();
-  Object.keys(filters).forEach(key => {
-    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-      params.append(key, filters[key]);
-    }
-  });
-  const response = await api.get(`/long-route-manifests/stock?${params.toString()}`);
-  return response.data;
-};
-
 // ==================== LOCAL MANIFEST APIs ====================
 
 // Get all manifests with filters
@@ -614,17 +600,91 @@ export const getManifestStats = async () => {
   return response.data;
 };
 
-// ==================== HEALTH CHECK ====================
+// ==================== LONG ROUTE MANIFEST APIs ====================
 
-// Health check endpoint
-export const healthCheck = async () => {
-  try {
-    const response = await api.get('/health');
-    return response.data;
-  } catch (error) {
-    console.error('Health check failed:', error);
-    return { status: 'error', message: error.message };
-  }
+// Get all long route manifests with filters
+export const getLongRouteManifests = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/long-route-manifests?${params.toString()}`);
+  return response.data;
+};
+
+// Get manifest by ID
+export const getLongRouteManifestById = async (id) => {
+  const response = await api.get(`/long-route-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest by manifest number
+export const getLongRouteManifestByNo = async (manifestNo) => {
+  const response = await api.get(`/long-route-manifests/manifest/${manifestNo}`);
+  return response.data;
+};
+
+// Create new long route manifest
+export const createLongRouteManifest = async (manifestData) => {
+  console.log('Creating long route manifest with data:', manifestData);
+  const response = await api.post('/long-route-manifests', manifestData);
+  console.log('Create manifest response:', response.data);
+  return response.data;
+};
+
+// Update long route manifest
+export const updateLongRouteManifest = async (id, manifestData) => {
+  console.log(`Updating manifest ${id} with data:`, manifestData);
+  const response = await api.put(`/long-route-manifests/${id}`, manifestData);
+  return response.data;
+};
+
+// Update dispatch details
+export const updateDispatchDetails = async (id, dispatchedPckgs, dispatchedWt) => {
+  console.log(`Updating dispatch details for manifest ${id}:`, { dispatchedPckgs, dispatchedWt });
+  const response = await api.put(`/long-route-manifests/${id}/dispatch`, { dispatchedPckgs, dispatchedWt });
+  return response.data;
+};
+
+// Cancel manifest
+export const cancelLongRouteManifest = async (id, cancelledReason) => {
+  console.log(`Cancelling manifest ${id} with reason:`, cancelledReason);
+  const response = await api.put(`/long-route-manifests/${id}/cancel`, { cancelledReason });
+  return response.data;
+};
+
+// Restore manifest
+export const restoreLongRouteManifest = async (id) => {
+  console.log(`Restoring manifest ${id}`);
+  const response = await api.put(`/long-route-manifests/${id}/restore`);
+  return response.data;
+};
+
+// Delete manifest
+export const deleteLongRouteManifest = async (id) => {
+  console.log(`Deleting manifest ${id}`);
+  const response = await api.delete(`/long-route-manifests/${id}`);
+  return response.data;
+};
+
+// Get manifest statistics
+export const getLongRouteManifestStats = async () => {
+  const response = await api.get('/long-route-manifests/stats');
+  return response.data;
+};
+
+// Get stock items for dispatch
+export const getStockItems = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/long-route-manifests/stock?${params.toString()}`);
+  return response.data;
 };
 
 // ==================== LORRY HIRE CHALLAN APIs ====================
@@ -705,6 +765,19 @@ export const getPendingManifests = async (filters = {}) => {
   });
   const response = await api.get(`/lorry-hire-challans/pending-manifests?${params.toString()}`);
   return response.data;
+};
+
+// ==================== HEALTH CHECK ====================
+
+// Health check endpoint
+export const healthCheck = async () => {
+  try {
+    const response = await api.get('/health');
+    return response.data;
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return { status: 'error', message: error.message };
+  }
 };
 
 export default api;

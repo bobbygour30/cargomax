@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, LogIn, Truck } from "lucide-react";
 import toast from "react-hot-toast";
+import { login } from "@/services/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,40 +27,21 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    // Simulate API call - Replace with actual API call
-    setTimeout(() => {
-      // Store user info in localStorage/sessionStorage
-      localStorage.setItem("user", JSON.stringify({ email }));
-      localStorage.setItem("isLoggedIn", "true");
-      
-      toast.success("Login successful!");
-      router.push("/auth/select-branch");
-      setLoading(false);
-    }, 1000);
-
-    // Actual API call example (uncomment when backend is ready):
-    /*
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+      const response = await login(email, password);
+      if (response.success) {
+        localStorage.setItem("isLoggedIn", "true");
         toast.success("Login successful!");
-        router.push("/select-branch");
+        router.push("/auth/select-branch");
       } else {
-        toast.error(data.message || "Login failed");
+        toast.error(response.message || "Login failed");
       }
-    } catch (error) {
-      toast.error("Something went wrong");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error(error.response?.data?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
-    */
   };
 
   return (
@@ -125,12 +107,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-          
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Demo Credentials:</p>
-            <p>Email: admin@cargomax.com</p>
-            <p>Password: admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>

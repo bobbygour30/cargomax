@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Building2, ChevronRight, Store } from "lucide-react";
 import toast from "react-hot-toast";
+import { selectBranch, getCurrentUser } from "@/services/api";
 
 const locations = [
   { value: "286", text: "AGARTALA" },
@@ -306,14 +307,18 @@ export default function SelectBranchPage() {
   const [selectedBranchText, setSelectedBranchText] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   // Check if user is logged in
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
-    const user = localStorage.getItem("user");
+    const userData = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
     
-    if (!isLoggedIn || !user) {
+    if (!isLoggedIn || !userData || !token) {
       router.push("/auth/login");
+    } else {
+      setUser(JSON.parse(userData));
     }
   }, [router]);
 
@@ -327,7 +332,7 @@ export default function SelectBranchPage() {
     setSelectedBranchText(text);
   };
 
-  const handleLogin = () => {
+  const handleProceed = async () => {
     if (!selectedBranch) {
       toast.error("Please select a branch");
       return;
@@ -335,17 +340,29 @@ export default function SelectBranchPage() {
 
     setLoading(true);
     
-    // Store selected branch
-    localStorage.setItem("selectedBranch", selectedBranchText);
-    localStorage.setItem("branchCode", selectedBranch);
-    
-    toast.success(`Welcome to ${selectedBranchText} branch!`);
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard/overview");
+    try {
+      // Call API to save branch selection
+      const response = await selectBranch(selectedBranchText, selectedBranch);
+      
+      if (response.success) {
+        localStorage.setItem("selectedBranch", selectedBranchText);
+        localStorage.setItem("branchCode", selectedBranch);
+        
+        toast.success(`Welcome to ${selectedBranchText} branch!`);
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+          router.push("/dashboard/overview");
+        }, 500);
+      } else {
+        toast.error(response.message || "Failed to select branch");
+      }
+    } catch (error: any) {
+      console.error("Branch selection error:", error);
+      toast.error(error.response?.data?.message || "Failed to select branch");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -358,7 +375,7 @@ export default function SelectBranchPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Select Your Branch</CardTitle>
-          <CardDescription>Choose the branch you want to work with</CardDescription>
+          <CardDescription>Welcome, {user?.name || 'User'}! Choose the branch you want to work with</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Search Input */}
@@ -418,16 +435,16 @@ export default function SelectBranchPage() {
             </div>
           )}
 
-          {/* Login Button */}
+          {/* Proceed Button */}
           <Button
-            onClick={handleLogin}
+            onClick={handleProceed}
             className="w-full h-11 bg-green-600 hover:bg-green-700"
             disabled={!selectedBranch || loading}
           >
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Logging in...
+                Processing...
               </div>
             ) : (
               <>
