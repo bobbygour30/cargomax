@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -47,18 +47,25 @@ export function TopBar({ toggleSidebar, sidebarOpen, selectedModule, onModuleSel
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [userName, setUserName] = useState<string>("Admin User");
 
-  // Get user info from localStorage on mount
-  useState(() => {
+  useEffect(() => {
+  if (typeof window !== "undefined") {
     const user = localStorage.getItem("user");
+
     if (user) {
       try {
         const userData = JSON.parse(user);
-        setUserName(userData.name || userData.email?.split("@")[0] || "Admin User");
+
+        setUserName(
+          userData.name ||
+          userData.email?.split("@")[0] ||
+          "Admin User"
+        );
       } catch (e) {
         console.error("Error parsing user data:", e);
       }
     }
-  });
+  }
+}, []);
 
   // If selectedModule is Dashboard or Help & Support, default to Operations
   const effectiveSelectedModule = selectedModule === "Dashboard" || selectedModule === "Help & Support" 
