@@ -85,6 +85,7 @@ import {
   deleteLongRouteManifest,
   getLongRouteManifestStats,
   getStockItems,
+  getBranches,
 } from "@/services/api";
 
 // Types
@@ -133,6 +134,11 @@ interface StockItem {
   tbb: string;
   stockPckgs: number;
   selected: boolean;
+}
+
+interface Branch {
+  value: string;
+  text: string;
 }
 
 const cancelledReasonOptions = [
@@ -201,11 +207,25 @@ export default function LongRouteManifestGRL() {
   });
   const itemsPerPage: number = 10;
 
+  // Branch options from API
+  const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
+
   // Load data on mount
   useEffect(() => {
+    loadStaticData();
     loadManifests();
     loadStats();
   }, []);
+
+  const loadStaticData = async () => {
+    try {
+      const branchesRes = await getBranches();
+      setBranchOptions(branchesRes.data || []);
+    } catch (error) {
+      console.error("Error loading branch data:", error);
+      toast.error("Failed to load branch data");
+    }
+  };
 
   const loadManifests = async () => {
     setLoading(true);
@@ -773,12 +793,19 @@ export default function LongRouteManifestGRL() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Branch</Label>
-                  <Input
-                    value={searchBranch}
-                    onChange={(e) => setSearchBranch(e.target.value)}
-                    placeholder="Enter Branch"
-                    className="h-9 text-sm"
-                  />
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">From Date</Label>
@@ -1012,13 +1039,18 @@ export default function LongRouteManifestGRL() {
                     <Label htmlFor="allBranch" className="text-sm cursor-pointer">ALL</Label>
                   </div>
                   <Label className="text-xs">Branch</Label>
-                  <Input
-                    value={stockBranch}
-                    onChange={(e) => setStockBranch(e.target.value)}
-                    placeholder="Enter Branch"
-                    className="h-9 text-sm"
-                    disabled={selectAllBranch}
-                  />
+                  <Select value={stockBranch} onValueChange={setStockBranch} disabled={selectAllBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Select Branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">As On Date</Label>
@@ -1229,12 +1261,19 @@ export default function LongRouteManifestGRL() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Branch</Label>
-                  <Input
-                    value={searchBranch}
-                    onChange={(e) => setSearchBranch(e.target.value)}
-                    placeholder="Enter Branch"
-                    className="h-9 text-sm"
-                  />
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">From Date</Label>

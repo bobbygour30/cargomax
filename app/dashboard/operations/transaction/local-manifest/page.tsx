@@ -77,6 +77,7 @@ import {
   getDrivers,
   getVendors,
   getLoadingPersons,
+  getBranches,
 } from "@/services/api";
 
 // Types
@@ -104,6 +105,11 @@ interface ManifestRecord {
   status: "active" | "cancelled";
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface Branch {
+  value: string;
+  text: string;
 }
 
 const cancelledReasonOptions = [
@@ -138,6 +144,7 @@ export default function LocalManifest() {
   const [driverOptions, setDriverOptions] = useState<string[]>([]);
   const [vendorOptions, setVendorOptions] = useState<string[]>([]);
   const [loadingPersonOptions, setLoadingPersonOptions] = useState<string[]>([]);
+  const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
 
   // Search state
   const [searchBranch, setSearchBranch] = useState<string>("");
@@ -180,14 +187,16 @@ export default function LocalManifest() {
 
   const loadStaticData = async () => {
     try {
-      const [driversRes, vendorsRes, personsRes] = await Promise.all([
+      const [driversRes, vendorsRes, personsRes, branchesRes] = await Promise.all([
         getDrivers(),
         getVendors(),
         getLoadingPersons(),
+        getBranches(),
       ]);
       setDriverOptions(driversRes.data || []);
       setVendorOptions(vendorsRes.data || []);
       setLoadingPersonOptions(personsRes.data || []);
+      setBranchOptions(branchesRes.data || []);
     } catch (error) {
       console.error("Error loading static data:", error);
       toast.error("Failed to load static data");
@@ -684,12 +693,19 @@ export default function LocalManifest() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Branch</Label>
-                  <Input
-                    value={searchBranch}
-                    onChange={(e) => setSearchBranch(e.target.value)}
-                    placeholder="Enter branch name"
-                    className="h-9 text-sm"
-                  />
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-end gap-2">
                   <Button onClick={handleSearch} className="h-9 text-sm bg-blue-600" disabled={loading}>
@@ -907,12 +923,19 @@ export default function LocalManifest() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Branch</Label>
-                  <Input
-                    value={searchBranch}
-                    onChange={(e) => setSearchBranch(e.target.value)}
-                    placeholder="Enter branch name"
-                    className="h-9 text-sm"
-                  />
+                  <Select value={searchBranch} onValueChange={setSearchBranch}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-end gap-2">
                   <Button onClick={handleCancelledSearch} className="h-9 text-sm bg-red-600" disabled={loading}>
