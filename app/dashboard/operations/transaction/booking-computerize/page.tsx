@@ -57,14 +57,12 @@ import {
   Users,
   Package,
   MessageSquare,
-  Calculator,
   Shield,
   ChevronDown,
   ChevronRight as ChevronRightIcon,
   Loader2,
   CheckCircle,
   DollarSign,
-  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -262,6 +260,12 @@ const gstPaidByOptions = [
   { value: "THIRD_PARTY", label: "THIRD PARTY" },
 ];
 
+// Define Branch type
+interface Branch {
+  value: string;
+  text: string;
+}
+
 export default function BookingComputerizedGRL() {
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -296,7 +300,7 @@ export default function BookingComputerizedGRL() {
   // Static data from API
   const [contentCategories, setContentCategories] = useState<any[]>([]);
   const [packingTypes, setPackingTypes] = useState<any[]>([]);
-  const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
 
   // Collapsible sections state
@@ -1126,48 +1130,47 @@ export default function BookingComputerizedGRL() {
     }
   };
 
- const handleSearch = async () => {
-  setLoading(true);
-  try {
-    const filters: any = { status: 'active', limit: 100 };
-    
-    // Fix: Ensure searchGrNo is properly sent
-    if (searchGrNo && searchGrNo.trim() !== '') {
-      filters.grNo = searchGrNo.trim();
-      console.log('Searching for GR No:', searchGrNo);
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      const filters: any = { status: 'active', limit: 100 };
+      
+      if (searchGrNo && searchGrNo.trim() !== '') {
+        filters.grNo = searchGrNo.trim();
+        console.log('Searching for GR No:', searchGrNo);
+      }
+      
+      if (searchFromDate) {
+        filters.fromDate = searchFromDate.toISOString();
+        console.log('From date:', searchFromDate);
+      }
+      
+      if (searchToDate) {
+        filters.toDate = searchToDate.toISOString();
+        console.log('To date:', searchToDate);
+      }
+      
+      if (searchBranch !== "all") {
+        filters.branch = searchBranch;
+        console.log('Branch:', searchBranch);
+      }
+      
+      console.log('Sending filters to API:', filters);
+      
+      const response = await getBookings(filters);
+      console.log('API Response:', response);
+      
+      setSearchResults(response.data || []);
+      setTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
+      setCurrentPage(1);
+      toast.success(`Found ${response.data?.length || 0} bookings`);
+    } catch (error: any) {
+      console.error('Search error:', error);
+      toast.error(error.response?.data?.message || "Search failed");
+    } finally {
+      setLoading(false);
     }
-    
-    if (searchFromDate) {
-      filters.fromDate = searchFromDate.toISOString();
-      console.log('From date:', searchFromDate);
-    }
-    
-    if (searchToDate) {
-      filters.toDate = searchToDate.toISOString();
-      console.log('To date:', searchToDate);
-    }
-    
-    if (searchBranch !== "all") {
-      filters.branch = searchBranch;
-      console.log('Branch:', searchBranch);
-    }
-    
-    console.log('Sending filters to API:', filters);
-    
-    const response = await getBookings(filters);
-    console.log('API Response:', response);
-    
-    setSearchResults(response.data || []);
-    setTotalPages(Math.ceil((response.pagination?.total || 0) / itemsPerPage));
-    setCurrentPage(1);
-    toast.success(`Found ${response.data?.length || 0} bookings`);
-  } catch (error: any) {
-    console.error('Search error:', error);
-    toast.error(error.response?.data?.message || "Search failed");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCancelledSearch = async () => {
     setLoading(true);
@@ -1305,7 +1308,6 @@ export default function BookingComputerizedGRL() {
               <FileText className="h-5 w-5 text-blue-600" />
               <h1 className="text-xl md:text-2xl font-bold text-gray-800">BOOKING COMPUTERIZED GRL</h1>
             </div>
-            
           </div>
           <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="mr-2 h-4 w-4" />New Booking
@@ -1412,7 +1414,11 @@ export default function BookingComputerizedGRL() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1613,7 +1619,11 @@ export default function BookingComputerizedGRL() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1807,7 +1817,7 @@ export default function BookingComputerizedGRL() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Booking Modal - Single Form Layout */}
+      {/* Main Booking Modal */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="w-[95vw] max-w-6xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
@@ -1935,7 +1945,6 @@ export default function BookingComputerizedGRL() {
                 </div>
               </div>
               
-              {/* Name and Mobile Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
                 <div>
                   <Label className="text-sm">Name</Label>
@@ -1999,7 +2008,6 @@ export default function BookingComputerizedGRL() {
                 </div>
               </div>
               
-              {/* Name and Mobile Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
                 <div>
                   <Label className="text-sm">Name</Label>
@@ -2142,11 +2150,10 @@ export default function BookingComputerizedGRL() {
               </div>
             </div>
 
-             {/* Manual Rates Section - Compact Side Layout */}
+            {/* Manual Rates Section */}
             {manualRates && (
               <div className="border rounded-lg p-3 bg-yellow-50/30">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Left Column - Rate and Freight */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-xs font-medium">Rate (per kg/pkg):</Label>
@@ -2171,7 +2178,6 @@ export default function BookingComputerizedGRL() {
                     </div>
                   </div>
 
-                  {/* Middle Column - Extra Charges Table */}
                   <div className="col-span-1">
                     <Table className="text-xs">
                       <TableHeader>
@@ -2201,7 +2207,6 @@ export default function BookingComputerizedGRL() {
                     </Table>
                   </div>
 
-                  {/* Right Column - GST and Totals */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs">GST Paid By:</Label>
@@ -2365,8 +2370,6 @@ export default function BookingComputerizedGRL() {
                 <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" placeholder="Insurance company name" /></div>
               </div>
             </div>
-
-           
 
             {/* Footer Buttons */}
             <div className="flex flex-wrap justify-between items-center pt-4 border-t mt-4">

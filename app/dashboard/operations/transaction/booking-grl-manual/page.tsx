@@ -57,14 +57,12 @@ import {
   Users,
   Package,
   MessageSquare,
-  Calculator,
   Shield,
   ChevronDown,
   ChevronRight as ChevronRightIcon,
   Loader2,
   CheckCircle,
   DollarSign,
-  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -203,6 +201,12 @@ interface BookingRecord {
   updatedAt: Date;
 }
 
+// Define Branch type
+interface Branch {
+  value: string;
+  text: string;
+}
+
 const bookingTypeOptions = [
   { value: "TOPAY", label: "TO PAY" },
   { value: "PREPAID", label: "PREPAID" },
@@ -296,7 +300,7 @@ export default function BookingGRLManual() {
   // Static data from API
   const [contentCategories, setContentCategories] = useState<any[]>([]);
   const [packingTypes, setPackingTypes] = useState<any[]>([]);
-  const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
 
   // Collapsible sections state
@@ -1128,55 +1132,55 @@ export default function BookingGRLManual() {
     }
   };
 
-const handleSearch = async () => {
-  console.log("=== SEARCH BUTTON CLICKED ===");
-  console.log("Search GR No (raw):", searchGrNo);
-  console.log("Search GR No (type):", typeof searchGrNo);
-  
-  setLoading(true);
-  try {
-    const filters: any = { status: 'active', limit: 100 };
+  const handleSearch = async () => {
+    console.log("=== SEARCH BUTTON CLICKED ===");
+    console.log("Search GR No (raw):", searchGrNo);
+    console.log("Search GR No (type):", typeof searchGrNo);
     
-    // Convert to string and trim
-    if (searchGrNo && searchGrNo.toString().trim() !== '') {
-      filters.grNo = searchGrNo.toString().trim();
-      console.log("Adding GR No filter (string):", filters.grNo);
+    setLoading(true);
+    try {
+      const filters: any = { status: 'active', limit: 100 };
+      
+      // Convert to string and trim
+      if (searchGrNo && searchGrNo.toString().trim() !== '') {
+        filters.grNo = searchGrNo.toString().trim();
+        console.log("Adding GR No filter (string):", filters.grNo);
+      }
+      
+      if (searchFromDate) {
+        filters.fromDate = searchFromDate.toISOString();
+      }
+      
+      if (searchToDate) {
+        filters.toDate = searchToDate.toISOString();
+      }
+      
+      if (searchBranch !== "all") {
+        filters.branch = searchBranch;
+      }
+      
+      console.log("Final filters being sent to API:", JSON.stringify(filters, null, 2));
+      
+      const response = await getManualBookings(filters);
+      console.log("API Response:", response);
+      console.log("Number of results:", response.data?.length);
+      
+      setSearchResults(response.data || []);
+      setCurrentPage(1);
+      
+      if (response.data?.length === 0) {
+        toast.error("No bookings found matching your search criteria");
+      } else {
+        toast.success(`Found ${response.data?.length || 0} bookings`);
+      }
+    } catch (error: any) {
+      console.error('Search error:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || "Search failed");
+    } finally {
+      setLoading(false);
     }
-    
-    if (searchFromDate) {
-      filters.fromDate = searchFromDate.toISOString();
-    }
-    
-    if (searchToDate) {
-      filters.toDate = searchToDate.toISOString();
-    }
-    
-    if (searchBranch !== "all") {
-      filters.branch = searchBranch;
-    }
-    
-    console.log("Final filters being sent to API:", JSON.stringify(filters, null, 2));
-    
-    const response = await getManualBookings(filters);
-    console.log("API Response:", response);
-    console.log("Number of results:", response.data?.length);
-    
-    setSearchResults(response.data || []);
-    setCurrentPage(1);
-    
-    if (response.data?.length === 0) {
-      toast.error("No bookings found matching your search criteria");
-    } else {
-      toast.success(`Found ${response.data?.length || 0} bookings`);
-    }
-  } catch (error: any) {
-    console.error('Search error:', error);
-    console.error('Error response:', error.response?.data);
-    toast.error(error.response?.data?.message || "Search failed");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCancelledSearch = async () => {
     setLoading(true);
@@ -1419,7 +1423,11 @@ const handleSearch = async () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1605,7 +1613,11 @@ const handleSearch = async () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Branches</SelectItem>
-                      {branchOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1793,7 +1805,7 @@ const handleSearch = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* Main Booking Modal - Single Form Layout */}
+      {/* Main Booking Modal */}
       <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
         <DialogContent className="w-[95vw] max-w-6xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
@@ -1802,7 +1814,7 @@ const handleSearch = async () => {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Basic Information - Row 1 */}
+            {/* Basic Information */}
             <div className="border rounded-lg p-4">
               <h3 className="text-base font-semibold mb-3 flex items-center gap-2 text-blue-600">
                 <FileText className="h-5 w-5" /> Basic Information
@@ -1927,7 +1939,6 @@ const handleSearch = async () => {
                 </div>
               </div>
               
-              {/* Name and Mobile Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
                 <div>
                   <Label className="text-sm">Name</Label>
@@ -1991,7 +2002,6 @@ const handleSearch = async () => {
                 </div>
               </div>
               
-              {/* Name and Mobile Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
                 <div>
                   <Label className="text-sm">Name</Label>
@@ -2125,11 +2135,10 @@ const handleSearch = async () => {
               </div>
             </div>
 
-            {/* Manual Rates Section - Compact Side Layout */}
+            {/* Manual Rates Section */}
             {manualRates && (
               <div className="border rounded-lg p-3 bg-yellow-50/30">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Left Column - Rate and Freight */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-xs font-medium">Rate (per kg/pkg):</Label>
@@ -2154,7 +2163,6 @@ const handleSearch = async () => {
                     </div>
                   </div>
 
-                  {/* Middle Column - Extra Charges Table */}
                   <div className="col-span-1">
                     <Table className="text-xs">
                       <TableHeader>
@@ -2184,7 +2192,6 @@ const handleSearch = async () => {
                     </Table>
                   </div>
 
-                  {/* Right Column - GST and Totals */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs">GST Paid By:</Label>
@@ -2348,8 +2355,6 @@ const handleSearch = async () => {
                 <div><Label className="text-sm">Insurance Company</Label><Input value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="h-9 text-sm" placeholder="Insurance company name" /></div>
               </div>
             </div>
-
-            
 
             {/* Footer Buttons */}
             <div className="flex flex-wrap justify-between items-center pt-4 border-t mt-4">
