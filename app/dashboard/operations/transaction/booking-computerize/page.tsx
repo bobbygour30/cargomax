@@ -302,6 +302,10 @@ export default function BookingComputerizedGRL() {
   const [packingTypes, setPackingTypes] = useState<any[]>([]);
   const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
+  
+  // Current user data
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string>("");
 
   // Collapsible sections state
   const [isConsignorAddressOpen, setIsConsignorAddressOpen] = useState(false);
@@ -356,7 +360,7 @@ export default function BookingComputerizedGRL() {
   const [bookingType, setBookingType] = useState<string>("");
   const [collectionAt, setCollectionAt] = useState<string>("");
   const [pvtMarkaSealNo, setPvtMarkaSealNo] = useState<string>("");
-  const [serviceProduct, setServiceProduct] = useState<string>("");
+  const [serviceProduct, setServiceProduct] = useState<string>("SURFACE");
   const [deliveryType, setDeliveryType] = useState<string>("");
   const [loadType, setLoadType] = useState<string>("");
   const [mkExecutive, setMkExecutive] = useState<string>("");
@@ -466,19 +470,33 @@ export default function BookingComputerizedGRL() {
     loadBookings();
     loadStats();
     loadClients();
+    loadCurrentUser();
   }, []);
 
-  // Calculate totals whenever goods items change
-  useEffect(() => {
-    calculateTotals();
-  }, [goodsItems]);
-
-  // Recalculate all freight calculations when dependencies change
-  useEffect(() => {
-    if (manualRates) {
-      calculateAllTotals();
+  const loadCurrentUser = () => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      const selectedBranchStr = localStorage.getItem('selectedBranch');
+      const branchCode = localStorage.getItem('branchCode');
+      
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setCurrentUser(user);
+        } catch (e) {
+          console.error('Error parsing user:', e);
+        }
+      }
+      
+      if (selectedBranchStr) {
+        setSelectedBranch(selectedBranchStr);
+        setBookingFrom(selectedBranchStr);
+      } else if (branchCode) {
+        setSelectedBranch(branchCode);
+        setBookingFrom(branchCode);
+      }
     }
-  }, [totalChargeWeight, totalActualWeight, totalPckgs, freightRate, freightOn, extraCharges, gstRate, advanceAmount, manualRates]);
+  };
 
   const loadStaticData = async () => {
     try {
@@ -639,7 +657,7 @@ export default function BookingComputerizedGRL() {
     }
     if (consignorIdType === "Self") {
       setConsignorId("self");
-      setConsignorName("Self");
+      setConsignorName(currentUser?.name || "Self");
       setConsignorMobile("");
       setConsignorGst("");
       setConsignorAdhaar("");
@@ -699,7 +717,7 @@ export default function BookingComputerizedGRL() {
     }
     if (consigneeIdType === "Self") {
       setConsigneeId("self");
-      setConsigneeName("Self");
+      setConsigneeName(currentUser?.name || "Self");
       setConsigneeMobile("");
       setConsigneeGst("");
       setConsigneeAdhaar("");
@@ -829,7 +847,7 @@ export default function BookingComputerizedGRL() {
 
   const resetForm = () => {
     setGrNo("");
-    setBookingFrom("");
+    setBookingFrom(selectedBranch);
     setBookingDate(new Date());
     setDestination("");
     setPickupFrom("");
@@ -837,7 +855,7 @@ export default function BookingComputerizedGRL() {
     setBookingType("");
     setCollectionAt("");
     setPvtMarkaSealNo("");
-    setServiceProduct("");
+    setServiceProduct("SURFACE");
     setDeliveryType("");
     setLoadType("");
     setMkExecutive("");
@@ -1838,7 +1856,14 @@ export default function BookingComputerizedGRL() {
                 </div>
                 <div>
                   <Label className="text-sm">Booking From <span className="text-red-500">*</span></Label>
-                  <Input value={bookingFrom} onChange={(e) => setBookingFrom(e.target.value)} className="h-9 text-sm" placeholder="Enter source branch" />
+                  <Input 
+                    value={bookingFrom} 
+                    onChange={(e) => setBookingFrom(e.target.value)} 
+                    className="h-9 text-sm bg-gray-100" 
+                    placeholder="Enter source branch"
+                    readOnly
+                    disabled
+                  />
                 </div>
                 <div>
                   <Label className="text-sm">Booking Date</Label>
@@ -1950,10 +1975,12 @@ export default function BookingComputerizedGRL() {
                   <Label className="text-sm">Name</Label>
                   <Input value={consignorName} onChange={(e) => setConsignorName(e.target.value)} className="h-9 text-sm" readOnly={consignorIdType !== "Self"} />
                 </div>
-                <div>
-                  <Label className="text-sm">Mobile No.</Label>
-                  <Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-9 text-sm" readOnly={consignorIdType !== "Self"} />
-                </div>
+                {consignorIdType !== "Self" && (
+                  <div>
+                    <Label className="text-sm">Mobile No.</Label>
+                    <Input value={consignorMobile} onChange={(e) => setConsignorMobile(e.target.value)} className="h-9 text-sm" readOnly={consignorIdType !== "Self"} />
+                  </div>
+                )}
               </div>
               
               {consignorName === "Self" && (
@@ -2013,10 +2040,12 @@ export default function BookingComputerizedGRL() {
                   <Label className="text-sm">Name</Label>
                   <Input value={consigneeName} onChange={(e) => setConsigneeName(e.target.value)} className="h-9 text-sm" readOnly={consigneeIdType !== "Self"} />
                 </div>
-                <div>
-                  <Label className="text-sm">Mobile No.</Label>
-                  <Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-9 text-sm" readOnly={consigneeIdType !== "Self"} />
-                </div>
+                {consigneeIdType !== "Self" && (
+                  <div>
+                    <Label className="text-sm">Mobile No.</Label>
+                    <Input value={consigneeMobile} onChange={(e) => setConsigneeMobile(e.target.value)} className="h-9 text-sm" readOnly={consigneeIdType !== "Self"} />
+                  </div>
+                )}
               </div>
               
               {consigneeName === "Self" && (
