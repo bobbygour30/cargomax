@@ -207,6 +207,14 @@ interface Branch {
   text: string;
 }
 
+// Destination options
+const destinationOptions = [
+  { value: "U P BORDER A JH UP", label: "U P BORDER A JH UP" },
+  { value: "U P BORDER B BR", label: "U P BORDER B BR" },
+  { value: "U P BORDER C ASM WB", label: "U P BORDER C ASM WB" },
+  { value: "U P BORDER D BR GP", label: "U P BORDER D BR GP" },
+];
+
 const bookingTypeOptions = [
   { value: "TOPAY", label: "TO PAY" },
   { value: "PREPAID", label: "PREPAID" },
@@ -940,7 +948,7 @@ export default function BookingGRLManual() {
       return; 
     }
     if (!destination) { 
-      toast.error("Please enter Destination"); 
+      toast.error("Please select Destination"); 
       return; 
     }
     if (!consignorName) { 
@@ -1874,7 +1882,18 @@ export default function BookingGRLManual() {
                 </div>
                 <div>
                   <Label className="text-sm">Destination <span className="text-red-500">*</span></Label>
-                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} className="h-9 text-sm" placeholder="Enter destination" />
+                  <Select value={destination} onValueChange={setDestination}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Select Destination" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {destinationOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label className="text-sm">Pickup From</Label>
