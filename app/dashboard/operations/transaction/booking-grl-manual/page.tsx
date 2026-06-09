@@ -377,7 +377,7 @@ export default function BookingGRLManual() {
   const [printAfterSave, setPrintAfterSave] = useState<boolean>(false);
   const [ccAttached, setCcAttached] = useState<boolean>(false);
 
-  // Goods Items
+  // Goods Items - Start with empty values
   const [goodsItems, setGoodsItems] = useState<GoodsItem[]>([
     { id: Date.now(), noOfPckgs: 0, contentCategory: "", contentSubCategory: "", content: "", packing: "BOX", actualWeight: 0, chargeWeight: 0, isWeightValid: true },
   ]);
@@ -475,6 +475,26 @@ export default function BookingGRLManual() {
     loadClients();
     loadCurrentUser();
   }, []);
+
+  // Calculate totals whenever goods items change
+  useEffect(() => {
+    calculateTotals();
+  }, [goodsItems]);
+
+  // Recalculate all freight calculations when dependencies change
+  useEffect(() => {
+    if (manualRates) {
+      calculateAllTotals();
+    }
+  }, [totalChargeWeight, totalActualWeight, totalPckgs, freightRate, freightOn, extraCharges, gstRate, advanceAmount, manualRates]);
+
+  // Also recalculate when non-manual rates change
+  useEffect(() => {
+    if (!manualRates) {
+      const freight = totalChargeWeight * 5;
+      setTotalFreight(freight);
+    }
+  }, [totalChargeWeight, manualRates]);
 
   const loadCurrentUser = () => {
     if (typeof window !== 'undefined') {
@@ -581,14 +601,16 @@ export default function BookingGRLManual() {
     let chgWeight = 0;
     
     goodsItems.forEach(item => {
-      pckgs += item.noOfPckgs || 0;
-      actWeight += item.actualWeight || 0;
-      chgWeight += item.chargeWeight || 0;
+      pckgs += Number(item.noOfPckgs) || 0;
+      actWeight += Number(item.actualWeight) || 0;
+      chgWeight += Number(item.chargeWeight) || 0;
     });
     
     setTotalPckgs(pckgs);
     setTotalActualWeight(actWeight);
     setTotalChargeWeight(chgWeight);
+    
+    console.log("Totals calculated:", { pckgs, actWeight, chgWeight });
   };
 
   const updateGoodsItem = (id: number, field: keyof GoodsItem, value: any) => {
@@ -596,6 +618,7 @@ export default function BookingGRLManual() {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         
+        // Auto-calculate charge weight from actual weight if actual weight changes
         if (field === "actualWeight") {
           updated.chargeWeight = Number(value);
         }
@@ -632,6 +655,8 @@ export default function BookingGRLManual() {
     if (goodsItems.length > 1) {
       setGoodsItems(goodsItems.filter(item => item.id !== id));
       toast.success("Goods row removed");
+    } else {
+      toast.error("At least one goods row is required");
     }
   };
 
@@ -2115,7 +2140,13 @@ export default function BookingGRLManual() {
                         <TableRow key={item.id} className={!item.isWeightValid ? "bg-red-50" : ""}>
                           <TableCell className="text-sm">{idx + 1}</TableCell>
                           <TableCell>
-                            <Input type="number" value={item.noOfPckgs} onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} className="h-8 w-24 text-sm" />
+                            <Input 
+                              type="number" 
+                              value={item.noOfPckgs} 
+                              onChange={(e) => updateGoodsItem(item.id, "noOfPckgs", Number(e.target.value))} 
+                              className="h-8 w-24 text-sm" 
+                              min="0"
+                            />
                           </TableCell>
                           <TableCell>
                             <Select value={item.contentCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentCategory", val)}>
@@ -2126,7 +2157,11 @@ export default function BookingGRLManual() {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Select value={item.contentSubCategory} onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} disabled={!item.contentCategory}>
+                            <Select 
+                              value={item.contentSubCategory} 
+                              onValueChange={(val) => updateGoodsItem(item.id, "contentSubCategory", val)} 
+                              disabled={!item.contentCategory}
+                            >
                               <SelectTrigger className="h-8 w-32 text-sm"><SelectValue placeholder="Select Sub Category" /></SelectTrigger>
                               <SelectContent>
                                 {selectedCategory?.subCategories?.map((sub: any) => (<SelectItem key={sub.id} value={String(sub.id)}>{sub.name}</SelectItem>))}
@@ -2142,10 +2177,24 @@ export default function BookingGRLManual() {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Input type="number" value={item.actualWeight} onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                            <Input 
+                              type="number" 
+                              value={item.actualWeight} 
+                              onChange={(e) => updateGoodsItem(item.id, "actualWeight", Number(e.target.value))} 
+                              className="h-8 w-24 text-sm" 
+                              step="0.01"
+                              min="0"
+                            />
                           </TableCell>
                           <TableCell>
-                            <Input type="number" value={item.chargeWeight} onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} className="h-8 w-24 text-sm" step="0.01" />
+                            <Input 
+                              type="number" 
+                              value={item.chargeWeight} 
+                              onChange={(e) => updateGoodsItem(item.id, "chargeWeight", Number(e.target.value))} 
+                              className="h-8 w-24 text-sm" 
+                              step="0.01"
+                              min="0"
+                            />
                           </TableCell>
                           <TableCell>
                             {!item.isWeightValid && <span className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{item.weightError?.substring(0, 40)}</span>}
