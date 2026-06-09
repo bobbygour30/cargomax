@@ -59,6 +59,8 @@ import {
   ChevronRight,
   Loader2,
   Trash2,
+  CheckCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -66,14 +68,16 @@ import toast from "react-hot-toast";
 
 // Import API services
 import {
-  getManifests,
-  createManifest,
-  updateManifest,
-  updateDestination,
-  cancelManifest,
-  restoreManifest,
-  deleteManifest,
-  getManifestStats,
+  getLocalManifests,
+  createLocalManifest,
+  updateLocalManifest,
+  updateLocalManifestDestination,
+  updateLocalManifestDispatch,
+  getLocalManifestStockItems,
+  cancelLocalManifest,
+  restoreLocalManifest,
+  deleteLocalManifest,
+  getLocalManifestStats,
   getDrivers,
   getVendors,
   getLoadingPersons,
@@ -105,12 +109,54 @@ interface ManifestRecord {
   status: "active" | "cancelled";
   createdAt: Date;
   updatedAt: Date;
+  assignedGRs?: AssignedGR[];
+}
+
+interface AssignedGR {
+  id: string;
+  grNo: string;
+  grDate: Date;
+  consignor: string;
+  consignee: string;
+  destination: string;
+  toPay: number;
+  paid: number;
+  tbb: number;
+  bookedPckgs: number;
+  stockPckgs: number;
+  dispatchedPckgs: number;
+  weight: number;
+}
+
+interface StockItem {
+  id: number;
+  grNo: string;
+  grDate: Date;
+  origin: string;
+  destination: string;
+  consignor: string;
+  consignee: string;
+  toPay: string;
+  paid: string;
+  tbb: string;
+  stockPckgs: number;
+  selected: boolean;
+  bookingType: "computerized" | "manual";
+  bookingId: string;
 }
 
 interface Branch {
   value: string;
   text: string;
 }
+
+// Destination options
+const destinationOptions = [
+  { value: "U P BORDER A JH UP", label: "U P BORDER A JH UP" },
+  { value: "U P BORDER B BR", label: "U P BORDER B BR" },
+  { value: "U P BORDER C ASM WB", label: "U P BORDER C ASM WB" },
+  { value: "U P BORDER D BR GP", label: "U P BORDER D BR GP" },
+];
 
 const cancelledReasonOptions = [
   "Customer Request",
@@ -123,9 +169,17 @@ const cancelledReasonOptions = [
 export default function LocalManifest() {
   const [mainTab, setMainTab] = useState<"active" | "cancelled">("active");
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEditId, setCurrentEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentManifest, setCurrentManifest] = useState<ManifestRecord | null>(null);
+  const [staticDataLoaded, setStaticDataLoaded] = useState(false);
+
+  // Current user data
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string>("");
+  const [selectedBranchText, setSelectedBranchText] = useState<string>("");
 
   // Update Destination Modal state
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -140,6 +194,19 @@ export default function LocalManifest() {
   const [cancellingManifest, setCancellingManifest] = useState<ManifestRecord | null>(null);
   const [cancelledReason, setCancelledReason] = useState<string>("");
 
+  // Stock of Despatch State
+  const [stockBranch, setStockBranch] = useState<string>("");
+  const [asOnDate, setAsOnDate] = useState<Date>(new Date());
+  const [destination, setDestination] = useState<string>("");
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [selectAllBranch, setSelectAllBranch] = useState<boolean>(false);
+  const [selectAllDestination, setSelectAllDestination] = useState<boolean>(false);
+  const [stockCurrentPage, setStockCurrentPage] = useState<number>(1);
+  const [stockStats, setStockStats] = useState({ total: 0, selected: 0, totalPckgs: 0 });
+  const stockItemsPerPage: number = 10;
+  const [assignedGRs, setAssignedGRs] = useState<AssignedGR[]>([]);
+
   // Static data from API
   const [driverOptions, setDriverOptions] = useState<string[]>([]);
   const [vendorOptions, setVendorOptions] = useState<string[]>([]);
@@ -148,6 +215,12 @@ export default function LocalManifest() {
 
   // Search state
   const [searchBranch, setSearchBranch] = useState<string>("");
+  const [searchManifestNo, setSearchManifestNo] = useState<string>("");
+  const [searchModeName, setSearchModeName] = useState<string>("");
+  const [searchDriverName, setSearchDriverName] = useState<string>("");
+  const [searchVehicleVendor, setSearchVehicleVendor] = useState<string>("");
+  const [searchVendorCDNo, setSearchVendorCDNo] = useState<string>("");
+  const [searchRemarks, setSearchRemarks] = useState<string>("");
 
   // Entry Form State
   const [branch, setBranch] = useState<string>("");
@@ -178,15 +251,50 @@ export default function LocalManifest() {
   });
   const itemsPerPage: number = 10;
 
-  // Load static data on mount
+  // Load data on mount
   useEffect(() => {
+    loadCurrentUser();
     loadStaticData();
-    loadManifests();
-    loadStats();
   }, []);
+
+  // Load manifests after static data is loaded
+  useEffect(() => {
+    if (staticDataLoaded) {
+      loadManifests();
+      loadStats();
+    }
+  }, [staticDataLoaded]);
+
+  const loadCurrentUser = () => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      const selectedBranchStr = localStorage.getItem('selectedBranch');
+      const branchCode = localStorage.getItem('branchCode');
+      
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setCurrentUser(user);
+        } catch (e) {
+          console.error('Error parsing user:', e);
+        }
+      }
+      
+      if (selectedBranchStr) {
+        setSelectedBranch(selectedBranchStr);
+        setSelectedBranchText(selectedBranchStr);
+        setBranch(selectedBranchStr);
+      } else if (branchCode) {
+        setSelectedBranch(branchCode);
+        setSelectedBranchText(branchCode);
+        setBranch(branchCode);
+      }
+    }
+  };
 
   const loadStaticData = async () => {
     try {
+      console.log("Loading static data...");
       const [driversRes, vendorsRes, personsRes, branchesRes] = await Promise.all([
         getDrivers(),
         getVendors(),
@@ -197,16 +305,19 @@ export default function LocalManifest() {
       setVendorOptions(vendorsRes.data || []);
       setLoadingPersonOptions(personsRes.data || []);
       setBranchOptions(branchesRes.data || []);
+      console.log("Branch options loaded:", branchesRes.data);
+      setStaticDataLoaded(true);
     } catch (error) {
       console.error("Error loading static data:", error);
       toast.error("Failed to load static data");
+      setStaticDataLoaded(true);
     }
   };
 
   const loadManifests = async () => {
     setLoading(true);
     try {
-      const response = await getManifests({ status: "active", limit: 100 });
+      const response = await getLocalManifests({ status: "active", limit: 100 });
       setSearchResults(response.data || []);
     } catch (error) {
       console.error("Error loading manifests:", error);
@@ -219,7 +330,7 @@ export default function LocalManifest() {
   const loadCancelledManifests = async () => {
     setLoading(true);
     try {
-      const response = await getManifests({ status: "cancelled", limit: 100 });
+      const response = await getLocalManifests({ status: "cancelled", limit: 100 });
       setCancelledResults(response.data || []);
     } catch (error) {
       console.error("Error loading cancelled manifests:", error);
@@ -231,15 +342,47 @@ export default function LocalManifest() {
 
   const loadStats = async () => {
     try {
-      const response = await getManifestStats();
+      const response = await getLocalManifestStats();
       setStats(response.data);
     } catch (error) {
       console.error("Error loading stats:", error);
     }
   };
 
+  const loadStockItems = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      if (stockBranch && !selectAllBranch && stockBranch !== 'ALL') filters.branch = stockBranch;
+      if (destination && !selectAllDestination && destination !== 'ALL') filters.destination = destination;
+      if (asOnDate) filters.asOnDate = asOnDate.toISOString();
+
+      const response = await getLocalManifestStockItems(filters);
+      const items = response.data.map((item: any, index: number) => ({
+        ...item,
+        id: index + 1,
+        selected: false,
+        bookingType: item.bookingType || "computerized",
+        bookingId: item._id || item.id,
+      }));
+      setStockItems(items);
+      setStockStats({
+        total: items.length,
+        selected: 0,
+        totalPckgs: items.reduce((sum: number, i: StockItem) => sum + i.stockPckgs, 0),
+      });
+      setSelectAll(false);
+      toast.success(`Found ${items.length} stock items`);
+    } catch (error) {
+      console.error("Error loading stock items:", error);
+      toast.error("Failed to load stock items");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
-    setBranch("");
+    setBranch(selectedBranch);
     setToStation("");
     setManifestNo("");
     setDespatchDate(new Date());
@@ -259,11 +402,11 @@ export default function LocalManifest() {
 
   const handleSave = async () => {
     if (!branch) {
-      toast.error("Please enter Branch");
+      toast.error("Please select Branch");
       return;
     }
     if (!toStation) {
-      toast.error("Please enter To Station");
+      toast.error("Please select To Station");
       return;
     }
     if (!modeName) {
@@ -298,7 +441,7 @@ export default function LocalManifest() {
       modeCategory: "SURFACE",
       noOfPckgs: 0,
       grossWeight: 0,
-      vehicleNo: "",
+      vehicleNo: modeName,
       autoManifest,
     };
 
@@ -309,10 +452,10 @@ export default function LocalManifest() {
     try {
       let response;
       if (editMode && currentEditId) {
-        response = await updateManifest(currentEditId, manifestData);
+        response = await updateLocalManifest(currentEditId, manifestData);
         toast.success("Manifest updated successfully!");
       } else {
-        response = await createManifest(manifestData);
+        response = await createLocalManifest(manifestData);
         toast.success(`Manifest created successfully! No: ${response.data.manifestNo}`);
       }
 
@@ -335,9 +478,15 @@ export default function LocalManifest() {
       const filters: any = { status: "active", limit: 100 };
       if (fromDate) filters.fromDate = fromDate.toISOString();
       if (toDate) filters.toDate = toDate.toISOString();
-      if (searchBranch) filters.branch = searchBranch;
+      if (searchBranch && searchBranch !== "all") filters.branch = searchBranch;
+      if (searchManifestNo) filters.manifestNo = searchManifestNo;
+      if (searchModeName) filters.modeName = searchModeName;
+      if (searchDriverName) filters.driverName = searchDriverName;
+      if (searchVehicleVendor) filters.vehicleVendor = searchVehicleVendor;
+      if (searchVendorCDNo) filters.vendorCDNo = searchVendorCDNo;
+      if (searchRemarks) filters.remarks = searchRemarks;
 
-      const response = await getManifests(filters);
+      const response = await getLocalManifests(filters);
       setSearchResults(response.data || []);
       setCurrentPage(1);
       toast.success(`Found ${response.data?.length || 0} manifests`);
@@ -355,9 +504,9 @@ export default function LocalManifest() {
       const filters: any = { status: "cancelled", limit: 100 };
       if (fromDate) filters.fromDate = fromDate.toISOString();
       if (toDate) filters.toDate = toDate.toISOString();
-      if (searchBranch) filters.branch = searchBranch;
+      if (searchBranch && searchBranch !== "all") filters.branch = searchBranch;
 
-      const response = await getManifests(filters);
+      const response = await getLocalManifests(filters);
       setCancelledResults(response.data || []);
       setCancelledPage(1);
       toast.success(`Found ${response.data?.length || 0} cancelled manifests`);
@@ -373,29 +522,39 @@ export default function LocalManifest() {
     setFromDate(new Date());
     setToDate(new Date());
     setSearchBranch("");
+    setSearchManifestNo("");
+    setSearchModeName("");
+    setSearchDriverName("");
+    setSearchVehicleVendor("");
+    setSearchVendorCDNo("");
+    setSearchRemarks("");
     loadManifests();
     loadCancelledManifests();
     toast.success("Search filters cleared");
   };
 
-  const handleEdit = (record: ManifestRecord) => {
-    setEditMode(true);
+  const handleStockSearch = async () => {
+    await loadStockItems();
+    setStockCurrentPage(1);
+  };
+
+  const handleClearStockSearch = () => {
+    setStockBranch("");
+    setDestination("");
+    setSelectAllBranch(false);
+    setSelectAllDestination(false);
+    setAsOnDate(new Date());
+    setStockItems([]);
+    setStockStats({ total: 0, selected: 0, totalPckgs: 0 });
+    setSelectAll(false);
+    setStockCurrentPage(1);
+  };
+
+  const handleEdit = async (record: ManifestRecord) => {
+    setCurrentManifest(record);
     setCurrentEditId(record._id!);
-    setBranch(record.branch);
-    setToStation(record.toStation);
-    setManifestNo(record.manifestNo);
-    setDespatchDate(new Date(record.date));
-    setDespatchTime(record.time);
-    setModeName(record.modeName);
-    setDriverName(record.driverName);
-    setDriverMobile(record.driverMobile);
-    setVehicleVendor(record.vehicleVendor);
-    setLoadingPerson(record.loadingPerson);
-    setVendorCDNo(record.vendorCDNo);
-    setVendorCDDate(new Date(record.vendorCDDate));
-    setRemarks(record.remarks);
-    setAutoManifest(false);
-    setIsEntryModalOpen(true);
+    setAssignedGRs(record.assignedGRs || []);
+    setIsEditModalOpen(true);
   };
 
   const handlePrint = (record: ManifestRecord) => {
@@ -412,6 +571,36 @@ export default function LocalManifest() {
             <p><strong>To Station:</strong> ${record.toStation}</p>
             <p><strong>Driver:</strong> ${record.driverName}</p>
             <p><strong>Vehicle:</strong> ${record.vehicleNo || "N/A"}</p>
+            <p><strong>Total Packages:</strong> ${record.noOfPckgs}</p>
+            <p><strong>Gross Weight:</strong> ${record.grossWeight} kg</p>
+            <hr />
+            <h3>Assigned GRs</h3>
+            <table border="1" cellpadding="5" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th>GR #</th>
+                  <th>Date</th>
+                  <th>Consignor</th>
+                  <th>Consignee</th>
+                  <th>Destination</th>
+                  <th>Packages</th>
+                  <th>Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(record.assignedGRs || []).map(gr => `
+                  <tr>
+                    <td>${gr.grNo}</td>
+                    <td>${format(new Date(gr.grDate), "dd-MM-yyyy")}</td>
+                    <td>${gr.consignor}</td>
+                    <td>${gr.consignee}</td>
+                    <td>${gr.destination}</td>
+                    <td>${gr.dispatchedPckgs}</td>
+                    <td>${gr.weight}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
             <hr />
             <p>Generated by CargoMax System</p>
           </body>
@@ -421,6 +610,10 @@ export default function LocalManifest() {
       printWindow.print();
     }
     toast.success("Print dialog opened");
+  };
+
+  const handleExportToExcel = () => {
+    toast.success("Export to Excel feature coming soon");
   };
 
   const handleUpdateDestination = (record: ManifestRecord) => {
@@ -440,7 +633,7 @@ export default function LocalManifest() {
     if (selectedManifest) {
       setLoading(true);
       try {
-        await updateDestination(selectedManifest._id!, {
+        await updateLocalManifestDestination(selectedManifest._id!, {
           newDestination,
           newVehicleNo,
           newDriver,
@@ -467,7 +660,7 @@ export default function LocalManifest() {
     if (cancellingManifest) {
       setLoading(true);
       try {
-        await cancelManifest(cancellingManifest._id!, cancelledReason);
+        await cancelLocalManifest(cancellingManifest._id!, cancelledReason);
         toast.success(`Manifest ${cancellingManifest.manifestNo} cancelled successfully!`);
         await loadManifests();
         await loadCancelledManifests();
@@ -488,7 +681,7 @@ export default function LocalManifest() {
     if (confirm(`Restore manifest ${record.manifestNo}?`)) {
       setLoading(true);
       try {
-        await restoreManifest(record._id!);
+        await restoreLocalManifest(record._id!);
         toast.success(`Manifest ${record.manifestNo} restored!`);
         await loadManifests();
         await loadCancelledManifests();
@@ -506,7 +699,7 @@ export default function LocalManifest() {
     if (confirm(`Permanently delete manifest ${manifestNo}? This action cannot be undone.`)) {
       setLoading(true);
       try {
-        await deleteManifest(id);
+        await deleteLocalManifest(id);
         toast.success("Manifest deleted permanently!");
         await loadManifests();
         await loadCancelledManifests();
@@ -517,6 +710,126 @@ export default function LocalManifest() {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleSelectAll = () => {
+    const newSelectAll = !selectAll;
+    setSelectAll(newSelectAll);
+    const updatedItems = stockItems.map(item => ({ ...item, selected: newSelectAll }));
+    setStockItems(updatedItems);
+    setStockStats({
+      ...stockStats,
+      selected: newSelectAll ? stockItems.length : 0,
+    });
+  };
+
+  const handleSelectItem = (id: number) => {
+    const updatedItems = stockItems.map(item =>
+      item.id === id ? { ...item, selected: !item.selected } : item
+    );
+    setStockItems(updatedItems);
+    setStockStats({
+      ...stockStats,
+      selected: updatedItems.filter(i => i.selected).length,
+    });
+    setSelectAll(updatedItems.every(i => i.selected));
+  };
+
+  const handleSelectAllBranch = () => {
+    setSelectAllBranch(!selectAllBranch);
+    if (!selectAllBranch) {
+      setStockBranch("ALL");
+    } else {
+      setStockBranch("");
+    }
+  };
+
+  const handleSelectAllDestination = () => {
+    setSelectAllDestination(!selectAllDestination);
+    if (!selectAllDestination) {
+      setDestination("ALL");
+    } else {
+      setDestination("");
+    }
+  };
+
+  const handleAssignGRs = async () => {
+    const selectedItems = stockItems.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      toast.error("Please select at least one GR to assign");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const totalPckgs = selectedItems.reduce((sum, item) => sum + item.stockPckgs, 0);
+      const totalWeight = selectedItems.reduce((sum, item) => sum + (item.stockPckgs * 100), 0);
+
+      const newAssignedGRs = selectedItems.map(item => ({
+        id: item.bookingId,
+        grNo: item.grNo,
+        grDate: item.grDate,
+        consignor: item.consignor,
+        consignee: item.consignee,
+        destination: item.destination,
+        toPay: parseFloat(item.toPay) || 0,
+        paid: parseFloat(item.paid) || 0,
+        tbb: parseFloat(item.tbb) || 0,
+        bookedPckgs: item.stockPckgs,
+        stockPckgs: item.stockPckgs,
+        dispatchedPckgs: item.stockPckgs,
+        weight: item.stockPckgs * 100,
+      }));
+
+      const updatedAssignedGRs = [...assignedGRs, ...newAssignedGRs];
+      setAssignedGRs(updatedAssignedGRs);
+
+      await updateLocalManifestDispatch(currentEditId!, totalPckgs, totalWeight, updatedAssignedGRs);
+
+      toast.success(`${selectedItems.length} GR(s) assigned successfully!`);
+      
+      const remainingItems = stockItems.filter(item => !item.selected);
+      setStockItems(remainingItems);
+      setStockStats({
+        total: remainingItems.length,
+        selected: 0,
+        totalPckgs: remainingItems.reduce((sum, i) => sum + i.stockPckgs, 0),
+      });
+      setSelectAll(false);
+    } catch (error: any) {
+      console.error("Assign GRs error:", error);
+      toast.error(error.response?.data?.message || "Failed to assign GRs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveAssignedGR = (index: number) => {
+    const updated = [...assignedGRs];
+    updated.splice(index, 1);
+    setAssignedGRs(updated);
+    toast.success("GR removed from manifest");
+  };
+
+  const handleSaveManifestWithGRs = async () => {
+    setLoading(true);
+    try {
+      const totalPckgs = assignedGRs.reduce((sum, gr) => sum + gr.dispatchedPckgs, 0);
+      const totalWeight = assignedGRs.reduce((sum, gr) => sum + gr.weight, 0);
+
+      await updateLocalManifestDispatch(currentEditId!, totalPckgs, totalWeight, assignedGRs);
+      
+      toast.success("Manifest updated successfully!");
+      setIsEditModalOpen(false);
+      await loadManifests();
+      await loadCancelledManifests();
+      await loadStats();
+    } catch (error: any) {
+      console.error("Save manifest error:", error);
+      toast.error(error.response?.data?.message || "Failed to save manifest");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -561,6 +874,19 @@ export default function LocalManifest() {
   const goToCancelledPage = (page: number) =>
     setCancelledPage(Math.max(1, Math.min(page, totalCancelledPages)));
 
+  const totalStockPages = Math.ceil(stockItems.length / stockItemsPerPage);
+  const paginatedStockItems = stockItems.slice(
+    (stockCurrentPage - 1) * stockItemsPerPage,
+    stockCurrentPage * stockItemsPerPage
+  );
+  const goToStockPage = (page: number) => setStockCurrentPage(Math.max(1, Math.min(page, totalStockPages)));
+
+  // Helper function to get branch display text
+  const getBranchDisplayText = (branchValue: string) => {
+    const found = branchOptions.find(b => b.value === branchValue);
+    return found ? found.text : branchValue;
+  };
+
   return (
     <div className="space-y-4 p-4 md:p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
@@ -572,6 +898,12 @@ export default function LocalManifest() {
               <h1 className="text-xl md:text-2xl font-bold text-gray-800">
                 LOCAL MANIFEST
               </h1>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Company: GOLDEN ROADWAYS & LOGISTICS PVT LTD
+            </div>
+            <div className="text-xs text-gray-500">
+              Login Branch: {getBranchDisplayText(selectedBranch) || "Not selected"}
             </div>
           </div>
           <Button onClick={openAddModal} className="bg-blue-600 hover:bg-blue-700">
@@ -616,7 +948,6 @@ export default function LocalManifest() {
       {/* Active Manifests Tab */}
       {mainTab === "active" && (
         <>
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
               <CardContent className="p-4">
@@ -662,7 +993,7 @@ export default function LocalManifest() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">From Date</Label>
                   <Popover>
@@ -707,13 +1038,71 @@ export default function LocalManifest() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Manifest #</Label>
+                  <Input
+                    value={searchManifestNo}
+                    onChange={(e) => setSearchManifestNo(e.target.value)}
+                    placeholder="Enter Manifest #"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Mode Name</Label>
+                  <Input
+                    value={searchModeName}
+                    onChange={(e) => setSearchModeName(e.target.value)}
+                    placeholder="Enter Mode Name"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Driver Name</Label>
+                  <Input
+                    value={searchDriverName}
+                    onChange={(e) => setSearchDriverName(e.target.value)}
+                    placeholder="Enter Driver Name"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Vehicle Vendor</Label>
+                  <Input
+                    value={searchVehicleVendor}
+                    onChange={(e) => setSearchVehicleVendor(e.target.value)}
+                    placeholder="Enter Vehicle Vendor"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Vendor CD #</Label>
+                  <Input
+                    value={searchVendorCDNo}
+                    onChange={(e) => setSearchVendorCDNo(e.target.value)}
+                    placeholder="Enter Vendor CD #"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Remarks</Label>
+                  <Input
+                    value={searchRemarks}
+                    onChange={(e) => setSearchRemarks(e.target.value)}
+                    placeholder="Enter Remarks"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="flex items-end gap-2 col-span-full">
                   <Button onClick={handleSearch} className="h-9 text-sm bg-blue-600" disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
                     Search
                   </Button>
                   <Button onClick={handleClearSearch} variant="outline" className="h-9 text-sm">
                     <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button onClick={handleExportToExcel} variant="outline" className="h-9 text-sm ml-auto">
+                    <FileSpreadsheet className="h-4 w-4 mr-1" />
+                    Export to Excel
                   </Button>
                 </div>
               </div>
@@ -730,32 +1119,34 @@ export default function LocalManifest() {
             </CardHeader>
             <CardContent>
               <div className="rounded-md border overflow-x-auto">
-                <div className="min-w-[1000px]">
+                <div className="min-w-[1200px]">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50">
-                        <TableHead className="text-xs py-3 px-2 w-12 text-center">#</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-12 text-center">S#</TableHead>
                         <TableHead className="text-xs py-3 px-2 min-w-[100px]">Manifest #</TableHead>
                         <TableHead className="text-xs py-3 px-2 min-w-[80px]">Date</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">LHC#</TableHead>
                         <TableHead className="text-xs py-3 px-2 min-w-[100px]">Branch</TableHead>
                         <TableHead className="text-xs py-3 px-2 min-w-[120px]">To Station</TableHead>
-                        <TableHead className="text-xs py-3 px-2 min-w-[100px]">Driver</TableHead>
-                        <TableHead className="text-xs py-3 px-2 w-[60px] text-center">Pckgs</TableHead>
-                        <TableHead className="text-xs py-3 px-2 w-[80px] text-right">Weight</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[100px]">Mode</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">Mode Category</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">No. Of Pickups</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-right">Gross Wt.</TableHead>
                         <TableHead className="text-xs py-3 px-2 w-32 text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-12">
+                          <TableCell colSpan={11} className="text-center py-12">
                             <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-500" />
                             <p className="text-gray-500 mt-2">Loading manifests...</p>
                           </TableCell>
                         </TableRow>
                       ) : paginatedResults.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-12 text-gray-500">
+                          <TableCell colSpan={11} className="text-center py-12 text-gray-500">
                             <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
                             No manifests found. Click "New Manifest" to create one.
                           </TableCell>
@@ -774,11 +1165,13 @@ export default function LocalManifest() {
                             <TableCell className="py-3 px-2 text-sm">
                               {format(new Date(record.date), "dd-MM-yyyy")}
                             </TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{record.lhcNo || "-"}</TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.branch}</TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.toStation}</TableCell>
-                            <TableCell className="py-3 px-2 text-sm">{record.driverName}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{record.modeName}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{record.modeCategory}</TableCell>
                             <TableCell className="py-3 px-2 text-center text-sm">{record.noOfPckgs}</TableCell>
-                            <TableCell className="py-3 px-2 text-right text-sm">{record.grossWeight}</TableCell>
+                            <TableCell className="py-3 px-2 text-right text-sm">{record.grossWeight.toFixed(3)}</TableCell>
                             <TableCell className="py-3 px-2 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Button
@@ -798,6 +1191,15 @@ export default function LocalManifest() {
                                   title="Print"
                                 >
                                   <Printer className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleExportToExcel()}
+                                  className="h-8 w-8 p-0 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                                  title="Export to Excel"
+                                >
+                                  <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -827,7 +1229,6 @@ export default function LocalManifest() {
                 </div>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-500">
@@ -868,7 +1269,6 @@ export default function LocalManifest() {
       {/* Cancelled Manifests Tab */}
       {mainTab === "cancelled" && (
         <>
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
               <CardContent className="p-4">
@@ -883,7 +1283,6 @@ export default function LocalManifest() {
             </Card>
           </div>
 
-          {/* Search Filters for Cancelled */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gray-700">
@@ -950,7 +1349,6 @@ export default function LocalManifest() {
             </CardContent>
           </Card>
 
-          {/* Cancelled Results Table */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
@@ -1037,7 +1435,6 @@ export default function LocalManifest() {
                 </div>
               </div>
 
-              {/* Pagination for Cancelled */}
               {totalCancelledPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-500">
@@ -1211,7 +1608,345 @@ export default function LocalManifest() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Entry Modal - Centered Dialog */}
+      {/* Edit Manifest Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0 z-[9999]">
+          <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Edit className="h-5 w-5 text-blue-600" />
+              Edit Manifest - {currentManifest?.manifestNo}
+            </DialogTitle>
+            <DialogDescription>Manage GRs for this manifest. Select GRs from stock and assign them.</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            {/* Manifest Info Summary */}
+            <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <Label className="text-xs text-gray-500">Manifest No</Label>
+                <p className="font-semibold">{currentManifest?.manifestNo}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Branch</Label>
+                <p className="font-semibold">{currentManifest?.branch}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">To Station</Label>
+                <p className="font-semibold">{currentManifest?.toStation}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Mode Name</Label>
+                <p className="font-semibold">{currentManifest?.modeName}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Driver</Label>
+                <p className="font-semibold">{currentManifest?.driverName}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Loading Person</Label>
+                <p className="font-semibold">{currentManifest?.loadingPerson}</p>
+              </div>
+            </div>
+
+            {/* Stock of Despatch Section */}
+            <div className="border rounded-lg">
+              <div className="bg-green-50 px-4 py-3 border-b flex justify-between items-center">
+                <h3 className="text-base font-semibold flex items-center gap-2 text-green-700">
+                  <Package className="h-5 w-5" />
+                  STOCK OF DESPATCH
+                </h3>
+                <div className="flex gap-2">
+                  <Button onClick={handleStockSearch} size="sm" className="h-8 text-sm bg-green-600">
+                    <Search className="h-4 w-4 mr-1" /> SHOW STOCK
+                  </Button>
+                  <Button onClick={handleClearStockSearch} variant="outline" size="sm" className="h-8 text-sm">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectAllBranch}
+                        onChange={handleSelectAllBranch}
+                        className="h-4 w-4 rounded"
+                        id="allBranch"
+                      />
+                      <Label htmlFor="allBranch" className="text-sm cursor-pointer">ALL</Label>
+                    </div>
+                    <Label className="text-xs">Branch</Label>
+                    <Select value={stockBranch} onValueChange={setStockBranch} disabled={selectAllBranch}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select Branch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branchOptions.map((branch) => (
+                          <SelectItem key={branch.value} value={branch.value}>
+                            {branch.text}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">As On Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="h-9 w-full text-sm justify-start">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(asOnDate, "dd-MM-yyyy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 z-[10000]">
+                        <Calendar mode="single" selected={asOnDate} onSelect={(d) => d && setAsOnDate(d)} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectAllDestination}
+                        onChange={handleSelectAllDestination}
+                        className="h-4 w-4 rounded"
+                        id="allDestination"
+                      />
+                      <Label htmlFor="allDestination" className="text-sm cursor-pointer">ALL</Label>
+                    </div>
+                    <Label className="text-xs">Destination</Label>
+                    <Input
+                      value={destination}
+                      onChange={(e) => setDestination(e.target.value)}
+                      placeholder="Enter Destination"
+                      className="h-9 text-sm"
+                      disabled={selectAllDestination}
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Table */}
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onChange={handleSelectAll}
+                            className="h-4 w-4 rounded"
+                          />
+                        </TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-12 text-center">S#</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">GR #</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">GR Date</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[100px]">Origin</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Destination</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Consignor</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Consignee</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[60px] text-center">ToPay</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[60px] text-center">Paid</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[60px] text-center">TBB</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Booked Pckgs</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Stock Pckgs</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-right">Weight</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={14} className="text-center py-12">
+                            <Loader2 className="h-8 w-8 mx-auto animate-spin text-green-500" />
+                            <p className="text-gray-500 mt-2">Loading stock items...</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : paginatedStockItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={14} className="text-center py-12 text-gray-500">
+                            <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No stock records found. Click "SHOW STOCK" to search.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedStockItems.map((item, idx) => (
+                          <TableRow key={item.id} className="hover:bg-gray-50">
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={item.selected}
+                                onChange={() => handleSelectItem(item.id)}
+                                className="h-4 w-4 rounded"
+                              />
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">
+                              {(stockCurrentPage - 1) * stockItemsPerPage + idx + 1}
+                            </TableCell>
+                            <TableCell className="py-3 px-2 font-mono text-sm font-semibold">{item.grNo}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">
+                              {format(new Date(item.grDate), "dd-MM-yyyy")}
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{item.origin}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{item.destination}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm truncate max-w-[150px]">
+                              {item.consignor}
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-sm truncate max-w-[150px]">
+                              {item.consignee}
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{item.toPay}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{item.paid}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{item.tbb}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{item.stockPckgs}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{item.stockPckgs}</TableCell>
+                            <TableCell className="py-3 px-2 text-right text-sm">{item.stockPckgs * 100}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {totalStockPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-gray-500">
+                      Showing {((stockCurrentPage - 1) * stockItemsPerPage) + 1} to{" "}
+                      {Math.min(stockCurrentPage * stockItemsPerPage, stockItems.length)} of {stockItems.length}{" "}
+                      entries
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToStockPage(stockCurrentPage - 1)}
+                        disabled={stockCurrentPage === 1}
+                        className="h-8 text-sm"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                      </Button>
+                      <span className="px-3 py-1 text-sm">
+                        Page {stockCurrentPage} of {totalStockPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToStockPage(stockCurrentPage + 1)}
+                        disabled={stockCurrentPage === totalStockPages}
+                        className="h-8 text-sm"
+                      >
+                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button
+                    onClick={handleAssignGRs}
+                    className="h-9 text-sm bg-blue-600 hover:bg-blue-700"
+                    disabled={stockStats.selected === 0 || loading}
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                    ADD TO MANIFEST ({stockStats.selected})
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Assigned GRs Section */}
+            <div className="border rounded-lg">
+              <div className="bg-blue-50 px-4 py-3 border-b flex justify-between items-center">
+                <h3 className="text-base font-semibold flex items-center gap-2 text-blue-700">
+                  <CheckCircle className="h-5 w-5" />
+                  ASSIGNED GRs TO THIS MANIFEST
+                </h3>
+                <div className="text-sm font-medium">
+                  Total: {assignedGRs.length} GRs | Packages: {assignedGRs.reduce((sum, gr) => sum + gr.dispatchedPckgs, 0)} | Weight: {assignedGRs.reduce((sum, gr) => sum + gr.weight, 0)} kg
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-xs py-3 px-2 w-12 text-center">S#</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">GR #</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[80px]">GR Date</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Consignor</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Consignee</TableHead>
+                        <TableHead className="text-xs py-3 px-2 min-w-[120px]">Destination</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">ToPay</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Paid</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">TBB</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Booked Pckgs</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Stock Pckgs</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-center">Despatch Pckgs</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-[80px] text-right">Weight</TableHead>
+                        <TableHead className="text-xs py-3 px-2 w-16 text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignedGRs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={14} className="text-center py-12 text-gray-500">
+                            <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No GRs assigned to this manifest yet. Select GRs from Stock of Despatch and click "ADD TO MANIFEST".
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        assignedGRs.map((gr, idx) => (
+                          <TableRow key={idx} className="hover:bg-gray-50">
+                            <TableCell className="py-3 px-2 text-center text-sm">{idx + 1}</TableCell>
+                            <TableCell className="py-3 px-2 font-mono text-sm font-semibold">{gr.grNo}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">
+                              {format(new Date(gr.grDate), "dd-MM-yyyy")}
+                            </TableCell>
+                            <TableCell className="py-3 px-2 text-sm truncate max-w-[150px]">{gr.consignor}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm truncate max-w-[150px]">{gr.consignee}</TableCell>
+                            <TableCell className="py-3 px-2 text-sm">{gr.destination}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">₹{gr.toPay.toFixed(2)}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">₹{gr.paid.toFixed(2)}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">₹{gr.tbb.toFixed(2)}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{gr.bookedPckgs}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{gr.stockPckgs}</TableCell>
+                            <TableCell className="py-3 px-2 text-center text-sm">{gr.dispatchedPckgs}</TableCell>
+                            <TableCell className="py-3 px-2 text-right text-sm">{gr.weight}</TableCell>
+                            <TableCell className="py-3 px-2 text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveAssignedGR(idx)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                title="Remove from manifest"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="sticky bottom-0 bg-white pt-3 border-t px-6 py-3 gap-2">
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="h-9">
+              <X className="mr-1 h-4 w-4" /> Cancel
+            </Button>
+            <Button onClick={handleSaveManifestWithGRs} disabled={loading} className="h-9 bg-blue-600 hover:bg-blue-700">
+              {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+              UPDATE MANIFEST
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Manifest Modal */}
       <Dialog open={isEntryModalOpen} onOpenChange={setIsEntryModalOpen}>
         <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader className="sticky top-0 bg-white z-10 pb-3 border-b">
@@ -1237,23 +1972,39 @@ export default function LocalManifest() {
                 <Label className="text-sm">
                   Branch <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  placeholder="Enter branch name"
-                  className="h-9 text-sm"
-                />
+                <Select value={branch} onValueChange={setBranch}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select Branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branchOptions.length === 0 ? (
+                      <SelectItem value="" disabled>Loading branches...</SelectItem>
+                    ) : (
+                      branchOptions.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          {branch.text}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-sm">
                   To Station <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  value={toStation}
-                  onChange={(e) => setToStation(e.target.value)}
-                  placeholder="Enter destination station"
-                  className="h-9 text-sm"
-                />
+                <Select value={toStation} onValueChange={setToStation}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select To Station" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {destinationOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

@@ -833,8 +833,8 @@ export const getManualBookingStats = async () => {
 
 // ==================== LOCAL MANIFEST APIs ====================
 
-// Get all manifests with filters
-export const getManifests = async (filters = {}) => {
+// Get all local manifests with filters
+export const getLocalManifests = async (filters = {}) => {
   const params = new URLSearchParams();
   Object.keys(filters).forEach(key => {
     if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
@@ -845,63 +845,82 @@ export const getManifests = async (filters = {}) => {
   return response.data;
 };
 
-// Get manifest by ID
-export const getManifestById = async (id) => {
+// Get local manifest by ID
+export const getLocalManifestById = async (id) => {
   const response = await api.get(`/local-manifests/${id}`);
   return response.data;
 };
 
-// Get manifest by manifest number
-export const getManifestByNo = async (manifestNo) => {
+// Get local manifest by manifest number
+export const getLocalManifestByNo = async (manifestNo) => {
   const response = await api.get(`/local-manifests/manifest/${manifestNo}`);
   return response.data;
 };
 
-// Create new manifest
-export const createManifest = async (manifestData) => {
-  console.log('Creating manifest with data:', manifestData);
+// Create new local manifest
+export const createLocalManifest = async (manifestData) => {
+  console.log('Creating local manifest with data:', manifestData);
   const response = await api.post('/local-manifests', manifestData);
-  console.log('Create manifest response:', response.data);
+  console.log('Create local manifest response:', response.data);
   return response.data;
 };
 
-// Update manifest
-export const updateManifest = async (id, manifestData) => {
-  console.log(`Updating manifest ${id} with data:`, manifestData);
+// Update local manifest
+export const updateLocalManifest = async (id, manifestData) => {
+  console.log(`Updating local manifest ${id} with data:`, manifestData);
   const response = await api.put(`/local-manifests/${id}`, manifestData);
   return response.data;
 };
 
-// Update destination
-export const updateDestination = async (id, updateData) => {
-  console.log(`Updating destination for manifest ${id}:`, updateData);
+// Update destination for local manifest
+export const updateLocalManifestDestination = async (id, updateData) => {
+  console.log(`Updating destination for local manifest ${id}:`, updateData);
   const response = await api.put(`/local-manifests/${id}/update-destination`, updateData);
   return response.data;
 };
 
-// Cancel manifest
-export const cancelManifest = async (id, cancelledReason) => {
-  console.log(`Cancelling manifest ${id} with reason:`, cancelledReason);
+// Update dispatch details for local manifest (assigned GRs)
+export const updateLocalManifestDispatch = async (id, dispatchedPckgs, dispatchedWt, assignedGRs) => {
+  console.log(`Updating dispatch details for local manifest ${id}:`, { dispatchedPckgs, dispatchedWt, assignedGRs });
+  const response = await api.put(`/local-manifests/${id}/dispatch`, { dispatchedPckgs, dispatchedWt, assignedGRs });
+  return response.data;
+};
+
+// Get stock items for local manifest (available GRs not assigned to any manifest)
+export const getLocalManifestStockItems = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.keys(filters).forEach(key => {
+    if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      params.append(key, filters[key]);
+    }
+  });
+  const response = await api.get(`/local-manifests/stock?${params.toString()}`);
+  return response.data;
+};
+
+// Cancel local manifest
+export const cancelLocalManifest = async (id, cancelledReason) => {
+  console.log(`Cancelling local manifest ${id} with reason:`, cancelledReason);
   const response = await api.put(`/local-manifests/${id}/cancel`, { cancelledReason });
   return response.data;
 };
 
-// Restore manifest
-export const restoreManifest = async (id) => {
-  console.log(`Restoring manifest ${id}`);
+// Restore local manifest
+export const restoreLocalManifest = async (id) => {
+  console.log(`Restoring local manifest ${id}`);
   const response = await api.put(`/local-manifests/${id}/restore`);
   return response.data;
 };
 
-// Delete manifest
-export const deleteManifest = async (id) => {
-  console.log(`Deleting manifest ${id}`);
+// Delete local manifest
+export const deleteLocalManifest = async (id) => {
+  console.log(`Deleting local manifest ${id}`);
   const response = await api.delete(`/local-manifests/${id}`);
   return response.data;
 };
 
-// Get manifest statistics
-export const getManifestStats = async () => {
+// Get local manifest statistics
+export const getLocalManifestStats = async () => {
   const response = await api.get('/local-manifests/stats');
   return response.data;
 };
