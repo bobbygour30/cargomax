@@ -389,7 +389,10 @@ export default function LocalManifest() {
       if (destination && !selectAllDestination && destination !== 'ALL') filters.destination = destination;
       if (asOnDate) filters.asOnDate = asOnDate.toISOString();
 
+      console.log("Loading stock items with filters:", filters);
       const response = await getLocalManifestStockItems(filters);
+      console.log("Stock items response:", response);
+      
       const items = response.data.map((item: any, index: number) => ({
         ...item,
         id: index + 1,
@@ -1640,9 +1643,9 @@ export default function LocalManifest() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Manifest Modal - FIXED: Removed overflow-hidden, added visible overflow */}
+      {/* Edit Manifest Modal - FIXED POSITIONING */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] flex flex-col p-0 z-[9999]">
+        <DialogContent className="w-[95vw] max-w-7xl max-h-[90vh] flex flex-col p-0 z-[9999]">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
             <DialogTitle className="text-xl flex items-center gap-2">
               <Edit className="h-5 w-5 text-blue-600" />
@@ -1964,17 +1967,18 @@ export default function LocalManifest() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <DialogFooter className="sticky bottom-0 bg-white pt-3 border-t px-6 py-3 gap-2">
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="h-9">
-              <X className="mr-1 h-4 w-4" /> Cancel
-            </Button>
-            <Button onClick={handleSaveManifestWithGRs} disabled={loading} className="h-9 bg-blue-600 hover:bg-blue-700">
-              {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
-              UPDATE MANIFEST
-            </Button>
-          </DialogFooter>
+            {/* Footer Buttons - Fixed positioning */}
+            <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="h-9">
+                <X className="mr-1 h-4 w-4" /> Cancel
+              </Button>
+              <Button onClick={handleSaveManifestWithGRs} disabled={loading} className="h-9 bg-blue-600 hover:bg-blue-700">
+                {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+                UPDATE MANIFEST
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
