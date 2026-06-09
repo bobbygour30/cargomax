@@ -174,7 +174,6 @@ export default function LocalManifest() {
   const [currentEditId, setCurrentEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentManifest, setCurrentManifest] = useState<ManifestRecord | null>(null);
-  const [staticDataLoaded, setStaticDataLoaded] = useState(false);
 
   // Current user data
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -212,6 +211,7 @@ export default function LocalManifest() {
   const [vendorOptions, setVendorOptions] = useState<string[]>([]);
   const [loadingPersonOptions, setLoadingPersonOptions] = useState<string[]>([]);
   const [branchOptions, setBranchOptions] = useState<Branch[]>([]);
+  const [staticDataLoaded, setStaticDataLoaded] = useState(false);
 
   // Search state
   const [searchBranch, setSearchBranch] = useState<string>("");
@@ -251,9 +251,13 @@ export default function LocalManifest() {
   });
   const itemsPerPage: number = 10;
 
-  // Load data on mount
+  // Load current user first
   useEffect(() => {
     loadCurrentUser();
+  }, []);
+
+  // Load static data
+  useEffect(() => {
     loadStaticData();
   }, []);
 
@@ -264,6 +268,36 @@ export default function LocalManifest() {
       loadStats();
     }
   }, [staticDataLoaded]);
+
+  // FIX: Branch auto-selection with value and text matching
+  useEffect(() => {
+    if (selectedBranch && branchOptions.length > 0) {
+      // First try exact value match
+      let matchedBranch = branchOptions.find((b) => b.value === selectedBranch);
+      
+      // Then try text match (case-insensitive)
+      if (!matchedBranch) {
+        matchedBranch = branchOptions.find(
+          (b) =>
+            b.text?.toLowerCase().trim() ===
+            selectedBranch?.toLowerCase().trim()
+        );
+      }
+      
+      // Auto set branch if match found
+      if (matchedBranch) {
+        setBranch(matchedBranch.value);
+        setSelectedBranchText(matchedBranch.text);
+        console.log("Branch auto-selected:", matchedBranch.value, matchedBranch.text);
+      } else {
+        // Fallback: first branch if no match
+        if (branchOptions.length > 0) {
+          setBranch(branchOptions[0].value);
+          console.log("Fallback to first branch:", branchOptions[0].value);
+        }
+      }
+    }
+  }, [selectedBranch, branchOptions]);
 
   const loadCurrentUser = () => {
     if (typeof window !== 'undefined') {
@@ -283,11 +317,9 @@ export default function LocalManifest() {
       if (selectedBranchStr) {
         setSelectedBranch(selectedBranchStr);
         setSelectedBranchText(selectedBranchStr);
-        setBranch(selectedBranchStr);
       } else if (branchCode) {
         setSelectedBranch(branchCode);
         setSelectedBranchText(branchCode);
-        setBranch(branchCode);
       }
     }
   };
@@ -382,7 +414,7 @@ export default function LocalManifest() {
   };
 
   const resetForm = () => {
-    setBranch(selectedBranch);
+    // Don't set branch here - it will be set by the useEffect when branchOptions are ready
     setToStation("");
     setManifestNo("");
     setDespatchDate(new Date());
@@ -1028,7 +1060,7 @@ export default function LocalManifest() {
                     <SelectTrigger className="h-9 text-sm">
                       <SelectValue placeholder="All Branches" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[99999]">
                       <SelectItem value="all">All Branches</SelectItem>
                       {branchOptions.map((branch) => (
                         <SelectItem key={branch.value} value={branch.value}>
@@ -1326,7 +1358,7 @@ export default function LocalManifest() {
                     <SelectTrigger className="h-9 text-sm">
                       <SelectValue placeholder="All Branches" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[99999]">
                       <SelectItem value="all">All Branches</SelectItem>
                       {branchOptions.map((branch) => (
                         <SelectItem key={branch.value} value={branch.value}>
@@ -1494,7 +1526,7 @@ export default function LocalManifest() {
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select cancellation reason" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[99999]">
                   {cancelledReasonOptions.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}
@@ -1608,9 +1640,9 @@ export default function LocalManifest() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Manifest Modal */}
+      {/* Edit Manifest Modal - FIXED: Removed overflow-hidden, added visible overflow */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0 z-[9999]">
+        <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] flex flex-col p-0 z-[9999]">
           <DialogHeader className="sticky top-0 bg-white z-10 px-6 pt-6 pb-3 border-b shrink-0">
             <DialogTitle className="text-xl flex items-center gap-2">
               <Edit className="h-5 w-5 text-blue-600" />
@@ -1682,7 +1714,7 @@ export default function LocalManifest() {
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Select Branch" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[99999]">
                         {branchOptions.map((branch) => (
                           <SelectItem key={branch.value} value={branch.value}>
                             {branch.text}
@@ -1976,7 +2008,7 @@ export default function LocalManifest() {
                   <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="Select Branch" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[99999]">
                     {branchOptions.length === 0 ? (
                       <SelectItem value="" disabled>Loading branches...</SelectItem>
                     ) : (
@@ -1997,7 +2029,7 @@ export default function LocalManifest() {
                   <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="Select To Station" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[99999]">
                     {destinationOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
