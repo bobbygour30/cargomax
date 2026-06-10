@@ -126,6 +126,8 @@ interface AssignedGR {
   stockPckgs: number;
   dispatchedPckgs: number;
   weight: number;
+  bookingId: string;
+  bookingType: string;
 }
 
 interface StockItem {
@@ -143,6 +145,23 @@ interface StockItem {
   selected: boolean;
   bookingType: "computerized" | "manual";
   bookingId: string;
+}
+
+interface StockItemResponse {
+  id?: string | number;
+  _id?: string;
+  grNo: string;
+  grDate: Date;
+  origin: string;
+  destination: string;
+  consignor: string;
+  consignee: string;
+  toPay: string;
+  paid: string;
+  tbb: string;
+  stockPckgs: number;
+  bookingType?: "computerized" | "manual";
+  bookingId?: string;
 }
 
 interface Branch {
@@ -251,6 +270,12 @@ export default function LocalManifest() {
   });
   const itemsPerPage: number = 10;
 
+  // Helper function to get branch display text
+  const getBranchDisplayText = (branchValue: string) => {
+    const found = branchOptions.find(b => b.value === branchValue);
+    return found ? found.text : branchValue;
+  };
+
   // Load current user first
   useEffect(() => {
     loadCurrentUser();
@@ -269,13 +294,11 @@ export default function LocalManifest() {
     }
   }, [staticDataLoaded]);
 
-  // FIX: Branch auto-selection with value and text matching
+  // Branch auto-selection with value and text matching
   useEffect(() => {
     if (selectedBranch && branchOptions.length > 0) {
-      // First try exact value match
       let matchedBranch = branchOptions.find((b) => b.value === selectedBranch);
       
-      // Then try text match (case-insensitive)
       if (!matchedBranch) {
         matchedBranch = branchOptions.find(
           (b) =>
@@ -284,13 +307,11 @@ export default function LocalManifest() {
         );
       }
       
-      // Auto set branch if match found
       if (matchedBranch) {
         setBranch(matchedBranch.value);
         setSelectedBranchText(matchedBranch.text);
         console.log("Branch auto-selected:", matchedBranch.value, matchedBranch.text);
       } else {
-        // Fallback: first branch if no match
         if (branchOptions.length > 0) {
           setBranch(branchOptions[0].value);
           console.log("Fallback to first branch:", branchOptions[0].value);
@@ -393,13 +414,29 @@ export default function LocalManifest() {
       const response = await getLocalManifestStockItems(filters);
       console.log("Stock items response:", response);
       
-      const items = response.data.map((item: any, index: number) => ({
-        ...item,
-        id: index + 1,
-        selected: false,
-        bookingType: item.bookingType || "computerized",
-        bookingId: item._id || item.id,
-      }));
+      const items: StockItem[] = response.data.map((item: StockItemResponse, index: number): StockItem => {
+        const bookingIdValue = String(item.bookingId || item.id || item._id || index);
+        
+        return {
+          id: index + 1,
+          grNo: item.grNo,
+          grDate: item.grDate,
+          origin: item.origin,
+          destination: item.destination,
+          consignor: item.consignor,
+          consignee: item.consignee,
+          toPay: item.toPay,
+          paid: item.paid,
+          tbb: item.tbb,
+          stockPckgs: item.stockPckgs,
+          selected: false,
+          bookingType: item.bookingType || "computerized",
+          bookingId: bookingIdValue,
+        };
+      });
+      
+      console.log("Mapped stock items with bookingId:", items.map(i => ({ grNo: i.grNo, bookingId: i.bookingId })));
+      
       setStockItems(items);
       setStockStats({
         total: items.length,
@@ -417,7 +454,6 @@ export default function LocalManifest() {
   };
 
   const resetForm = () => {
-    // Don't set branch here - it will be set by the useEffect when branchOptions are ready
     setToStation("");
     setManifestNo("");
     setDespatchDate(new Date());
@@ -602,7 +638,7 @@ export default function LocalManifest() {
             <h1>Manifest Details</h1>
             <p><strong>Manifest No:</strong> ${record.manifestNo}</p>
             <p><strong>Date:</strong> ${format(new Date(record.date), "dd-MM-yyyy")}</p>
-            <p><strong>Branch:</strong> ${record.branch}</p>
+            <p><strong>Branch:</strong> ${getBranchDisplayText(record.branch)}</p>
             <p><strong>To Station:</strong> ${record.toStation}</p>
             <p><strong>Driver:</strong> ${record.driverName}</p>
             <p><strong>Vehicle:</strong> ${record.vehicleNo || "N/A"}</p>
@@ -796,26 +832,37 @@ export default function LocalManifest() {
       return;
     }
 
+    console.log("Selected items:", selectedItems.map(i => ({ grNo: i.grNo, bookingId: i.bookingId })));
+
     setLoading(true);
     try {
       const totalPckgs = selectedItems.reduce((sum, item) => sum + item.stockPckgs, 0);
       const totalWeight = selectedItems.reduce((sum, item) => sum + (item.stockPckgs * 100), 0);
 
-      const newAssignedGRs = selectedItems.map(item => ({
-        id: item.bookingId,
-        grNo: item.grNo,
-        grDate: item.grDate,
-        consignor: item.consignor,
-        consignee: item.consignee,
-        destination: item.destination,
-        toPay: parseFloat(item.toPay) || 0,
-        paid: parseFloat(item.paid) || 0,
-        tbb: parseFloat(item.tbb) || 0,
-        bookedPckgs: item.stockPckgs,
-        stockPckgs: item.stockPckgs,
-        dispatchedPckgs: item.stockPckgs,
-        weight: item.stockPckgs * 100,
-      }));
+      const newAssignedGRs: AssignedGR[] = selectedItems.map(item => {
+        const bookingIdValue = String(item.bookingId || item.id);
+        console.log(`Creating assigned GR for ${item.grNo} with bookingId: ${bookingIdValue}`);
+        
+        return {
+          id: bookingIdValue,
+          grNo: item.grNo,
+          grDate: item.grDate,
+          consignor: item.consignor,
+          consignee: item.consignee,
+          destination: item.destination,
+          toPay: parseFloat(item.toPay) || 0,
+          paid: parseFloat(item.paid) || 0,
+          tbb: parseFloat(item.tbb) || 0,
+          bookedPckgs: item.stockPckgs,
+          stockPckgs: item.stockPckgs,
+          dispatchedPckgs: item.stockPckgs,
+          weight: item.stockPckgs * 100,
+          bookingId: bookingIdValue,
+          bookingType: item.bookingType
+        };
+      });
+
+      console.log("New assigned GRs being sent:", JSON.stringify(newAssignedGRs, null, 2));
 
       const updatedAssignedGRs = [...assignedGRs, ...newAssignedGRs];
       setAssignedGRs(updatedAssignedGRs);
@@ -834,6 +881,7 @@ export default function LocalManifest() {
       setSelectAll(false);
     } catch (error: any) {
       console.error("Assign GRs error:", error);
+      console.error("Error response:", error.response?.data);
       toast.error(error.response?.data?.message || "Failed to assign GRs");
     } finally {
       setLoading(false);
@@ -915,12 +963,6 @@ export default function LocalManifest() {
     stockCurrentPage * stockItemsPerPage
   );
   const goToStockPage = (page: number) => setStockCurrentPage(Math.max(1, Math.min(page, totalStockPages)));
-
-  // Helper function to get branch display text
-  const getBranchDisplayText = (branchValue: string) => {
-    const found = branchOptions.find(b => b.value === branchValue);
-    return found ? found.text : branchValue;
-  };
 
   return (
     <div className="space-y-4 p-4 md:p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -1201,7 +1243,10 @@ export default function LocalManifest() {
                               {format(new Date(record.date), "dd-MM-yyyy")}
                             </TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.lhcNo || "-"}</TableCell>
-                            <TableCell className="py-3 px-2 text-sm">{record.branch}</TableCell>
+                            {/* FIX: Display branch name instead of code */}
+                            <TableCell className="py-3 px-2 text-sm">
+                              {getBranchDisplayText(record.branch)}
+                            </TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.toStation}</TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.modeName}</TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.modeCategory}</TableCell>
@@ -1301,7 +1346,7 @@ export default function LocalManifest() {
         </>
       )}
 
-      {/* Cancelled Manifests Tab */}
+      {/* Cancelled Manifests Tab - Same fix for branch name */}
       {mainTab === "cancelled" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1435,7 +1480,10 @@ export default function LocalManifest() {
                             <TableCell className="py-3 px-2 text-sm">
                               {format(new Date(record.date), "dd-MM-yyyy")}
                             </TableCell>
-                            <TableCell className="py-3 px-2 text-sm">{record.branch}</TableCell>
+                            {/* FIX: Display branch name instead of code */}
+                            <TableCell className="py-3 px-2 text-sm">
+                              {getBranchDisplayText(record.branch)}
+                            </TableCell>
                             <TableCell className="py-3 px-2 text-sm">{record.toStation}</TableCell>
                             <TableCell className="py-3 px-2 text-center">
                               <Badge className="bg-red-100 text-red-700">Cancelled</Badge>
@@ -1507,6 +1555,7 @@ export default function LocalManifest() {
         </>
       )}
 
+      {/* Rest of the modals remain the same... */}
       {/* Cancel Manifest Dialog */}
       <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
         <DialogContent className="sm:max-w-md z-[9999]">
